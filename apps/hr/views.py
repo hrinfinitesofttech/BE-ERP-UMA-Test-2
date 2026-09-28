@@ -147,6 +147,21 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
     search_fields = ['overtime_no', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve_overtime(self, request, pk=None):
+        ot = self.get_object()
+        ot.status = 'Approved'
+        ot.approved_by = request.data.get('approved_by') or request.data.get('approvedBy') or 'HR Manager'
+        ot.save()
+        return Response(OvertimeRecordSerializer(ot).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_overtime(self, request, pk=None):
+        ot = self.get_object()
+        ot.status = 'Rejected'
+        ot.save()
+        return Response(OvertimeRecordSerializer(ot).data)
+
 
 class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
     queryset = EarlyCheckoutRequest.objects.all()

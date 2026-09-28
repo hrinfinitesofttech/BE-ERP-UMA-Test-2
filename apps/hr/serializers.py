@@ -84,9 +84,41 @@ class AttendanceRegularizationSerializer(serializers.ModelSerializer):
 
 
 class OvertimeRecordSerializer(serializers.ModelSerializer):
+    overtimeNo = serializers.CharField(source='overtime_no', required=False)
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    regularHours = serializers.DecimalField(source='regular_hours', max_digits=5, decimal_places=2, required=False)
+    overtimeHours = serializers.DecimalField(source='overtime_hours', max_digits=5, decimal_places=2, required=False)
+    overtimeRateMultiplier = serializers.DecimalField(source='overtime_rate_multiplier', max_digits=4, decimal_places=2, required=False)
+    overtimeAmount = serializers.DecimalField(source='overtime_amount', max_digits=10, decimal_places=2, required=False)
+    approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
+
     class Meta:
         model = OvertimeRecord
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'id' in data:
+            ret['id'] = data['id']
+        if 'overtimeNo' in data and 'overtime_no' not in ret:
+            ret['overtime_no'] = data['overtimeNo']
+        if 'employeeId' in data and 'employee_id' not in ret:
+            ret['employee_id'] = data['employeeId']
+        if 'employeeName' in data and 'employee_name' not in ret:
+            ret['employee_name'] = data['employeeName']
+        if 'regularHours' in data and 'regular_hours' not in ret:
+            ret['regular_hours'] = data['regularHours']
+        if 'overtimeHours' in data and 'overtime_hours' not in ret:
+            ret['overtime_hours'] = data['overtimeHours']
+        if 'overtimeRateMultiplier' in data and 'overtime_rate_multiplier' not in ret:
+            ret['overtime_rate_multiplier'] = data['overtimeRateMultiplier']
+        if 'overtimeAmount' in data and 'overtime_amount' not in ret:
+            ret['overtime_amount'] = data['overtimeAmount']
+        if 'approvedBy' in data and 'approved_by' not in ret:
+            ret['approved_by'] = data['approvedBy']
+        return ret
+
 
 
 class EarlyCheckoutRequestSerializer(serializers.ModelSerializer):
