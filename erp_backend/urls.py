@@ -127,6 +127,11 @@ from apps.accounting.views import (
     SupplierPaymentViewSet,
     JournalEntryViewSet,
     JobCostingSummaryViewSet,
+    CreditNoteViewSet,
+    DebitNoteViewSet,
+    BankAccountViewSet,
+    ContraVoucherViewSet,
+    ExpenseEntryViewSet,
 )
 from apps.integration.views import (
     ApprovalItemViewSet,
@@ -260,6 +265,13 @@ api_router.register(r'customer-receipts', CustomerReceiptViewSet, basename='cust
 api_router.register(r'supplier-payments', SupplierPaymentViewSet, basename='supplier-payment')
 api_router.register(r'journal-entries', JournalEntryViewSet, basename='journal-entry')
 api_router.register(r'job-costings', JobCostingSummaryViewSet, basename='job-costing')
+api_router.register(r'credit-notes', CreditNoteViewSet, basename='credit-note')
+api_router.register(r'debit-notes', DebitNoteViewSet, basename='debit-note')
+api_router.register(r'bank-accounts', BankAccountViewSet, basename='bank-account')
+api_router.register(r'contra-entries', ContraVoucherViewSet, basename='contra-entry')
+api_router.register(r'contra-vouchers', ContraVoucherViewSet, basename='contra-voucher')
+api_router.register(r'expenses', ExpenseEntryViewSet, basename='expense')
+api_router.register(r'expense-entries', ExpenseEntryViewSet, basename='expense-entry')
 
 # Integration & Approvals
 api_router.register(r'approvals', ApprovalItemViewSet, basename='approval')

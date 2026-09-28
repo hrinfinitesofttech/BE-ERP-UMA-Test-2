@@ -6,14 +6,14 @@ from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
     JournalEntry, JobCostingSummary, CreditNote, DebitNote,
-    BankAccount, ContraVoucher
+    BankAccount, ContraVoucher, ExpenseEntry
 )
 from .serializers import (
     FinancialYearSerializer, ChartOfAccountSerializer, TaxMasterSerializer,
     CostCenterSerializer, SalesInvoiceSerializer, PurchaseInvoiceSerializer,
     CustomerReceiptSerializer, SupplierPaymentSerializer, JournalEntrySerializer,
     JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer,
-    BankAccountSerializer, ContraVoucherSerializer
+    BankAccountSerializer, ContraVoucherSerializer, ExpenseEntrySerializer
 )
 
 
@@ -211,5 +211,21 @@ class ContraVoucherViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['contra_number', 'from_account_name', 'to_account_name', 'reference_number', 'narration']
     filterset_fields = ['contra_type', 'status']
+
+
+class ExpenseEntryViewSet(viewsets.ModelViewSet):
+    queryset = ExpenseEntry.objects.all()
+    serializer_class = ExpenseEntrySerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['expense_number', 'category', 'claimed_by', 'vendor_name', 'description']
+    filterset_fields = ['category', 'status', 'payment_mode']
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve_expense(self, request, pk=None):
+        expense = self.get_object()
+        expense.status = 'Approved'
+        expense.approved_by = request.data.get('approved_by') or request.data.get('approvedBy') or 'Super Admin'
+        expense.save()
+        return Response(ExpenseEntrySerializer(expense).data)
 
 

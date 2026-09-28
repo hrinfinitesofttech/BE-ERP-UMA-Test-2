@@ -293,3 +293,32 @@ class ContraVoucher(models.Model):
         return f"{self.contra_number} ({self.from_account_name} -> {self.to_account_name}: ₹{self.amount})"
 
 
+class ExpenseEntry(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    expense_number = models.CharField(max_length=64, unique=True)
+    expense_date = models.DateField()
+    category = models.CharField(max_length=128, default='Power & Electricity')
+    claimed_by = models.CharField(max_length=128, blank=True)
+    vendor_name = models.CharField(max_length=255, blank=True)
+    sub_total = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    tax_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    grand_total = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    payment_mode = models.CharField(max_length=64, default='Bank_Transfer')
+    bank_cash_account_name = models.CharField(max_length=128, blank=True)
+    project_id = models.CharField(max_length=64, blank=True)
+    job_number = models.CharField(max_length=64, blank=True)
+    cost_center_code = models.CharField(max_length=64, blank=True)
+    description = models.TextField(blank=True)
+    remarks = models.TextField(blank=True)
+    status = models.CharField(max_length=64, default='Pending_Approval')
+    approved_by = models.CharField(max_length=128, blank=True)
+    created_by = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-expense_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.expense_number} - {self.category} (₹{self.grand_total})"
+
+
