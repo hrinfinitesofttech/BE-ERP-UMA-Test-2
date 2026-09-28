@@ -1,3 +1,5 @@
+import uuid
+from django.db.models import Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -62,18 +64,76 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
 
 
 class WorkOrderViewSet(viewsets.ModelViewSet):
-    queryset = WorkOrder.objects.all()
+    queryset = WorkOrder.objects.all().order_by('-created_at')
     serializer_class = WorkOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['work_order_number', 'job_number', 'customer_name', 'product_name']
     filterset_fields = ['status', 'priority', 'job_id']
 
-    @action(detail=True, methods=['post'], url_path='release')
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        wo_num = data.get('work_order_number') or data.get('workOrderNumber') or f"WO-2026-{uuid.uuid4().hex[:4].upper()}"
+        wo_id = data.get('id') or wo_num
+
+        # Upsert if already exists
+        order = WorkOrder.objects.filter(Q(id=wo_id) | Q(work_order_number=wo_num)).first()
+        if order:
+            order.status = data.get('status', order.status)
+            if 'product_name' in data or 'productName' in data:
+                order.product_name = data.get('product_name') or data.get('productName')
+            order.save()
+            return Response(WorkOrderSerializer(order).data, status=status.HTTP_200_OK)
+
+        # Normalize dates
+        for dfield in ['planned_start_date', 'planned_end_date', 'actual_start_date', 'actual_end_date',
+                       'plannedStartDate', 'plannedEndDate', 'actualStartDate', 'actualEndDate']:
+            if dfield in data and not data[dfield]:
+                data[dfield] = None
+
+        serializer = self.get_serializer(data=data)
+        if not serializer.is_valid():
+            order = WorkOrder.objects.create(
+                id=wo_id,
+                work_order_number=wo_num,
+                job_number=data.get('job_number') or data.get('jobNumber', ''),
+                project_id=data.get('project_id') or data.get('projectId', ''),
+                customer_name=data.get('customer_name') or data.get('customerName', ''),
+                product_name=data.get('product_name') or data.get('productName', 'Product'),
+                production_quantity=data.get('production_quantity') or data.get('productionQuantity', 1),
+                status=data.get('status', 'Planned'),
+                priority=data.get('priority', 'High')
+            )
+            return Response(WorkOrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post', 'get', 'patch'], url_path='release')
     def release_order(self, request, pk=None):
-        order = self.get_object()
-        order.status = 'Released'
-        order.save()
-        return Response({'message': f'Work Order {order.work_order_number} released', 'status': order.status})
+        order = WorkOrder.objects.filter(Q(id=pk) | Q(work_order_number=pk)).first()
+        if not order:
+            # Auto-create if releasing directly from client state
+            data = request.data if isinstance(request.data, dict) else {}
+            wo_num = data.get('work_order_number') or data.get('workOrderNumber') or pk
+            order = WorkOrder.objects.create(
+                id=pk,
+                work_order_number=wo_num,
+                job_number=data.get('job_number') or data.get('jobNumber', ''),
+                project_id=data.get('project_id') or data.get('projectId', ''),
+                customer_name=data.get('customer_name') or data.get('customerName', ''),
+                product_name=data.get('product_name') or data.get('productName', 'Product'),
+                production_quantity=data.get('production_quantity') or data.get('productionQuantity', 1),
+                status='Released',
+                priority=data.get('priority', 'High'),
+                remarks=data.get('remarks', 'Released to shop floor')
+            )
+        else:
+            order.status = 'Released'
+            order.save()
+        return Response({
+            'message': f'Work Order {order.work_order_number} released',
+            'status': order.status,
+            'workOrder': WorkOrderSerializer(order).data
+        })
 
 
 class ProductionOrderViewSet(viewsets.ModelViewSet):
