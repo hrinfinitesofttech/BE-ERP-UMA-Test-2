@@ -170,6 +170,20 @@ class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
     search_fields = ['request_number', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve_early_checkout(self, request, pk=None):
+        eco = self.get_object()
+        eco.status = 'Approved'
+        eco.save()
+        return Response(EarlyCheckoutRequestSerializer(eco).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_early_checkout(self, request, pk=None):
+        eco = self.get_object()
+        eco.status = 'Rejected'
+        eco.save()
+        return Response(EarlyCheckoutRequestSerializer(eco).data)
+
 
 class SalaryComponentViewSet(viewsets.ModelViewSet):
     queryset = SalaryComponent.objects.all()

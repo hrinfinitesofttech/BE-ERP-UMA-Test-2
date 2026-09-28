@@ -122,9 +122,34 @@ class OvertimeRecordSerializer(serializers.ModelSerializer):
 
 
 class EarlyCheckoutRequestSerializer(serializers.ModelSerializer):
+    requestNumber = serializers.CharField(source='request_number', required=False)
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    shiftName = serializers.CharField(source='shift_name', required=False, allow_blank=True)
+    expectedCheckout = serializers.CharField(source='expected_checkout', required=False, allow_blank=True)
+    requestedCheckout = serializers.CharField(source='requested_checkout', required=False, allow_blank=True)
+
     class Meta:
         model = EarlyCheckoutRequest
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'id' in data:
+            ret['id'] = data['id']
+        if 'requestNumber' in data and 'request_number' not in ret:
+            ret['request_number'] = data['requestNumber']
+        if 'employeeId' in data and 'employee_id' not in ret:
+            ret['employee_id'] = data['employeeId']
+        if 'employeeName' in data and 'employee_name' not in ret:
+            ret['employee_name'] = data['employeeName']
+        if 'shiftName' in data and 'shift_name' not in ret:
+            ret['shift_name'] = data['shiftName']
+        if 'expectedCheckout' in data and 'expected_checkout' not in ret:
+            ret['expected_checkout'] = data['expectedCheckout']
+        if 'requestedCheckout' in data and 'requested_checkout' not in ret:
+            ret['requested_checkout'] = data['requestedCheckout']
+        return ret
 
 
 class SalaryComponentSerializer(serializers.ModelSerializer):
