@@ -5,13 +5,15 @@ from django.utils import timezone
 from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
-    JournalEntry, JobCostingSummary, CreditNote, DebitNote
+    JournalEntry, JobCostingSummary, CreditNote, DebitNote,
+    BankAccount, ContraVoucher
 )
 from .serializers import (
     FinancialYearSerializer, ChartOfAccountSerializer, TaxMasterSerializer,
     CostCenterSerializer, SalesInvoiceSerializer, PurchaseInvoiceSerializer,
     CustomerReceiptSerializer, SupplierPaymentSerializer, JournalEntrySerializer,
-    JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer
+    JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer,
+    BankAccountSerializer, ContraVoucherSerializer
 )
 
 
@@ -193,4 +195,21 @@ class DebitNoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['debit_note_number', 'supplier_name', 'original_invoice_number']
     filterset_fields = ['supplier_id', 'status']
+
+
+class BankAccountViewSet(viewsets.ModelViewSet):
+    queryset = BankAccount.objects.all()
+    serializer_class = BankAccountSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['bank_name', 'account_name', 'account_number', 'ifsc_code']
+    filterset_fields = ['account_type', 'status', 'is_active']
+
+
+class ContraVoucherViewSet(viewsets.ModelViewSet):
+    queryset = ContraVoucher.objects.all()
+    serializer_class = ContraVoucherSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['contra_number', 'from_account_name', 'to_account_name', 'reference_number', 'narration']
+    filterset_fields = ['contra_type', 'status']
+
 

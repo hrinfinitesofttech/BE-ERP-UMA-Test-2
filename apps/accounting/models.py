@@ -247,3 +247,49 @@ class DebitNote(models.Model):
     def __str__(self):
         return f"{self.debit_note_number} - {self.supplier_name} (₹{self.total_amount})"
 
+
+class BankAccount(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    account_name = models.CharField(max_length=255, blank=True)
+    account_type = models.CharField(max_length=64, default='Current')
+    bank_name = models.CharField(max_length=255)
+    account_number = models.CharField(max_length=128)
+    ifsc_code = models.CharField(max_length=64, blank=True)
+    branch = models.CharField(max_length=255, blank=True)
+    branch_name = models.CharField(max_length=255, blank=True)
+    gl_account_code = models.CharField(max_length=64, blank=True)
+    opening_balance = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    current_balance = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    status = models.CharField(max_length=32, default='Active')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.bank_name} - {self.account_number}"
+
+
+class ContraVoucher(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    contra_number = models.CharField(max_length=64, unique=True)
+    contra_date = models.DateField()
+    contra_type = models.CharField(max_length=64, default='Bank_to_Bank')
+    from_account_id = models.CharField(max_length=64, blank=True)
+    from_account_name = models.CharField(max_length=255)
+    from_account_code = models.CharField(max_length=64, blank=True)
+    to_account_id = models.CharField(max_length=64, blank=True)
+    to_account_name = models.CharField(max_length=255)
+    to_account_code = models.CharField(max_length=64, blank=True)
+    amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    reference_number = models.CharField(max_length=128, blank=True)
+    narration = models.TextField(blank=True)
+    status = models.CharField(max_length=64, default='Posted')
+    created_by = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-contra_date']
+
+    def __str__(self):
+        return f"{self.contra_number} ({self.from_account_name} -> {self.to_account_name}: ₹{self.amount})"
+
+
