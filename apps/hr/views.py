@@ -117,6 +117,13 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
         mp.save()
         return Response(MissedPunchRequestSerializer(mp).data)
 
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_missed_punch(self, request, pk=None):
+        mp = self.get_object()
+        mp.status = 'Rejected'
+        mp.save()
+        return Response(MissedPunchRequestSerializer(mp).data)
+
 
 class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
     queryset = AttendanceRegularization.objects.all()

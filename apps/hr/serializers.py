@@ -46,9 +46,35 @@ class WFHRequestSerializer(serializers.ModelSerializer):
 
 
 class MissedPunchRequestSerializer(serializers.ModelSerializer):
+    requestNumber = serializers.CharField(source='request_number', required=False)
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    missingPunchType = serializers.CharField(source='missing_punch_type', required=False)
+    requestedTime = serializers.CharField(source='requested_time', required=False)
+    reportingManager = serializers.CharField(source='reporting_manager', required=False, allow_blank=True)
+
     class Meta:
         model = MissedPunchRequest
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'id' in data:
+            ret['id'] = data['id']
+        if 'requestNumber' in data and 'request_number' not in ret:
+            ret['request_number'] = data['requestNumber']
+        if 'employeeId' in data and 'employee_id' not in ret:
+            ret['employee_id'] = data['employeeId']
+        if 'employeeName' in data and 'employee_name' not in ret:
+            ret['employee_name'] = data['employeeName']
+        if 'missingPunchType' in data and 'missing_punch_type' not in ret:
+            ret['missing_punch_type'] = data['missingPunchType']
+        if 'requestedTime' in data and 'requested_time' not in ret:
+            ret['requested_time'] = data['requestedTime']
+        if 'reportingManager' in data and 'reporting_manager' not in ret:
+            ret['reporting_manager'] = data['reportingManager']
+        return ret
+
 
 
 class AttendanceRegularizationSerializer(serializers.ModelSerializer):
