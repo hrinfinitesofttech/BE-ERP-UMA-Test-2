@@ -7,7 +7,8 @@ from .models import (
     LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
-    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit
+    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
+    Holiday
 )
 from .serializers import (
     DesignationSerializer, EmployeeDocumentSerializer, ShiftMasterSerializer,
@@ -17,7 +18,8 @@ from .serializers import (
     SalaryComponentSerializer, SalaryStructureSerializer, PayrollRecordSerializer,
     EmployeeAdvanceLoanSerializer, ReimbursementExpenseSerializer,
     EmployeeOnboardingSerializer, EmployeeTransferSerializer,
-    EmployeePromotionSerializer, EmployeeExitSerializer
+    EmployeePromotionSerializer, EmployeeExitSerializer,
+    HolidaySerializer
 )
 
 
@@ -273,4 +275,19 @@ class EmployeeExitViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['employee_name', 'department', 'designation']
     filterset_fields = ['status']
+
+
+class HolidayViewSet(viewsets.ModelViewSet):
+    queryset = Holiday.objects.all()
+    serializer_class = HolidaySerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['holiday_name', 'holiday_type', 'financial_year']
+    filterset_fields = ['holiday_type', 'financial_year', 'is_optional']
+
+    def perform_create(self, serializer):
+        req_id = serializer.validated_data.get('id') or self.request.data.get('id')
+        if not req_id:
+            count = Holiday.objects.count() + 1
+            req_id = f"HOL-2026-{count:02d}"
+        serializer.save(id=req_id)
 

@@ -394,3 +394,21 @@ class EmployeeExit(models.Model):
     def __str__(self):
         return f"Exit: {self.employee_name} ({self.resignation_date})"
 
+
+class Holiday(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    holiday_name = models.CharField(max_length=128)
+    holiday_date = models.DateField()
+    holiday_type = models.CharField(max_length=64, default='Public Holiday')
+    applicable_departments = models.JSONField(default=list, blank=True)
+    is_optional = models.BooleanField(default=False)
+    financial_year = models.CharField(max_length=32, default='FY 2026-27')
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['holiday_date']
+
+    def __str__(self):
+        return f"{self.holiday_name} ({self.holiday_date})"
+

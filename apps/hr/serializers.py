@@ -4,7 +4,8 @@ from .models import (
     LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
-    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit
+    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
+    Holiday
 )
 
 
@@ -119,5 +120,18 @@ class EmployeePromotionSerializer(serializers.ModelSerializer):
 class EmployeeExitSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeExit
+        fields = '__all__'
+
+
+class HolidaySerializer(serializers.ModelSerializer):
+    holidayName = serializers.CharField(source='holiday_name', required=False)
+    holidayDate = serializers.DateField(source='holiday_date', required=False)
+    holidayType = serializers.CharField(source='holiday_type', required=False, default='Public Holiday')
+    applicableDepartments = serializers.JSONField(source='applicable_departments', required=False)
+    isOptional = serializers.BooleanField(source='is_optional', required=False, default=False)
+    financialYear = serializers.CharField(source='financial_year', required=False, default='FY 2026-27')
+
+    class Meta:
+        model = Holiday
         fields = '__all__'
 

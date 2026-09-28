@@ -115,6 +115,7 @@ from apps.hr.views import (
     PayrollRecordViewSet,
     EmployeeAdvanceLoanViewSet,
     ReimbursementExpenseViewSet,
+    HolidayViewSet,
 )
 from apps.accounting.views import (
     FinancialYearViewSet,
@@ -253,6 +254,7 @@ api_router.register(r'payroll-records', PayrollRecordViewSet, basename='payroll-
 api_router.register(r'advance-loans', EmployeeAdvanceLoanViewSet, basename='advance-loan')
 api_router.register(r'employee-advances', EmployeeAdvanceLoanViewSet, basename='employee-advance')
 api_router.register(r'reimbursements', ReimbursementExpenseViewSet, basename='reimbursement')
+api_router.register(r'holidays', HolidayViewSet, basename='holiday')
 
 # Accounting & Finance
 api_router.register(r'financial-years', FinancialYearViewSet, basename='financial-year')
