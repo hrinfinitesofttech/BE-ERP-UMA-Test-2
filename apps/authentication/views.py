@@ -1,6 +1,7 @@
 from datetime import datetime
 from django.contrib.auth import authenticate
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -109,3 +110,15 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
+
+    @action(detail=True, methods=['post'], url_path='reset-password')
+    def reset_password(self, request, pk=None):
+        user = self.get_object()
+        new_password = request.data.get('password') or request.data.get('new_password') or request.data.get('newPassword') or 'password123'
+        user.set_password(new_password)
+        user.save()
+        return Response({
+            'success': True,
+            'message': f'Password for {user.username} has been reset successfully',
+            'username': user.username
+        })
