@@ -6,14 +6,14 @@ from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
     JournalEntry, JobCostingSummary, CreditNote, DebitNote,
-    BankAccount, ContraVoucher, ExpenseEntry
+    BankAccount, ContraVoucher, ExpenseEntry, FixedAsset
 )
 from .serializers import (
     FinancialYearSerializer, ChartOfAccountSerializer, TaxMasterSerializer,
     CostCenterSerializer, SalesInvoiceSerializer, PurchaseInvoiceSerializer,
     CustomerReceiptSerializer, SupplierPaymentSerializer, JournalEntrySerializer,
     JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer,
-    BankAccountSerializer, ContraVoucherSerializer, ExpenseEntrySerializer
+    BankAccountSerializer, ContraVoucherSerializer, ExpenseEntrySerializer, FixedAssetSerializer
 )
 
 
@@ -244,5 +244,14 @@ class ExpenseEntryViewSet(viewsets.ModelViewSet):
         expense.approved_by = request.data.get('approved_by') or request.data.get('approvedBy') or 'Super Admin'
         expense.save()
         return Response(ExpenseEntrySerializer(expense).data)
+
+
+class FixedAssetViewSet(viewsets.ModelViewSet):
+    queryset = FixedAsset.objects.all()
+    serializer_class = FixedAssetSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['asset_code', 'asset_name', 'category', 'location']
+    filterset_fields = ['category', 'status', 'depreciation_method']
+
 
 

@@ -5,7 +5,8 @@ from .views import (
     CostCenterViewSet, SalesInvoiceViewSet, PurchaseInvoiceViewSet,
     CustomerReceiptViewSet, SupplierPaymentViewSet, JournalEntryViewSet,
     JobCostingSummaryViewSet, CreditNoteViewSet, DebitNoteViewSet,
-    BankAccountViewSet, ContraVoucherViewSet, ExpenseEntryViewSet
+    BankAccountViewSet, ContraVoucherViewSet, ExpenseEntryViewSet,
+    FixedAssetViewSet
 )
 
 router = DefaultRouter()
@@ -26,6 +27,7 @@ router.register('contra-vouchers', ContraVoucherViewSet, basename='contra-vouche
 router.register('contra-entries', ContraVoucherViewSet, basename='contra-entry')
 router.register('expenses', ExpenseEntryViewSet, basename='expense')
 router.register('expense-entries', ExpenseEntryViewSet, basename='expense-entry')
+router.register('fixed-assets', FixedAssetViewSet, basename='fixed-asset')
 
 urlpatterns = [
     path('', include(router.urls)),

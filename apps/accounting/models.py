@@ -322,3 +322,30 @@ class ExpenseEntry(models.Model):
         return f"{self.expense_number} - {self.category} (₹{self.grand_total})"
 
 
+class FixedAsset(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    asset_code = models.CharField(max_length=64, unique=True)
+    asset_name = models.CharField(max_length=255)
+    category = models.CharField(max_length=128, default='Plant & Machinery')
+    purchase_date = models.DateField()
+    purchase_cost = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    supplier_name = models.CharField(max_length=255, blank=True)
+    invoice_number = models.CharField(max_length=128, blank=True)
+    location = models.CharField(max_length=255, default='Bay-3 Heavy Machine Shop')
+    department = models.CharField(max_length=128, blank=True)
+    useful_life_years = models.IntegerField(default=10)
+    depreciation_method = models.CharField(max_length=32, default='WDV')
+    depreciation_rate = models.DecimalField(max_digits=6, decimal_places=2, default=15.0)
+    residual_value = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    accumulated_depreciation = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    current_book_value = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    status = models.CharField(max_length=64, default='Active')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['asset_code']
+
+    def __str__(self):
+        return f"{self.asset_code} - {self.asset_name} (₹{self.current_book_value})"
+
+
