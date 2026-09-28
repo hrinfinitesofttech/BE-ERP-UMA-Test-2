@@ -5,7 +5,7 @@ from .models import (
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
     EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
-    Holiday
+    Holiday, EmployeeAppraisal
 )
 
 
@@ -217,4 +217,23 @@ class HolidaySerializer(serializers.ModelSerializer):
     class Meta:
         model = Holiday
         fields = '__all__'
+
+
+class EmployeeAppraisalSerializer(serializers.ModelSerializer):
+    appraisalNumber = serializers.CharField(source='appraisal_number', required=False)
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    cyclePeriod = serializers.CharField(source='cycle_period', required=False, default='FY 2025-26 Annual')
+    kpiScore = serializers.DecimalField(source='kpi_score', max_digits=4, decimal_places=2, required=False, default=0)
+    selfRating = serializers.DecimalField(source='self_rating', max_digits=4, decimal_places=2, required=False, default=0)
+    managerRating = serializers.DecimalField(source='manager_rating', max_digits=4, decimal_places=2, required=False, default=0)
+    finalScore = serializers.DecimalField(source='final_score', max_digits=4, decimal_places=2, required=False, default=0)
+    managerComments = serializers.CharField(source='manager_comments', required=False, allow_blank=True, default='')
+    promotionRecommended = serializers.BooleanField(source='promotion_recommended', required=False, default=False)
+    recommendedIncrementPct = serializers.DecimalField(source='recommended_increment_pct', max_digits=5, decimal_places=2, required=False, default=0)
+
+    class Meta:
+        model = EmployeeAppraisal
+        fields = '__all__'
+
 

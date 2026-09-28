@@ -412,3 +412,28 @@ class Holiday(models.Model):
     def __str__(self):
         return f"{self.holiday_name} ({self.holiday_date})"
 
+
+class EmployeeAppraisal(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    appraisal_number = models.CharField(max_length=64, unique=True)
+    employee_id = models.CharField(max_length=64)
+    employee_name = models.CharField(max_length=128)
+    department = models.CharField(max_length=128, blank=True)
+    cycle_period = models.CharField(max_length=128, default='FY 2025-26 Annual')
+    kpi_score = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    self_rating = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    manager_rating = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    final_score = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    manager_comments = models.TextField(blank=True)
+    promotion_recommended = models.BooleanField(default=False)
+    recommended_increment_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    status = models.CharField(max_length=64, default='Manager Review Pending')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.appraisal_number} - {self.employee_name}"
+
+

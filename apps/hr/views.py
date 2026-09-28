@@ -8,7 +8,7 @@ from .models import (
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
     EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
-    Holiday
+    Holiday, EmployeeAppraisal
 )
 from .serializers import (
     DesignationSerializer, EmployeeDocumentSerializer, ShiftMasterSerializer,
@@ -19,7 +19,7 @@ from .serializers import (
     EmployeeAdvanceLoanSerializer, ReimbursementExpenseSerializer,
     EmployeeOnboardingSerializer, EmployeeTransferSerializer,
     EmployeePromotionSerializer, EmployeeExitSerializer,
-    HolidaySerializer
+    HolidaySerializer, EmployeeAppraisalSerializer
 )
 
 
@@ -333,4 +333,38 @@ class HolidayViewSet(viewsets.ModelViewSet):
             count = Holiday.objects.count() + 1
             req_id = f"HOL-2026-{count:02d}"
         serializer.save(id=req_id)
+
+
+class EmployeeAppraisalViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeAppraisal.objects.all()
+    serializer_class = EmployeeAppraisalSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['appraisal_number', 'employee_id', 'employee_name', 'department', 'cycle_period']
+    filterset_fields = ['status', 'department', 'cycle_period', 'employee_id']
+
+    def perform_create(self, serializer):
+        req_id = serializer.validated_data.get('id') or self.request.data.get('id')
+        appraisal_no = serializer.validated_data.get('appraisal_number') or self.request.data.get('appraisalNumber')
+        if not req_id or not appraisal_no:
+            count = EmployeeAppraisal.objects.count() + 1
+            if not req_id:
+                req_id = f"APR-2026-{count:03d}"
+            if not appraisal_no:
+                appraisal_no = f"APR-2026-{count:03d}"
+        serializer.save(id=req_id, appraisal_number=appraisal_no)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        appraisal = self.get_object()
+        appraisal.status = 'Approved'
+        appraisal.save()
+        return Response(self.get_serializer(appraisal).data)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        appraisal = self.get_object()
+        appraisal.status = 'Rejected'
+        appraisal.save()
+        return Response(self.get_serializer(appraisal).data)
+
 
