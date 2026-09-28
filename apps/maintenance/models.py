@@ -210,3 +210,156 @@ class AMCContract(models.Model):
 
     def __str__(self):
         return f"{self.amc_number} - {self.customer_name}"
+
+
+class ServiceWorkOrder(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    work_order_number = models.CharField(max_length=64, unique=True)
+    service_request_id = models.CharField(max_length=64, blank=True)
+    request_number = models.CharField(max_length=64, blank=True)
+    customer_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255)
+    customer_machine_id = models.CharField(max_length=64, blank=True)
+    machine_name = models.CharField(max_length=255, blank=True)
+    technician_id = models.CharField(max_length=64, blank=True)
+    technician_name = models.CharField(max_length=128, blank=True)
+    problem = models.TextField(blank=True)
+    scope_of_work = models.TextField(blank=True)
+    required_parts = models.JSONField(default=list, blank=True)
+    labour_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
+    estimated_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    actual_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    approval_required = models.BooleanField(default=False)
+    approved_by = models.CharField(max_length=128, blank=True)
+    status = models.CharField(max_length=64, default='Draft')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.work_order_number} - {self.customer_name}"
+
+
+class ServicePartIssue(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    issue_number = models.CharField(max_length=64, unique=True)
+    work_order_number = models.CharField(max_length=64, blank=True)
+    service_request_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255, blank=True)
+    machine_name = models.CharField(max_length=255, blank=True)
+    technician_id = models.CharField(max_length=64, blank=True)
+    technician_name = models.CharField(max_length=128, blank=True)
+    items = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=64, default='Issued')
+    remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.issue_number} - {self.customer_name} ({self.status})"
+
+
+class ServicePartReturn(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    return_number = models.CharField(max_length=64, unique=True)
+    work_order_number = models.CharField(max_length=64, blank=True)
+    original_issue_number = models.CharField(max_length=64, blank=True)
+    items = models.JSONField(default=list, blank=True)
+    returned_by = models.CharField(max_length=128, blank=True)
+    received_by = models.CharField(max_length=128, blank=True)
+    return_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=64, default='Accepted to Store')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.return_number} ({self.status})"
+
+
+class ServiceReport(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    report_number = models.CharField(max_length=64, unique=True)
+    service_request_id = models.CharField(max_length=64, blank=True)
+    visit_number = models.CharField(max_length=64, blank=True)
+    customer_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255)
+    machine_name = models.CharField(max_length=255, blank=True)
+    serial_number = models.CharField(max_length=128, blank=True)
+    technician_id = models.CharField(max_length=64, blank=True)
+    technician_name = models.CharField(max_length=128, blank=True)
+    visit_date = models.DateField(null=True, blank=True)
+    complaint = models.TextField(blank=True)
+    diagnosis = models.TextField(blank=True)
+    work_performed = models.TextField(blank=True)
+    parts_used = models.JSONField(default=list, blank=True)
+    labour_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
+    labour_charge = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    parts_total = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    travel_charge = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    grand_total = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    machine_status = models.CharField(max_length=64, default='Operational')
+    recommendations = models.TextField(blank=True)
+    next_service_date = models.DateField(null=True, blank=True)
+    customer_remarks = models.TextField(blank=True)
+    customer_name_signatory = models.CharField(max_length=128, blank=True)
+    customer_signature = models.BooleanField(default=False)
+    technician_signature = models.BooleanField(default=False)
+    attachments = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.report_number} - {self.customer_name}"
+
+
+class WarrantyRecord(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    customer_machine_id = models.CharField(max_length=64, blank=True)
+    serial_number = models.CharField(max_length=128, blank=True)
+    customer_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255)
+    machine_name = models.CharField(max_length=255, blank=True)
+    warranty_start = models.DateField(null=True, blank=True)
+    warranty_end = models.DateField(null=True, blank=True)
+    warranty_type = models.CharField(max_length=64, default='Standard 1 Year')
+    covered_items = models.JSONField(default=list, blank=True)
+    exclusions = models.JSONField(default=list, blank=True)
+    terms = models.TextField(blank=True)
+    status = models.CharField(max_length=64, default='Under Warranty')
+
+    def __str__(self):
+        return f"Warranty: {self.machine_name} ({self.customer_name})"
+
+
+class ServiceContract(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    contract_number = models.CharField(max_length=64, unique=True)
+    contract_type = models.CharField(max_length=64, default='AMC')
+    customer_name = models.CharField(max_length=255)
+    machine_name = models.CharField(max_length=255, blank=True)
+    serial_number = models.CharField(max_length=128, blank=True)
+    contract_value = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    billing_terms = models.CharField(max_length=128, blank=True)
+    included_services = models.JSONField(default=list, blank=True)
+    excluded_services = models.JSONField(default=list, blank=True)
+    sla_hours = models.IntegerField(default=24)
+    status = models.CharField(max_length=64, default='Active')
+
+    def __str__(self):
+        return f"{self.contract_number} - {self.customer_name}"
+
+
+class DowntimeRecord(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    downtime_number = models.CharField(max_length=64, unique=True)
+    asset_id = models.CharField(max_length=64, blank=True)
+    asset_name = models.CharField(max_length=255)
+    breakdown_id = models.CharField(max_length=64, blank=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    duration_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
+    reason = models.TextField(blank=True)
+    category = models.CharField(max_length=64, default='Mechanical')
+    technician_name = models.CharField(max_length=128, blank=True)
+    cost_impact = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    status = models.CharField(max_length=64, default='Resolved')
+
+    def __str__(self):
+        return f"{self.downtime_number} - {self.asset_name}"

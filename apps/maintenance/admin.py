@@ -1,5 +1,10 @@
 from django.contrib import admin
-from .models import InternalAsset, CustomerMachine, ServiceRequest, PreventiveMaintenancePlan, BreakdownRecord, ServiceVisit, AMCContract
+from .models import (
+    InternalAsset, CustomerMachine, ServiceRequest, PreventiveMaintenancePlan,
+    BreakdownRecord, ServiceVisit, AMCContract, ServiceWorkOrder,
+    ServicePartIssue, ServicePartReturn, ServiceReport, WarrantyRecord,
+    ServiceContract, DowntimeRecord
+)
 
 @admin.register(InternalAsset)
 class InternalAssetAdmin(admin.ModelAdmin):
@@ -42,3 +47,45 @@ class AMCContractAdmin(admin.ModelAdmin):
     list_display = ('id', 'amc_number', 'customer_id', 'customer_name', 'customer_machine_id', 'machine_name')
     search_fields = ('id', 'amc_number', 'customer_id', 'customer_name')
     list_filter = ('contract_start', 'contract_end', 'breakdown_support', 'parts_included')
+
+@admin.register(ServiceWorkOrder)
+class ServiceWorkOrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'work_order_number', 'customer_name', 'machine_name', 'technician_name', 'status')
+    search_fields = ('id', 'work_order_number', 'customer_name', 'machine_name')
+    list_filter = ('status', 'approval_required')
+
+@admin.register(ServicePartIssue)
+class ServicePartIssueAdmin(admin.ModelAdmin):
+    list_display = ('id', 'issue_number', 'work_order_number', 'customer_name', 'technician_name', 'status')
+    search_fields = ('id', 'issue_number', 'customer_name', 'work_order_number')
+    list_filter = ('status', 'created_at')
+
+@admin.register(ServicePartReturn)
+class ServicePartReturnAdmin(admin.ModelAdmin):
+    list_display = ('id', 'return_number', 'work_order_number', 'original_issue_number', 'returned_by', 'status')
+    search_fields = ('id', 'return_number', 'work_order_number', 'returned_by')
+    list_filter = ('status', 'return_date')
+
+@admin.register(ServiceReport)
+class ServiceReportAdmin(admin.ModelAdmin):
+    list_display = ('id', 'report_number', 'customer_name', 'machine_name', 'technician_name', 'machine_status')
+    search_fields = ('id', 'report_number', 'customer_name', 'machine_name')
+    list_filter = ('machine_status', 'visit_date')
+
+@admin.register(WarrantyRecord)
+class WarrantyRecordAdmin(admin.ModelAdmin):
+    list_display = ('id', 'customer_name', 'machine_name', 'serial_number', 'warranty_type', 'status')
+    search_fields = ('id', 'customer_name', 'machine_name', 'serial_number')
+    list_filter = ('warranty_type', 'status')
+
+@admin.register(ServiceContract)
+class ServiceContractAdmin(admin.ModelAdmin):
+    list_display = ('id', 'contract_number', 'contract_type', 'customer_name', 'machine_name', 'status')
+    search_fields = ('id', 'contract_number', 'customer_name', 'machine_name')
+    list_filter = ('contract_type', 'status')
+
+@admin.register(DowntimeRecord)
+class DowntimeRecordAdmin(admin.ModelAdmin):
+    list_display = ('id', 'downtime_number', 'asset_name', 'category', 'duration_hours', 'status')
+    search_fields = ('id', 'downtime_number', 'asset_name', 'technician_name')
+    list_filter = ('category', 'status')

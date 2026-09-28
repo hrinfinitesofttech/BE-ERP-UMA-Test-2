@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from .models import (
     InternalAsset, CustomerMachine, ServiceRequest, PreventiveMaintenancePlan,
-    BreakdownRecord, ServiceVisit, AMCContract
+    BreakdownRecord, ServiceVisit, AMCContract, ServiceWorkOrder,
+    ServicePartIssue, ServicePartReturn, ServiceReport, WarrantyRecord,
+    ServiceContract, DowntimeRecord
 )
 
 
@@ -44,4 +46,46 @@ class ServiceVisitSerializer(serializers.ModelSerializer):
 class AMCContractSerializer(serializers.ModelSerializer):
     class Meta:
         model = AMCContract
+        fields = '__all__'
+
+
+class ServiceWorkOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceWorkOrder
+        fields = '__all__'
+
+
+class ServicePartIssueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServicePartIssue
+        fields = '__all__'
+
+
+class ServicePartReturnSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServicePartReturn
+        fields = '__all__'
+
+
+class ServiceReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceReport
+        fields = '__all__'
+
+
+class WarrantyRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WarrantyRecord
+        fields = '__all__'
+
+
+class ServiceContractSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceContract
+        fields = '__all__'
+
+
+class DowntimeRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DowntimeRecord
         fields = '__all__'

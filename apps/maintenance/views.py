@@ -4,12 +4,16 @@ from rest_framework.response import Response
 from django.utils import timezone
 from .models import (
     InternalAsset, CustomerMachine, ServiceRequest, PreventiveMaintenancePlan,
-    BreakdownRecord, ServiceVisit, AMCContract
+    BreakdownRecord, ServiceVisit, AMCContract, ServiceWorkOrder,
+    ServicePartIssue, ServicePartReturn, ServiceReport, WarrantyRecord,
+    ServiceContract, DowntimeRecord
 )
 from .serializers import (
     InternalAssetSerializer, CustomerMachineSerializer, ServiceRequestSerializer,
     PreventiveMaintenancePlanSerializer, BreakdownRecordSerializer, ServiceVisitSerializer,
-    AMCContractSerializer
+    AMCContractSerializer, ServiceWorkOrderSerializer, ServicePartIssueSerializer,
+    ServicePartReturnSerializer, ServiceReportSerializer, WarrantyRecordSerializer,
+    ServiceContractSerializer, DowntimeRecordSerializer
 )
 
 
@@ -116,3 +120,59 @@ class AMCContractViewSet(viewsets.ModelViewSet):
             'visitsCompleted': amc.visits_completed,
             'totalVisitsIncluded': amc.total_visits_included
         })
+
+
+class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
+    queryset = ServiceWorkOrder.objects.all().order_by('-created_at')
+    serializer_class = ServiceWorkOrderSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['work_order_number', 'customer_name', 'machine_name', 'technician_name']
+    filterset_fields = ['status', 'customer_id', 'service_request_id']
+
+
+class ServicePartIssueViewSet(viewsets.ModelViewSet):
+    queryset = ServicePartIssue.objects.all().order_by('-created_at')
+    serializer_class = ServicePartIssueSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['issue_number', 'customer_name', 'work_order_number', 'technician_name']
+    filterset_fields = ['status', 'technician_id', 'work_order_number']
+
+
+class ServicePartReturnViewSet(viewsets.ModelViewSet):
+    queryset = ServicePartReturn.objects.all().order_by('-created_at')
+    serializer_class = ServicePartReturnSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['return_number', 'work_order_number', 'original_issue_number', 'returned_by']
+    filterset_fields = ['status', 'work_order_number']
+
+
+class ServiceReportViewSet(viewsets.ModelViewSet):
+    queryset = ServiceReport.objects.all().order_by('-created_at')
+    serializer_class = ServiceReportSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['report_number', 'customer_name', 'machine_name', 'technician_name', 'serial_number']
+    filterset_fields = ['machine_status', 'customer_id', 'service_request_id']
+
+
+class WarrantyRecordViewSet(viewsets.ModelViewSet):
+    queryset = WarrantyRecord.objects.all()
+    serializer_class = WarrantyRecordSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['serial_number', 'customer_name', 'machine_name']
+    filterset_fields = ['status', 'customer_id']
+
+
+class ServiceContractViewSet(viewsets.ModelViewSet):
+    queryset = ServiceContract.objects.all()
+    serializer_class = ServiceContractSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['contract_number', 'customer_name', 'machine_name']
+    filterset_fields = ['status', 'contract_type']
+
+
+class DowntimeRecordViewSet(viewsets.ModelViewSet):
+    queryset = DowntimeRecord.objects.all().order_by('-start_time')
+    serializer_class = DowntimeRecordSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['downtime_number', 'asset_name', 'technician_name']
+    filterset_fields = ['status', 'category', 'asset_id']
