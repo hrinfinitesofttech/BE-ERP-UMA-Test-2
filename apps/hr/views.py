@@ -95,6 +95,13 @@ class WFHRequestViewSet(viewsets.ModelViewSet):
         wfh.save()
         return Response(WFHRequestSerializer(wfh).data)
 
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject_wfh(self, request, pk=None):
+        wfh = self.get_object()
+        wfh.status = 'Rejected'
+        wfh.save()
+        return Response(WFHRequestSerializer(wfh).data)
+
 
 class MissedPunchRequestViewSet(viewsets.ModelViewSet):
     queryset = MissedPunchRequest.objects.all()
