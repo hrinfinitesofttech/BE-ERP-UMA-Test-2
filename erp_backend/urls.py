@@ -116,6 +116,11 @@ from apps.hr.views import (
     EmployeeAdvanceLoanViewSet,
     ReimbursementExpenseViewSet,
     HolidayViewSet,
+    EmployeeOnboardingViewSet,
+    EmployeeTransferViewSet,
+    EmployeePromotionViewSet,
+    EmployeeExitViewSet,
+    EmployeeAppraisalViewSet,
 )
 from apps.accounting.views import (
     FinancialYearViewSet,
@@ -255,6 +260,12 @@ api_router.register(r'advance-loans', EmployeeAdvanceLoanViewSet, basename='adva
 api_router.register(r'employee-advances', EmployeeAdvanceLoanViewSet, basename='employee-advance')
 api_router.register(r'reimbursements', ReimbursementExpenseViewSet, basename='reimbursement')
 api_router.register(r'holidays', HolidayViewSet, basename='holiday')
+api_router.register(r'employee-onboardings', EmployeeOnboardingViewSet, basename='employee-onboarding')
+api_router.register(r'employee-transfers', EmployeeTransferViewSet, basename='employee-transfer')
+api_router.register(r'employee-promotions', EmployeePromotionViewSet, basename='employee-promotion')
+api_router.register(r'employee-exits', EmployeeExitViewSet, basename='employee-exit')
+api_router.register(r'employee-appraisals', EmployeeAppraisalViewSet, basename='employee-appraisal')
+api_router.register(r'appraisals', EmployeeAppraisalViewSet, basename='appraisal')
 
 # Accounting & Finance
 api_router.register(r'financial-years', FinancialYearViewSet, basename='financial-year')
