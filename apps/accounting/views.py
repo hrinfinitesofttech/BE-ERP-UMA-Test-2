@@ -204,6 +204,23 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     search_fields = ['bank_name', 'account_name', 'account_number', 'ifsc_code']
     filterset_fields = ['account_type', 'status', 'is_active']
 
+    def perform_create(self, serializer):
+        req_id = serializer.validated_data.get('id') or self.request.data.get('id')
+        if not req_id:
+            count = BankAccount.objects.count() + 1
+            req_id = f"BANK-{count:02d}"
+
+        opening = serializer.validated_data.get('opening_balance', 0)
+        current = serializer.validated_data.get('current_balance', opening)
+        acc_name = serializer.validated_data.get('account_name') or serializer.validated_data.get('bank_name', '')
+
+        serializer.save(
+            id=req_id,
+            account_name=acc_name,
+            opening_balance=opening,
+            current_balance=current,
+        )
+
 
 class ContraVoucherViewSet(viewsets.ModelViewSet):
     queryset = ContraVoucher.objects.all()

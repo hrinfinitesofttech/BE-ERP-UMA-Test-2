@@ -80,6 +80,18 @@ class DebitNoteSerializer(serializers.ModelSerializer):
 
 
 class BankAccountSerializer(serializers.ModelSerializer):
+    accountName = serializers.CharField(source='account_name', required=False, allow_blank=True)
+    accountType = serializers.CharField(source='account_type', required=False, default='Current')
+    bankName = serializers.CharField(source='bank_name', required=False)
+    accountNumber = serializers.CharField(source='account_number', required=False)
+    ifscCode = serializers.CharField(source='ifsc_code', required=False, allow_blank=True)
+    branch = serializers.CharField(required=False, allow_blank=True)
+    branchName = serializers.CharField(source='branch_name', required=False, allow_blank=True)
+    glAccountCode = serializers.CharField(source='gl_account_code', required=False, allow_blank=True)
+    openingBalance = serializers.DecimalField(source='opening_balance', max_digits=16, decimal_places=2, required=False)
+    currentBalance = serializers.DecimalField(source='current_balance', max_digits=16, decimal_places=2, required=False)
+    isActive = serializers.BooleanField(source='is_active', required=False, default=True)
+
     class Meta:
         model = BankAccount
         fields = '__all__'
