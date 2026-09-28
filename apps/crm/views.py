@@ -313,6 +313,10 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
             code = num_setting.generate_next_number(increment=True) if num_setting else f"CPO-2026-{CustomerPO.objects.count() + 1:04d}"
             data['id'] = code
             data['internal_cpo_no'] = code
+        if not data.get('received_date') and not data.get('receivedDate'):
+            data['received_date'] = data.get('po_date') or data.get('poDate') or datetime.now().strftime('%Y-%m-%d')
+        if not data.get('po_value') and not data.get('poValue'):
+            data['po_value'] = data.get('poAmount') or 0
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -373,6 +377,14 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             code = num_setting.generate_next_number(increment=True) if num_setting else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
             data['id'] = code
             data['sales_order_number'] = code
+        if not data.get('target_delivery_date') and not data.get('targetDeliveryDate'):
+            data['target_delivery_date'] = data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d')
+        if not data.get('order_date') and not data.get('orderDate'):
+            data['order_date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('grand_total') and not data.get('grandTotal'):
+            data['grand_total'] = data.get('orderValue') or data.get('totalAmount') or 0
+        if not data.get('total_amount') and not data.get('totalAmount'):
+            data['total_amount'] = data.get('orderValue') or data.get('grandTotal') or 0
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

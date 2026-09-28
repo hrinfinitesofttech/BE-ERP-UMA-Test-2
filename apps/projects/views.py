@@ -84,6 +84,14 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
             data['id'] = p_code
             data['project_number'] = p_code
             data['job_number'] = j_code
+        if not data.get('target_delivery_date') and not data.get('targetDeliveryDate'):
+            data['target_delivery_date'] = data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d')
+        if not data.get('start_date') and not data.get('startDate'):
+            data['start_date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('project_manager_name') and not data.get('projectManagerName'):
+            data['project_manager_name'] = data.get('projectManager') or 'Bhavin Shah'
+        if not data.get('current_status') and not data.get('currentStatus'):
+            data['current_status'] = data.get('status') or 'planning'
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
