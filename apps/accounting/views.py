@@ -5,13 +5,13 @@ from django.utils import timezone
 from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
-    JournalEntry, JobCostingSummary
+    JournalEntry, JobCostingSummary, CreditNote, DebitNote
 )
 from .serializers import (
     FinancialYearSerializer, ChartOfAccountSerializer, TaxMasterSerializer,
     CostCenterSerializer, SalesInvoiceSerializer, PurchaseInvoiceSerializer,
     CustomerReceiptSerializer, SupplierPaymentSerializer, JournalEntrySerializer,
-    JobCostingSummarySerializer
+    JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer
 )
 
 
@@ -177,3 +177,20 @@ class JobCostingSummaryViewSet(viewsets.ModelViewSet):
     serializer_class = JobCostingSummarySerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['job_number', 'product_name', 'customer_name']
+
+
+class CreditNoteViewSet(viewsets.ModelViewSet):
+    queryset = CreditNote.objects.all()
+    serializer_class = CreditNoteSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['credit_note_number', 'customer_name', 'original_invoice_number']
+    filterset_fields = ['customer_id', 'status']
+
+
+class DebitNoteViewSet(viewsets.ModelViewSet):
+    queryset = DebitNote.objects.all()
+    serializer_class = DebitNoteSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['debit_note_number', 'supplier_name', 'original_invoice_number']
+    filterset_fields = ['supplier_id', 'status']
+

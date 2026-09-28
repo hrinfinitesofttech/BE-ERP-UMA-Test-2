@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
-    JournalEntry, JobCostingSummary
+    JournalEntry, JobCostingSummary, CreditNote, DebitNote
 )
 
 
@@ -63,4 +63,16 @@ class JournalEntrySerializer(serializers.ModelSerializer):
 class JobCostingSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = JobCostingSummary
+        fields = '__all__'
+
+
+class CreditNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditNote
+        fields = '__all__'
+
+
+class DebitNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DebitNote
         fields = '__all__'

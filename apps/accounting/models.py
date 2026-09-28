@@ -202,3 +202,48 @@ class JobCostingSummary(models.Model):
 
     def __str__(self):
         return f"Costing: {self.job_number} - Margin: {self.margin_percent}%"
+
+
+class CreditNote(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    credit_note_number = models.CharField(max_length=64, unique=True)
+    credit_note_date = models.DateField()
+    customer_id = models.CharField(max_length=64)
+    customer_name = models.CharField(max_length=255)
+    original_invoice_number = models.CharField(max_length=64, blank=True)
+    reason = models.CharField(max_length=255, default='Price Difference / Return')
+    taxable_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    tax_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    total_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    status = models.CharField(max_length=64, default='Approved')
+    created_by = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-credit_note_date']
+
+    def __str__(self):
+        return f"{self.credit_note_number} - {self.customer_name} (₹{self.total_amount})"
+
+
+class DebitNote(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    debit_note_number = models.CharField(max_length=64, unique=True)
+    debit_note_date = models.DateField()
+    supplier_id = models.CharField(max_length=64)
+    supplier_name = models.CharField(max_length=255)
+    original_invoice_number = models.CharField(max_length=64, blank=True)
+    reason = models.CharField(max_length=255, default='Goods Return / Rate Difference')
+    taxable_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    tax_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    total_amount = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    status = models.CharField(max_length=64, default='Approved')
+    created_by = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-debit_note_date']
+
+    def __str__(self):
+        return f"{self.debit_note_number} - {self.supplier_name} (₹{self.total_amount})"
+
