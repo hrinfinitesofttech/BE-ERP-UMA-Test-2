@@ -313,3 +313,84 @@ class ReimbursementExpense(models.Model):
 
     def __str__(self):
         return f"{self.reimbursement_no} - {self.employee_name} ({self.amount})"
+
+
+class EmployeeOnboarding(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    candidate_id = models.CharField(max_length=64, blank=True)
+    candidate_name = models.CharField(max_length=128)
+    email = models.CharField(max_length=128, blank=True)
+    mobile = models.CharField(max_length=32, blank=True)
+    joining_date = models.DateField()
+    department = models.CharField(max_length=128)
+    designation = models.CharField(max_length=128)
+    reporting_manager = models.CharField(max_length=128, blank=True)
+    shift = models.CharField(max_length=128, blank=True)
+    salary_structure_id = models.CharField(max_length=64, blank=True)
+    offered_ctc = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    onboarding_checklist = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=64, default='In Progress')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.candidate_name} ({self.department} - {self.designation})"
+
+
+class EmployeeTransfer(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    employee_id = models.CharField(max_length=64)
+    employee_name = models.CharField(max_length=128)
+    effective_date = models.DateField()
+    from_department = models.CharField(max_length=128)
+    to_department = models.CharField(max_length=128)
+    from_designation = models.CharField(max_length=128, blank=True)
+    to_designation = models.CharField(max_length=128, blank=True)
+    from_location = models.CharField(max_length=128, blank=True)
+    to_location = models.CharField(max_length=128, blank=True)
+    reason = models.TextField(blank=True)
+    approved_by = models.CharField(max_length=128, blank=True)
+    status = models.CharField(max_length=32, default='Approved')
+
+    def __str__(self):
+        return f"{self.employee_name}: {self.from_department} -> {self.to_department}"
+
+
+class EmployeePromotion(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    employee_id = models.CharField(max_length=64)
+    employee_name = models.CharField(max_length=128)
+    effective_date = models.DateField()
+    old_designation = models.CharField(max_length=128)
+    new_designation = models.CharField(max_length=128)
+    old_grade = models.CharField(max_length=64, blank=True)
+    new_grade = models.CharField(max_length=64, blank=True)
+    old_ctc = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    new_ctc = models.DecimalField(max_digits=14, decimal_places=2, default=0.0)
+    increment_percentage = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
+    approved_by = models.CharField(max_length=128, blank=True)
+    status = models.CharField(max_length=32, default='Approved')
+
+    def __str__(self):
+        return f"{self.employee_name}: {self.old_designation} -> {self.new_designation}"
+
+
+class EmployeeExit(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    employee_id = models.CharField(max_length=64)
+    employee_name = models.CharField(max_length=128)
+    department = models.CharField(max_length=128)
+    designation = models.CharField(max_length=128)
+    resignation_date = models.DateField()
+    last_working_date = models.DateField()
+    notice_period_days = models.IntegerField(default=30)
+    reason = models.TextField(blank=True)
+    exit_interview_notes = models.TextField(blank=True)
+    department_clearance = models.BooleanField(default=False)
+    asset_return_clearance = models.BooleanField(default=False)
+    hr_clearance = models.BooleanField(default=False)
+    accounts_clearance = models.BooleanField(default=False)
+    status = models.CharField(max_length=32, default='Pending')
+
+    def __str__(self):
+        return f"Exit: {self.employee_name} ({self.resignation_date})"
+

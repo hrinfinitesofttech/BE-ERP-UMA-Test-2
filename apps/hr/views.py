@@ -6,7 +6,8 @@ from .models import (
     Designation, EmployeeDocument, ShiftMaster, AttendanceRecord,
     LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
-    PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense
+    PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
+    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit
 )
 from .serializers import (
     DesignationSerializer, EmployeeDocumentSerializer, ShiftMasterSerializer,
@@ -14,7 +15,9 @@ from .serializers import (
     MissedPunchRequestSerializer, AttendanceRegularizationSerializer,
     OvertimeRecordSerializer, EarlyCheckoutRequestSerializer,
     SalaryComponentSerializer, SalaryStructureSerializer, PayrollRecordSerializer,
-    EmployeeAdvanceLoanSerializer, ReimbursementExpenseSerializer
+    EmployeeAdvanceLoanSerializer, ReimbursementExpenseSerializer,
+    EmployeeOnboardingSerializer, EmployeeTransferSerializer,
+    EmployeePromotionSerializer, EmployeeExitSerializer
 )
 
 
@@ -231,3 +234,43 @@ class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['reimbursement_no', 'employee_name', 'category']
     filterset_fields = ['status', 'employee_id']
+
+
+class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeOnboarding.objects.all()
+    serializer_class = EmployeeOnboardingSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['candidate_name', 'email', 'mobile', 'department', 'designation']
+    filterset_fields = ['status', 'department']
+
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete_onboarding(self, request, pk=None):
+        onb = self.get_object()
+        onb.status = 'Completed'
+        onb.save()
+        return Response(EmployeeOnboardingSerializer(onb).data)
+
+
+class EmployeeTransferViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeTransfer.objects.all()
+    serializer_class = EmployeeTransferSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['employee_name', 'from_department', 'to_department']
+    filterset_fields = ['status']
+
+
+class EmployeePromotionViewSet(viewsets.ModelViewSet):
+    queryset = EmployeePromotion.objects.all()
+    serializer_class = EmployeePromotionSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['employee_name', 'old_designation', 'new_designation']
+    filterset_fields = ['status']
+
+
+class EmployeeExitViewSet(viewsets.ModelViewSet):
+    queryset = EmployeeExit.objects.all()
+    serializer_class = EmployeeExitSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['employee_name', 'department', 'designation']
+    filterset_fields = ['status']
+

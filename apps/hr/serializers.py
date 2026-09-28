@@ -3,7 +3,8 @@ from .models import (
     Designation, EmployeeDocument, ShiftMaster, AttendanceRecord,
     LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
-    PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense
+    PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
+    EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit
 )
 
 
@@ -95,3 +96,28 @@ class ReimbursementExpenseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReimbursementExpense
         fields = '__all__'
+
+
+class EmployeeOnboardingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeOnboarding
+        fields = '__all__'
+
+
+class EmployeeTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeTransfer
+        fields = '__all__'
+
+
+class EmployeePromotionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeePromotion
+        fields = '__all__'
+
+
+class EmployeeExitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmployeeExit
+        fields = '__all__'
+

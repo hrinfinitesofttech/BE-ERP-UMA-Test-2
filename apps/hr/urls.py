@@ -6,7 +6,9 @@ from .views import (
     MissedPunchRequestViewSet, AttendanceRegularizationViewSet,
     OvertimeRecordViewSet, EarlyCheckoutRequestViewSet,
     SalaryComponentViewSet, SalaryStructureViewSet, PayrollRecordViewSet,
-    EmployeeAdvanceLoanViewSet, ReimbursementExpenseViewSet
+    EmployeeAdvanceLoanViewSet, ReimbursementExpenseViewSet,
+    EmployeeOnboardingViewSet, EmployeeTransferViewSet,
+    EmployeePromotionViewSet, EmployeeExitViewSet
 )
 
 router = DefaultRouter()
@@ -25,7 +27,12 @@ router.register('salary-structures', SalaryStructureViewSet, basename='salary-st
 router.register('payroll-records', PayrollRecordViewSet, basename='payroll-record')
 router.register('advance-loans', EmployeeAdvanceLoanViewSet, basename='advance-loan')
 router.register('reimbursements', ReimbursementExpenseViewSet, basename='reimbursement')
+router.register('employee-onboardings', EmployeeOnboardingViewSet, basename='employee-onboarding')
+router.register('employee-transfers', EmployeeTransferViewSet, basename='employee-transfer')
+router.register('employee-promotions', EmployeePromotionViewSet, basename='employee-promotion')
+router.register('employee-exits', EmployeeExitViewSet, basename='employee-exit')
 
 urlpatterns = [
     path('', include(router.urls)),
 ]
+
