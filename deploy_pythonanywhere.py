@@ -137,14 +137,14 @@ def deploy():
         '/api/drawings-2d/',
         '/api/models-3d/',
         '/api/customer-requirements/',
-        '/api/design-tasks/',
-        '/api/project-documents/',
-        '/api/project-delays/',
-        '/api/customer-change-requests/',
-        '/api/customer-360-summaries/',
-        '/api/employee-360-summaries/',
-        '/api/backup-records/',
-        '/api/bug-tickets/',
+        '/api/designer/tasks/',
+        '/api/designer/boms/',
+        '/api/designer/assembly-drawings/',
+        '/api/projects/project-delays/',
+        '/api/projects/project-documents/',
+        '/api/projects/change-requests/',
+        '/api/approvals/',
+        '/api/alerts/',
     ]
 
     base_api = f"https://{DOMAIN}"
