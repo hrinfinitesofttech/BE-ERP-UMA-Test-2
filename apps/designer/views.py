@@ -267,11 +267,63 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        if not data.get('id') or not data.get('bom_number') and not data.get('bomNumber'):
-            code = f"BOM-2026-{BOMHeader.objects.count() + 1:04d}"
-            data['id'] = code
-            data['bom_number'] = code
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        
+        # Support Developer JSON payload: product, bom_name, version, quantity, items
+        if 'bom_name' in data and not data.get('bom_number'):
+            data['bom_number'] = data['bom_name']
+        if not data.get('id'):
+            data['id'] = data.get('bom_number') or data.get('bomNumber') or f"BOM-2026-{BOMHeader.objects.count() + 1:04d}"
+        if 'bom_number' not in data:
+            data['bom_number'] = data.get('bomNumber') or data['id']
+            
+        if 'product' in data:
+            if 'design_job_id' not in data:
+                data['design_job_id'] = f"PRD-{data['product']}" if isinstance(data['product'], int) else str(data['product'])
+            if 'job_number' not in data:
+                data['job_number'] = str(data['product'])
+
+        if not data.get('design_job_id'):
+            data['design_job_id'] = data.get('designJobId') or 'DES-2026-0001'
+        if not data.get('project_id'):
+            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+        if not data.get('job_number'):
+            data['job_number'] = data.get('jobNumber') or 'JOB-2026-001'
+            
+        if 'version' in data and 'active_revision' not in data:
+            data['active_revision'] = data['version']
+        if not data.get('active_revision'):
+            data['active_revision'] = data.get('activeRevision') or 'V1'
+            
+        if not data.get('prepared_by'):
+            data['prepared_by'] = data.get('preparedBy') or 'Engineering Team'
+
+        # Process items if present
+        items = data.get('items', [])
+        if isinstance(items, list):
+            data['total_items'] = len(items)
+            # Ensure standard item structure
+            formatted_items = []
+            for idx, it in enumerate(items):
+                if isinstance(it, dict):
+                    formatted_item = {
+                        'id': it.get('id') or f"ITM-{idx+1:03d}",
+                        'itemNumber': it.get('itemNumber') or f"ITM-{idx+1:03d}",
+                        'material': it.get('material') or it.get('partNumber') or it.get('materialName') or f"MAT-{idx+1}",
+                        'partNumber': it.get('partNumber') or str(it.get('material', f"MAT-{idx+1}")),
+                        'partName': it.get('partName') or it.get('materialName') or f"Component {idx+1}",
+                        'item_type': it.get('item_type') or it.get('itemType') or 'RAW_MATERIAL',
+                        'itemType': it.get('itemType') or it.get('item_type') or 'RAW_MATERIAL',
+                        'procurement': it.get('procurement') or 'PURCHASE',
+                        'quantity': float(it.get('quantity', 1)),
+                        'unit': it.get('unit') or 'PCS',
+                        'unitCost': float(it.get('unitCost', it.get('unit_cost', 0))),
+                        'extendedCost': float(it.get('extendedCost', it.get('extended_cost', 0))),
+                        'materialGrade': it.get('materialGrade', it.get('material_grade', '')),
+                    }
+                    formatted_items.append(formatted_item)
+            data['items'] = formatted_items
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
