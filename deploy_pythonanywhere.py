@@ -69,8 +69,8 @@ def deploy():
             rel_path = os.path.relpath(local_path, LOCAL_DIR).replace('\\', '/')
             files_to_sync.append((local_path, rel_path))
 
-    # Sort HR files first
-    files_to_sync.sort(key=lambda x: (0 if 'apps/hr' in x[1] else (1 if 'erp_backend' in x[1] else 2), x[1]))
+    # Sort store, HR, and core files first
+    files_to_sync.sort(key=lambda x: (0 if 'apps/store' in x[1] else (1 if 'apps/hr' in x[1] else (2 if 'erp_backend' in x[1] else 3)), x[1]))
 
     success_count = 0
     fail_count = 0
@@ -107,6 +107,15 @@ def deploy():
     time.sleep(5)
     endpoints = [
         '/api/auth/me/',
+        '/api/items/',
+        '/api/item-categories/',
+        '/api/uoms/',
+        '/api/warehouses/',
+        '/api/goods-receipts/',
+        '/api/qc-inspections/',
+        '/api/stock-balances/',
+        '/api/material-issues/',
+        '/api/material-returns/',
         '/api/holidays/',
         '/api/wfh-requests/',
         '/api/missed-punches/',

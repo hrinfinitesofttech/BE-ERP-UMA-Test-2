@@ -38,6 +38,19 @@ class UserSerializer(serializers.ModelSerializer):
             'password',
         ]
 
+    def validate_address(self, value):
+        if value is not None:
+            val_str = str(value).strip()
+            if not val_str:
+                raise serializers.ValidationError("Please enter the residential address.")
+            if len(val_str) < 10:
+                raise serializers.ValidationError("The address must be at least 10 characters long.")
+            if len(val_str) > 250:
+                raise serializers.ValidationError("The address cannot be more than 250 characters.")
+            if not any(c.isalnum() for c in val_str):
+                raise serializers.ValidationError("Please enter a valid address.")
+        return value
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = User(**validated_data)

@@ -74,6 +74,8 @@ from apps.store.views import (
     MaterialReturnViewSet,
     StockLedgerEntryViewSet,
     ScrapEntryViewSet,
+    StockTransferViewSet,
+    StockAdjustmentViewSet,
 )
 from apps.production.views import (
     ManufacturingJobViewSet,
@@ -212,6 +214,8 @@ api_router.register(r'stock', StockBalanceViewSet, basename='stock-balance')
 api_router.register(r'stock-reservations', StockReservationViewSet, basename='stock-reservation')
 api_router.register(r'material-issues', MaterialIssueViewSet, basename='material-issue')
 api_router.register(r'material-returns', MaterialReturnViewSet, basename='material-return')
+api_router.register(r'stock-transfers', StockTransferViewSet, basename='stock-transfer')
+api_router.register(r'stock-adjustments', StockAdjustmentViewSet, basename='stock-adjustment')
 api_router.register(r'stock-ledger', StockLedgerEntryViewSet, basename='stock-ledger')
 api_router.register(r'scrap', ScrapEntryViewSet, basename='scrap')
 

@@ -13,6 +13,8 @@ from .models import (
     MaterialReturn,
     StockLedgerEntry,
     ScrapEntry,
+    StockTransfer,
+    StockAdjustment,
 )
 
 
@@ -137,81 +139,109 @@ class QCInspectionSerializer(serializers.ModelSerializer):
             'remarks',
         ]
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['inspectionNumber'] = instance.id
+        data['inspectionDate'] = instance.inspection_date
+        data['grnNumber'] = instance.grn_number
+        data['grnId'] = instance.grn_id
+        data['inspectorName'] = instance.inspector
+        data['qcResult'] = instance.overall_result
+        data['remarks'] = instance.remarks
+
+        items = instance.items if isinstance(instance.items, list) else []
+        if items and len(items) > 0:
+            first = items[0] if isinstance(items[0], dict) else {}
+            data['itemCode'] = first.get('itemCode') or first.get('item_code') or ''
+            data['itemName'] = first.get('itemName') or first.get('item_name') or ''
+            data['acceptedQuantity'] = first.get('acceptedQuantity') or first.get('acceptedQty') or first.get('quantity', 0)
+            data['rejectedQuantity'] = first.get('rejectedQuantity') or first.get('rejectedQty', 0)
+            data['supplierName'] = first.get('supplierName') or first.get('supplier_name', '')
+            data['jobId'] = first.get('jobId') or first.get('job_id', 'General Stock')
+        return data
+
 
 class StockBalanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockBalance
-        fields = [
-            'id',
-            'item_id',
-            'item_code',
-            'item_name',
-            'category',
-            'uom',
-            'warehouse_id',
-            'warehouse_name',
-            'location',
-            'quantity',
-            'reserved_quantity',
-            'available_quantity',
-            'unit_rate',
-            'total_value',
-        ]
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        avail = float(instance.available_quantity or instance.quantity or 0)
+        res = float(instance.reserved_quantity or 0)
+        usable = max(0.0, avail - res)
+        rate = float(instance.unit_rate or 0)
+        data['itemId'] = instance.item_id
+        data['itemCode'] = instance.item_code
+        data['itemName'] = instance.item_name
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = instance.warehouse_name
+        data['locationCode'] = instance.location
+        data['availableQty'] = avail
+        data['available_quantity'] = avail
+        data['reservedQty'] = res
+        data['reserved_quantity'] = res
+        data['usableQty'] = usable
+        data['usable_quantity'] = usable
+        data['averageRate'] = rate
+        data['unit_rate'] = rate
+        data['stockValue'] = usable * rate
+        data['total_value'] = avail * rate
+        data['batchLot'] = getattr(instance, 'batch_lot', '') or 'HEAT-98421'
+        return data
 
 
 class StockReservationSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockReservation
-        fields = [
-            'id',
-            'reservation_number',
-            'project_id',
-            'job_number',
-            'item_id',
-            'item_code',
-            'item_name',
-            'reserved_quantity',
-            'reserved_date',
-            'reserved_by',
-            'status',
-        ]
+        fields = '__all__'
 
 
 class MaterialIssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaterialIssue
-        fields = [
-            'id',
-            'issue_number',
-            'project_id',
-            'job_number',
-            'work_order_id',
-            'department',
-            'issued_to',
-            'issue_date',
-            'warehouse_id',
-            'items',
-            'status',
-            'notes',
-        ]
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['issueNumber'] = instance.issue_number
+        data['issueDate'] = instance.issue_date
+        data['projectId'] = instance.project_id
+        data['jobId'] = instance.job_number
+        data['workOrderNumber'] = getattr(instance, 'work_order_id', '') or ''
+        data['bomNumber'] = getattr(instance, 'bom_number', '') or ''
+        data['bomRevision'] = getattr(instance, 'bom_revision', 'Rev-01') or ''
+        data['productionStage'] = getattr(instance, 'production_stage', '') or ''
+        data['requestedBy'] = instance.issued_to
+        data['issuedBy'] = getattr(instance, 'issued_by', 'Hitesh Rawal (Store Head)')
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = getattr(instance, 'warehouse_name', 'Main Raw Material Warehouse')
+        data['totalIssueValue'] = getattr(instance, 'total_issue_value', 0)
+        data['remarks'] = instance.notes
+        return data
 
 
 class MaterialReturnSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaterialReturn
-        fields = [
-            'id',
-            'return_number',
-            'project_id',
-            'job_number',
-            'returned_by',
-            'department',
-            'return_date',
-            'warehouse_id',
-            'items',
-            'status',
-            'notes',
-        ]
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['returnNumber'] = instance.return_number
+        data['returnDate'] = instance.return_date
+        data['projectId'] = instance.project_id
+        data['jobId'] = instance.job_number
+        data['workOrderNumber'] = getattr(instance, 'work_order_number', '') or ''
+        data['materialIssueNumber'] = getattr(instance, 'material_issue_number', '') or ''
+        data['returnedBy'] = instance.returned_by
+        data['receivedBy'] = getattr(instance, 'received_by', 'Hitesh Rawal (Store Head)')
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = getattr(instance, 'warehouse_name', 'Main Raw Material Warehouse')
+        data['totalReturnValue'] = getattr(instance, 'total_return_value', 0)
+        data['remarks'] = instance.notes
+        return data
 
 
 class StockLedgerEntrySerializer(serializers.ModelSerializer):
@@ -252,3 +282,48 @@ class ScrapEntrySerializer(serializers.ModelSerializer):
             'estimated_value',
             'status',
         ]
+
+
+class StockTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockTransfer
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['transferNumber'] = instance.transfer_number
+        data['transferDate'] = instance.transfer_date
+        data['fromWarehouseId'] = instance.from_warehouse_id
+        data['fromWarehouseName'] = instance.from_warehouse_name
+        data['fromLocationCode'] = instance.from_location_code
+        data['toWarehouseId'] = instance.to_warehouse_id
+        data['toWarehouseName'] = instance.to_warehouse_name
+        data['toLocationCode'] = instance.to_location_code
+        data['requestedBy'] = instance.requested_by
+        data['approvedBy'] = instance.approved_by
+        return data
+
+
+class StockAdjustmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockAdjustment
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['adjustmentNumber'] = instance.adjustment_number
+        data['adjustmentDate'] = instance.adjustment_date
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = instance.warehouse_name
+        data['locationCode'] = instance.location_code
+        data['itemId'] = instance.item_id
+        data['itemCode'] = instance.item_code
+        data['itemName'] = instance.item_name
+        data['systemQuantity'] = instance.system_quantity
+        data['physicalQuantity'] = instance.physical_quantity
+        data['differenceQuantity'] = instance.difference_quantity
+        data['unitPrice'] = instance.unit_price
+        data['adjustmentValue'] = instance.adjustment_value
+        data['approvedBy'] = instance.approved_by
+        return data
+

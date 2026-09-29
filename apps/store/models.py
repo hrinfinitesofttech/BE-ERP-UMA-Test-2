@@ -123,6 +123,7 @@ class StockBalance(models.Model):
     warehouse_id = models.CharField(max_length=64, default='wh-main')
     warehouse_name = models.CharField(max_length=200, default='Main Raw Material Warehouse')
     location = models.CharField(max_length=100, blank=True, default='')
+    batch_lot = models.CharField(max_length=100, blank=True, default='HEAT-98421')
     quantity = models.FloatField(default=0)
     reserved_quantity = models.FloatField(default=0)
     available_quantity = models.FloatField(default=0)
@@ -157,10 +158,16 @@ class MaterialIssue(models.Model):
     project_id = models.CharField(max_length=64, blank=True, default='')
     job_number = models.CharField(max_length=64, blank=True, default='')
     work_order_id = models.CharField(max_length=64, blank=True, default='')
+    bom_number = models.CharField(max_length=64, blank=True, default='')
+    bom_revision = models.CharField(max_length=20, blank=True, default='Rev-01')
+    production_stage = models.CharField(max_length=150, blank=True, default='')
     department = models.CharField(max_length=50, default='Production')
     issued_to = models.CharField(max_length=150)
+    issued_by = models.CharField(max_length=150, blank=True, default='Hitesh Rawal (Store Head)')
     issue_date = models.CharField(max_length=50)
     warehouse_id = models.CharField(max_length=64, default='wh-main')
+    warehouse_name = models.CharField(max_length=200, blank=True, default='Main Raw Material Warehouse')
+    total_issue_value = models.FloatField(default=0)
     items = models.JSONField(default=list, blank=True)
     status = models.CharField(max_length=30, default='Fully Issued')
     notes = models.TextField(blank=True, default='')
@@ -175,10 +182,15 @@ class MaterialReturn(models.Model):
     return_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
     job_number = models.CharField(max_length=64, blank=True, default='')
+    work_order_number = models.CharField(max_length=64, blank=True, default='')
+    material_issue_number = models.CharField(max_length=64, blank=True, default='')
     returned_by = models.CharField(max_length=150)
+    received_by = models.CharField(max_length=150, blank=True, default='Hitesh Rawal (Store Head)')
     department = models.CharField(max_length=50, default='Production')
     return_date = models.CharField(max_length=50)
     warehouse_id = models.CharField(max_length=64, default='wh-main')
+    warehouse_name = models.CharField(max_length=200, blank=True, default='Main Raw Material Warehouse')
+    total_return_value = models.FloatField(default=0)
     items = models.JSONField(default=list, blank=True)
     status = models.CharField(max_length=30, default='Completed')
     notes = models.TextField(blank=True, default='')
@@ -225,3 +237,50 @@ class ScrapEntry(models.Model):
 
     def __str__(self):
         return f"{self.scrap_number} - {self.item_code} ({self.quantity} {self.uom})"
+
+
+class StockTransfer(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    transfer_number = models.CharField(max_length=64, unique=True)
+    transfer_date = models.CharField(max_length=50)
+    from_warehouse_id = models.CharField(max_length=64, default='wh-main')
+    from_warehouse_name = models.CharField(max_length=200, default='Main Raw Material Warehouse')
+    from_location_code = models.CharField(max_length=100, blank=True, default='')
+    to_warehouse_id = models.CharField(max_length=64, default='wh-scrap')
+    to_warehouse_name = models.CharField(max_length=200, default='Scrap & Rejection Yard')
+    to_location_code = models.CharField(max_length=100, blank=True, default='')
+    reason = models.TextField(blank=True, default='')
+    requested_by = models.CharField(max_length=150, default='Bhavin Shah (Production Manager)')
+    approved_by = models.CharField(max_length=150, default='Hitesh Rawal (Store Head)')
+    status = models.CharField(max_length=30, default='Completed')
+    items = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.transfer_number}: {self.from_warehouse_name} -> {self.to_warehouse_name}"
+
+
+class StockAdjustment(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    adjustment_number = models.CharField(max_length=64, unique=True)
+    adjustment_date = models.CharField(max_length=50)
+    warehouse_id = models.CharField(max_length=64, default='wh-main')
+    warehouse_name = models.CharField(max_length=200, default='Main Raw Material Warehouse')
+    location_code = models.CharField(max_length=100, blank=True, default='')
+    item_id = models.CharField(max_length=64, blank=True, default='')
+    item_code = models.CharField(max_length=64)
+    item_name = models.CharField(max_length=200)
+    system_quantity = models.FloatField(default=0)
+    physical_quantity = models.FloatField(default=0)
+    difference_quantity = models.FloatField(default=0)
+    unit_price = models.FloatField(default=0)
+    adjustment_value = models.FloatField(default=0)
+    reason = models.CharField(max_length=100, default='Damaged Stock')
+    remarks = models.TextField(blank=True, default='')
+    approved_by = models.CharField(max_length=150, default='Hitesh Rawal (Store Head)')
+    status = models.CharField(max_length=30, default='Approved')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.adjustment_number}: {self.item_code} diff {self.difference_quantity}"
+

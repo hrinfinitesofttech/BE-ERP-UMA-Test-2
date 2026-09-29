@@ -14,6 +14,8 @@ from .views import (
     MaterialReturnViewSet,
     StockLedgerEntryViewSet,
     ScrapEntryViewSet,
+    StockTransferViewSet,
+    StockAdjustmentViewSet,
 )
 
 router = DefaultRouter()
@@ -28,6 +30,8 @@ router.register(r'stock', StockBalanceViewSet, basename='stock-balance')
 router.register(r'reservations', StockReservationViewSet, basename='stock-reservation')
 router.register(r'issues', MaterialIssueViewSet, basename='material-issue')
 router.register(r'returns', MaterialReturnViewSet, basename='material-return')
+router.register(r'transfers', StockTransferViewSet, basename='stock-transfer')
+router.register(r'adjustments', StockAdjustmentViewSet, basename='stock-adjustment')
 router.register(r'ledger', StockLedgerEntryViewSet, basename='stock-ledger')
 router.register(r'scrap', ScrapEntryViewSet, basename='scrap')
 
