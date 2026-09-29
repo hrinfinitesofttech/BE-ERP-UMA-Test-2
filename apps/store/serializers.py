@@ -17,25 +17,44 @@ from .models import (
 
 
 class ItemCategorySerializer(serializers.ModelSerializer):
+    categoryCode = serializers.CharField(source='code', read_only=True)
+    categoryName = serializers.CharField(source='name', read_only=True)
+
     class Meta:
         model = ItemCategory
-        fields = ['id', 'name', 'code', 'description']
+        fields = ['id', 'name', 'code', 'categoryCode', 'categoryName', 'description']
 
 
 class UOMMasterSerializer(serializers.ModelSerializer):
+    uomCode = serializers.CharField(source='code', read_only=True)
+    uomName = serializers.CharField(source='name', read_only=True)
+
     class Meta:
         model = UOMMaster
-        fields = ['id', 'name', 'code', 'description']
+        fields = ['id', 'name', 'code', 'uomCode', 'uomName', 'description']
 
 
 class ItemMasterSerializer(serializers.ModelSerializer):
+    itemCode = serializers.CharField(source='item_code', read_only=True)
+    itemName = serializers.CharField(source='item_name', read_only=True)
+    itemType = serializers.CharField(source='item_type', read_only=True)
+    hsnSac = serializers.CharField(source='hsn_sac', read_only=True)
+    gstRate = serializers.FloatField(source='gst_rate', read_only=True)
+    minimumStock = serializers.FloatField(source='minimum_stock', read_only=True)
+    maximumStock = serializers.FloatField(source='maximum_stock', read_only=True)
+    reorderLevel = serializers.FloatField(source='reorder_level', read_only=True)
+    standardCost = serializers.FloatField(source='unit_cost', read_only=True)
+
     class Meta:
         model = ItemMaster
         fields = [
             'id',
             'item_code',
+            'itemCode',
             'item_name',
+            'itemName',
             'item_type',
+            'itemType',
             'category',
             'sub_category',
             'description',
@@ -43,12 +62,18 @@ class ItemMasterSerializer(serializers.ModelSerializer):
             'drawing_number',
             'brand_make',
             'hsn_sac',
+            'hsnSac',
             'gst_rate',
+            'gstRate',
             'uom',
             'minimum_stock',
+            'minimumStock',
             'maximum_stock',
+            'maximumStock',
             'reorder_level',
+            'reorderLevel',
             'unit_cost',
+            'standardCost',
             'status',
         ]
 

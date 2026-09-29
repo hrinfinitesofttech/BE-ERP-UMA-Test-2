@@ -40,11 +40,41 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
     serializer_class = ItemCategorySerializer
     permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = data.get('code') or data.get('categoryCode') or f"CAT-{ItemCategory.objects.count() + 1:03d}"
+        if 'code' not in data:
+            data['code'] = data.get('categoryCode') or data.get('id')
+        if 'name' not in data:
+            data['name'] = data.get('categoryName') or data.get('name') or 'General Category'
+        if 'description' not in data:
+            data['description'] = data.get('desc') or ''
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class UOMMasterViewSet(viewsets.ModelViewSet):
     queryset = UOMMaster.objects.all().order_by('code')
     serializer_class = UOMMasterSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = data.get('code') or data.get('uomCode') or f"UOM-{UOMMaster.objects.count() + 1:03d}"
+        if 'code' not in data:
+            data['code'] = data.get('uomCode') or data.get('id')
+        if 'name' not in data:
+            data['name'] = data.get('uomName') or data.get('name') or data.get('code') or 'Unit'
+        if 'description' not in data:
+            data['description'] = data.get('desc') or ''
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ItemMasterViewSet(viewsets.ModelViewSet):
@@ -53,9 +83,38 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
             data['id'] = data.get('item_code') or data.get('itemCode') or f"ITM-{ItemMaster.objects.count() + 1:04d}"
+        if 'item_code' not in data:
+            data['item_code'] = data.get('itemCode') or data.get('id')
+        if 'item_name' not in data:
+            data['item_name'] = data.get('itemName') or 'Item'
+        if 'item_type' not in data:
+            data['item_type'] = data.get('itemType') or 'Raw Material'
+        if 'category' not in data:
+            data['category'] = data.get('categoryName') or 'General'
+        if 'sub_category' not in data:
+            data['sub_category'] = data.get('subCategory') or ''
+        if 'specification' not in data:
+            data['specification'] = data.get('spec') or ''
+        if 'brand_make' not in data:
+            data['brand_make'] = data.get('brandMake') or ''
+        if 'hsn_sac' not in data:
+            data['hsn_sac'] = data.get('hsnSac') or '72193200'
+        if 'gst_rate' not in data:
+            data['gst_rate'] = data.get('gstRate') or 18.0
+        if 'uom' not in data:
+            data['uom'] = data.get('uomCode') or 'Kg'
+        if 'minimum_stock' not in data:
+            data['minimum_stock'] = data.get('minimumStock') or 0
+        if 'maximum_stock' not in data:
+            data['maximum_stock'] = data.get('maximumStock') or 0
+        if 'reorder_level' not in data:
+            data['reorder_level'] = data.get('reorderLevel') or 0
+        if 'unit_cost' not in data:
+            data['unit_cost'] = data.get('standardCost') or data.get('unitCost') or 0
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
