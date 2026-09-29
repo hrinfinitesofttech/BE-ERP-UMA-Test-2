@@ -44,10 +44,21 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('pr_number') and not data.get('prNumber'):
-            code = f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
-            data['id'] = code
-            data['pr_number'] = code
+        pr_num = data.get('prNumber') or data.get('pr_number') or f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
+        data['id'] = data.get('id') or pr_num
+        data['pr_number'] = pr_num
+        data['project_id'] = data.get('projectId') or data.get('project_id', '')
+        data['job_code'] = data.get('jobId') or data.get('jobNumber') or data.get('job_code', '')
+        data['requested_by'] = data.get('requestedBy') or data.get('requested_by') or 'Purchase Admin'
+        data['department'] = data.get('department') or 'Purchase / Planning'
+        data['request_date'] = data.get('requisitionDate') or data.get('prDate') or data.get('request_date') or datetime.now().strftime('%Y-%m-%d')
+        data['required_by_date'] = data.get('requiredByDate') or data.get('required_by_date') or '2026-12-31'
+        data['priority'] = data.get('priority') or 'High'
+        data['status'] = data.get('status') or 'Submitted'
+        data['items'] = data.get('items') or []
+        data['total_estimated_cost'] = float(data.get('estimatedCost') or data.get('total_estimated_cost') or 0)
+        data['remarks'] = data.get('remarks', '')
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
