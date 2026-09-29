@@ -10,6 +10,7 @@ from .views import (
     ProjectDelayViewSet,
     CustomerChangeRequestViewSet,
     ProjectCostViewSet,
+    ProjectDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,8 @@ router.register(r'issues', ProjectIssueViewSet, basename='issue')
 router.register(r'delays', ProjectDelayViewSet, basename='delay')
 router.register(r'change-requests', CustomerChangeRequestViewSet, basename='change-request')
 router.register(r'costs', ProjectCostViewSet, basename='cost')
+router.register(r'documents', ProjectDocumentViewSet, basename='document')
+
 
 urlpatterns = [
     path('', include(router.urls)),

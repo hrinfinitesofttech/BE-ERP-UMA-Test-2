@@ -1,5 +1,20 @@
 from django.contrib import admin
-from .models import DesignJob, CustomerRequirement, Drawing2D, Design3DModel, BOMHeader, DesignRevisionLog, TechnicalDocumentItem
+from .models import (
+    DesignJob,
+    CustomerRequirement,
+    Drawing2D,
+    Design3DModel,
+    BOMHeader,
+    DesignRevisionLog,
+    TechnicalDocumentItem,
+    DesignTask,
+)
+
+@admin.register(DesignTask)
+class DesignTaskAdmin(admin.ModelAdmin):
+    list_display = ('id', 'task_name', 'designer', 'priority', 'status', 'due_date', 'progress_percent')
+    search_fields = ('id', 'task_name', 'designer', 'job_number', 'customer_name')
+    list_filter = ('status', 'priority', 'designer', 'created_at')
 
 @admin.register(DesignJob)
 class DesignJobAdmin(admin.ModelAdmin):
@@ -41,3 +56,4 @@ class TechnicalDocumentItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'design_job_id', 'doc_number', 'title', 'category', 'file_url')
     search_fields = ('id', 'design_job_id', 'doc_number', 'title')
     list_filter = ('category',)
+

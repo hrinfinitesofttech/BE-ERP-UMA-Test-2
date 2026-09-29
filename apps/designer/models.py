@@ -149,3 +149,29 @@ class TechnicalDocumentItem(models.Model):
 
     def __str__(self):
         return f"{self.doc_number} - {self.title}"
+
+
+class DesignTask(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    task_name = models.CharField(max_length=255)
+    customer_name = models.CharField(max_length=200, blank=True, default='')
+    machine_name = models.CharField(max_length=200, blank=True, default='')
+    designer = models.CharField(max_length=150, default='Dharmesh Joshi')
+    start_date = models.CharField(max_length=50, blank=True, default='')
+    target_date = models.CharField(max_length=50, blank=True, default='')
+    due_date = models.CharField(max_length=50, blank=True, default='')
+    priority = models.CharField(max_length=30, default='high')
+    estimated_hours = models.FloatField(default=16)
+    actual_hours = models.FloatField(default=0)
+    progress_percent = models.IntegerField(default=0)
+    status = models.CharField(max_length=50, default='pending')
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.id} - {self.task_name} ({self.designer})"
+

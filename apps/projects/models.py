@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class ProjectJobMaster(models.Model):
@@ -63,17 +64,25 @@ class ProjectPlanningStage(models.Model):
 class ProjectMilestone(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
-    title = models.CharField(max_length=200)
+    project_number = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    title = models.CharField(max_length=200, blank=True, default='')
+    milestone_name = models.CharField(max_length=200, blank=True, default='')
     milestone_code = models.CharField(max_length=50, blank=True, default='')
-    target_date = models.CharField(max_length=50)
+    owner = models.CharField(max_length=150, blank=True, default='')
+    planned_date = models.CharField(max_length=50, blank=True, default='')
+    actual_date = models.CharField(max_length=50, blank=True, null=True)
+    target_date = models.CharField(max_length=50, blank=True, default='')
     completion_date = models.CharField(max_length=50, blank=True, null=True)
-    status = models.CharField(max_length=30, default='pending') # pending, in_progress, completed, delayed
+    status = models.CharField(max_length=30, default='pending') # pending, in_progress, completed, delayed, achieved
     payment_percentage = models.FloatField(default=0)
     payment_amount = models.FloatField(default=0)
     department = models.CharField(max_length=50, blank=True, default='')
+    remarks = models.TextField(blank=True, default='')
 
     def __str__(self):
-        return f"{self.title} ({self.status})"
+        return f"{self.milestone_name or self.title} ({self.status})"
+
 
 
 class ProjectTask(models.Model):
@@ -110,49 +119,86 @@ class DepartmentAssignment(models.Model):
 class ProjectIssue(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    department = models.CharField(max_length=50)
+    project_number = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    issue_no = models.CharField(max_length=64, blank=True, default='')
+    title = models.CharField(max_length=200, blank=True, default='')
+    issue_type = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    department = models.CharField(max_length=50, blank=True, default='Production')
     severity = models.CharField(max_length=30, default='medium') # low, medium, high, critical
     status = models.CharField(max_length=30, default='open') # open, in_progress, resolved, closed
-    reported_by = models.CharField(max_length=150)
+    reported_by = models.CharField(max_length=150, blank=True, default='Super Admin')
     assigned_to = models.CharField(max_length=150, blank=True, default='')
-    created_date = models.CharField(max_length=50)
+    reported_date = models.CharField(max_length=50, blank=True, default='')
+    created_date = models.CharField(max_length=50, blank=True, default='')
     resolved_date = models.CharField(max_length=50, blank=True, null=True)
+    resolution = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Issue: {self.title} ({self.status})"
+        return f"{self.issue_no or self.id}: {self.title or self.issue_type} ({self.status})"
 
 
 class ProjectDelay(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
-    reason = models.CharField(max_length=255)
-    department = models.CharField(max_length=50)
+    project_number = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    delay_no = models.CharField(max_length=64, blank=True, default='')
+    reason = models.CharField(max_length=255, blank=True, default='')
+    delay_reason = models.CharField(max_length=255, blank=True, default='')
+    department = models.CharField(max_length=50, blank=True, default='project')
+    task_name = models.CharField(max_length=200, blank=True, default='')
     delayed_days = models.IntegerField(default=0)
+    delay_days = models.IntegerField(default=0)
     impact = models.TextField(blank=True, default='')
     mitigation_plan = models.TextField(blank=True, default='')
-    recorded_by = models.CharField(max_length=150)
-    date = models.CharField(max_length=50)
+    corrective_action = models.TextField(blank=True, default='')
+    recorded_by = models.CharField(max_length=150, blank=True, default='Super Admin')
+    responsible_person = models.CharField(max_length=150, blank=True, default='')
+    date = models.CharField(max_length=50, blank=True, default='')
+    start_date = models.CharField(max_length=50, blank=True, default='')
+    original_delivery_date = models.CharField(max_length=50, blank=True, default='')
+    expected_delivery_date = models.CharField(max_length=50, blank=True, default='')
+    status = models.CharField(max_length=30, default='open')
+    created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Delay: {self.reason} ({self.delayed_days} days)"
+        return f"{self.delay_no or self.id}: {self.delay_reason or self.reason} ({self.delay_days or self.delayed_days} days)"
+
 
 
 class CustomerChangeRequest(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
-    request_no = models.CharField(max_length=64)
-    title = models.CharField(max_length=200)
-    description = models.TextField()
+    project_number = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    customer_name = models.CharField(max_length=200, blank=True, default='')
+    change_request_no = models.CharField(max_length=64, blank=True, default='')
+    request_no = models.CharField(max_length=64, blank=True, default='')
+    requested_by = models.CharField(max_length=150, blank=True, default='Customer Representative')
+    title = models.CharField(max_length=200, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    change_description = models.TextField(blank=True, default='')
+    reason = models.TextField(blank=True, default='')
+    design_impact = models.TextField(blank=True, default='')
+    material_impact = models.TextField(blank=True, default='')
+    cost_impact = models.FloatField(default=0)
+    timeline_impact_days = models.IntegerField(default=0)
     impact_on_timeline_days = models.IntegerField(default=0)
     impact_on_cost = models.FloatField(default=0)
-    status = models.CharField(max_length=30, default='pending') # pending, approved, rejected, implemented
+    approval_status = models.CharField(max_length=30, default='requested') # requested, under_review, approved, rejected, implemented
+    status = models.CharField(max_length=30, default='pending')
     approved_by = models.CharField(max_length=150, blank=True, null=True)
-    request_date = models.CharField(max_length=50)
+    approved_date = models.CharField(max_length=50, blank=True, default='')
+    request_date = models.CharField(max_length=50, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.request_no} - {self.title}"
+        return f"{self.change_request_no or self.request_no or self.id} - {self.customer_name or self.title}"
 
 
 class ProjectCost(models.Model):
@@ -165,3 +211,24 @@ class ProjectCost(models.Model):
 
     def __str__(self):
         return f"{self.category}: est {self.estimated_amount} / act {self.actual_amount}"
+
+
+class ProjectDocument(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    project_id = models.CharField(max_length=64)
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    document_name = models.CharField(max_length=200)
+    type = models.CharField(max_length=50, default='Drawing')
+    version = models.CharField(max_length=50, default='v1.0')
+    uploaded_by = models.CharField(max_length=150, blank=True, default='')
+    department = models.CharField(max_length=50, blank=True, default='')
+    related_record = models.CharField(max_length=100, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    file_size = models.CharField(max_length=50, blank=True, default='1.5 MB')
+    file_url = models.CharField(max_length=255, blank=True, default='')
+    upload_date = models.CharField(max_length=50, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.document_name} ({self.version})"
+

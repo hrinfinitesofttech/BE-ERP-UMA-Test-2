@@ -1,14 +1,30 @@
+from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
-from .models import CompanySetting, NumberingSetting, AuditLog, Notification
+from .models import (
+    CompanySetting,
+    NumberingSetting,
+    AuditLog,
+    Notification,
+    BugTicket,
+    BackupRecord,
+    DataImportLog,
+    SecurityCheckRecord,
+    GoLiveChecklistItem,
+)
 from .serializers import (
     CompanySettingSerializer,
     NumberingSettingSerializer,
     AuditLogSerializer,
     NotificationSerializer,
+    BugTicketSerializer,
+    BackupRecordSerializer,
+    DataImportLogSerializer,
+    SecurityCheckRecordSerializer,
+    GoLiveChecklistItemSerializer,
 )
 
 
@@ -19,16 +35,53 @@ class CompanySettingView(APIView):
         setting = CompanySetting.objects.first()
         if not setting:
             setting = CompanySetting.objects.create()
-        return Response(CompanySettingSerializer(setting).data)
+        data = CompanySettingSerializer(setting).data
+        # Return both snake_case and camelCase for seamless frontend compatibility
+        camel_data = {
+            **data,
+            'companyName': data.get('company_name'),
+            'logoUrl': data.get('logo_url'),
+            'financialYear': data.get('financial_year'),
+            'bankName': data.get('bank_name'),
+            'bankAccountNo': data.get('bank_account_no'),
+            'bankIfsc': data.get('bank_ifsc'),
+            'bankBranch': data.get('bank_branch'),
+        }
+        return Response(camel_data)
 
     def put(self, request):
         setting = CompanySetting.objects.first()
         if not setting:
             setting = CompanySetting.objects.create()
-        serializer = CompanySettingSerializer(setting, data=request.data, partial=True)
+        data = request.data.copy()
+        field_mappings = {
+            'companyName': 'company_name',
+            'logoUrl': 'logo_url',
+            'financialYear': 'financial_year',
+            'bankName': 'bank_name',
+            'bankAccountNo': 'bank_account_no',
+            'bankIfsc': 'bank_ifsc',
+            'bankBranch': 'bank_branch',
+        }
+        for camel, snake in field_mappings.items():
+            if camel in data and not data.get(snake):
+                data[snake] = data[camel]
+
+        serializer = CompanySettingSerializer(setting, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            res_data = serializer.data
+            camel_data = {
+                **res_data,
+                'companyName': res_data.get('company_name'),
+                'logoUrl': res_data.get('logo_url'),
+                'financialYear': res_data.get('financial_year'),
+                'bankName': res_data.get('bank_name'),
+                'bankAccountNo': res_data.get('bank_account_no'),
+                'bankIfsc': res_data.get('bank_ifsc'),
+                'bankBranch': res_data.get('bank_branch'),
+            }
+            return Response(camel_data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
@@ -119,3 +172,99 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def mark_all_read(self, request):
         Notification.objects.filter(is_read=False).update(is_read=True)
         return Response({'success': True, 'message': 'All notifications marked as read'})
+
+
+class BugTicketViewSet(viewsets.ModelViewSet):
+    queryset = BugTicket.objects.all().order_by('-created_at')
+    serializer_class = BugTicketSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"BUG-{BugTicket.objects.count() + 1:03d}"
+        if not data.get('bug_no'):
+            data['bug_no'] = data.get('bugNo') or f"BUG-2026-{BugTicket.objects.count() + 1:03d}"
+        if 'module_page' not in data:
+            data['module_page'] = data.get('modulePage') or data.get('module') or 'General'
+        if 'steps_to_reproduce' not in data:
+            data['steps_to_reproduce'] = data.get('stepsToReproduce') or ''
+        if 'actual_result' not in data:
+            data['actual_result'] = data.get('actualResult') or ''
+        if 'expected_result' not in data:
+            data['expected_result'] = data.get('expectedResult') or ''
+        if 'fixed_notes' not in data:
+            data['fixed_notes'] = data.get('fixedNotes') or ''
+        if 'created_date' not in data:
+            data['created_date'] = data.get('createdDate') or ''
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class BackupRecordViewSet(viewsets.ModelViewSet):
+    queryset = BackupRecord.objects.all().order_by('-created_at')
+    serializer_class = BackupRecordSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"BKP-{BackupRecord.objects.count() + 1:03d}"
+        if 'backup_name' not in data:
+            data['backup_name'] = data.get('backupName') or f"Manual ERP Backup {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        if 'backup_type' not in data:
+            data['backup_type'] = data.get('backupType') or 'Full Database & Media'
+        if 'file_size' not in data:
+            data['file_size'] = data.get('fileSize') or '24.5 MB'
+        if 'backup_date' not in data:
+            data['backup_date'] = data.get('backupDate') or datetime.now().strftime('%Y-%m-%d %H:%M')
+        if 'created_by' not in data:
+            data['created_by'] = data.get('createdBy') or 'Super Admin'
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class DataImportLogViewSet(viewsets.ModelViewSet):
+    queryset = DataImportLog.objects.all().order_by('-created_at')
+    serializer_class = DataImportLogSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"IMP-{DataImportLog.objects.count() + 1:03d}"
+        if 'entity_type' not in data:
+            data['entity_type'] = data.get('entityType') or 'Customers'
+        if 'file_name' not in data:
+            data['file_name'] = data.get('fileName') or 'import_data.csv'
+        if 'records_count' not in data:
+            data['records_count'] = data.get('recordsCount') or data.get('recordCount') or 0
+        if 'imported_by' not in data:
+            data['imported_by'] = data.get('importedBy') or 'Super Admin'
+        if 'imported_at' not in data:
+            data['imported_at'] = data.get('importedAt') or datetime.now().strftime('%Y-%m-%d %H:%M')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class SecurityCheckRecordViewSet(viewsets.ModelViewSet):
+    queryset = SecurityCheckRecord.objects.all().order_by('-created_at')
+    serializer_class = SecurityCheckRecordSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class GoLiveChecklistItemViewSet(viewsets.ModelViewSet):
+    queryset = GoLiveChecklistItem.objects.all().order_by('module_name')
+    serializer_class = GoLiveChecklistItemSerializer
+    permission_classes = [permissions.AllowAny]
+
+

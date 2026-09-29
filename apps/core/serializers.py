@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import CompanySetting, NumberingSetting, AuditLog, Notification
+from .models import (
+    CompanySetting,
+    NumberingSetting,
+    AuditLog,
+    Notification,
+    BugTicket,
+    BackupRecord,
+    DataImportLog,
+    SecurityCheckRecord,
+    GoLiveChecklistItem,
+)
 
 
 class CompanySettingSerializer(serializers.ModelSerializer):
@@ -82,3 +92,64 @@ class NotificationSerializer(serializers.ModelSerializer):
             'is_read',
             'priority',
         ]
+
+
+class BugTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BugTicket
+        fields = [
+            'id',
+            'bug_no',
+            'title',
+            'description',
+            'module_page',
+            'severity',
+            'priority',
+            'status',
+            'assignee',
+            'steps_to_reproduce',
+            'actual_result',
+            'expected_result',
+            'fixed_notes',
+            'created_date',
+            'created_at',
+            'updated_at',
+        ]
+
+
+class BackupRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BackupRecord
+        fields = [
+            'id',
+            'backup_name',
+            'backup_type',
+            'file_size',
+            'status',
+            'backup_date',
+            'file_url',
+            'created_by',
+            'is_automatic',
+            'notes',
+            'created_at',
+        ]
+
+
+class DataImportLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DataImportLog
+        fields = '__all__'
+
+
+class SecurityCheckRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SecurityCheckRecord
+        fields = '__all__'
+
+
+class GoLiveChecklistItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GoLiveChecklistItem
+        fields = '__all__'
+
+

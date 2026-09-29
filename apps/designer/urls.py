@@ -8,10 +8,13 @@ from .views import (
     BOMHeaderViewSet,
     DesignRevisionLogViewSet,
     TechnicalDocumentItemViewSet,
+    DesignTaskViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'jobs', DesignJobViewSet, basename='design-job')
+router.register(r'tasks', DesignTaskViewSet, basename='design-task')
+router.register(r'design-tasks', DesignTaskViewSet, basename='designer-tasks')
 router.register(r'requirements', CustomerRequirementViewSet, basename='requirement')
 router.register(r'drawings-2d', Drawing2DViewSet, basename='drawing-2d')
 router.register(r'models-3d', Design3DModelViewSet, basename='model-3d')

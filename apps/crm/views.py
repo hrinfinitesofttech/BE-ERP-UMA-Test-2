@@ -218,6 +218,22 @@ class FollowUpViewSet(viewsets.ModelViewSet):
             code = f"FLW-2026-{FollowUp.objects.count() + 1:04d}"
             data['id'] = code
             data['follow_up_no'] = code
+        if 'followUpNo' in data and not data.get('follow_up_no'):
+            data['follow_up_no'] = data['followUpNo']
+        if 'leadOrCustomerId' in data and not data.get('lead_or_customer_id'):
+            data['lead_or_customer_id'] = data['leadOrCustomerId']
+        if 'leadOrCustomerName' in data and not data.get('lead_or_customer_name'):
+            data['lead_or_customer_name'] = data['leadOrCustomerName']
+        if 'entityType' in data and not data.get('entity_type'):
+            data['entity_type'] = data['entityType']
+        if 'assignedToId' in data and not data.get('assigned_to_id'):
+            data['assigned_to_id'] = data['assignedToId']
+        if 'assignedToName' in data and not data.get('assigned_to_name'):
+            data['assigned_to_name'] = data['assignedToName']
+        if 'nextFollowUpDate' in data and not data.get('next_follow_up_date'):
+            data['next_follow_up_date'] = data['nextFollowUpDate']
+        if 'completedNotes' in data and not data.get('completed_notes'):
+            data['completed_notes'] = data['completedNotes']
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -241,7 +257,36 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('visit_no') and not data.get('visitNo'):
+        if 'visitNo' in data and 'visit_no' not in data:
+            data['visit_no'] = data['visitNo']
+        if 'customerId' in data and 'customer_id' not in data:
+            data['customer_id'] = data['customerId']
+        if 'customerName' in data and 'customer_name' not in data:
+            data['customer_name'] = data['customerName']
+        if 'contactPerson' in data and 'contact_person' not in data:
+            data['contact_person'] = data['contactPerson']
+        if 'contactMobile' in data and 'contact_mobile' not in data:
+            data['contact_mobile'] = data['contactMobile']
+        if 'visitDate' in data and 'visit_date' not in data:
+            data['visit_date'] = data['visitDate']
+        if 'employeeId' in data and 'employee_id' not in data:
+            data['employee_id'] = data['employeeId']
+        if 'employeeName' in data and 'employee_name' not in data:
+            data['employee_name'] = data['employeeName']
+        if 'discussionNotes' in data and 'discussion_notes' not in data:
+            data['discussion_notes'] = data['discussionNotes']
+        elif 'discussionSummary' in data and 'discussion_notes' not in data:
+            data['discussion_notes'] = data['discussionSummary']
+        if 'requirementDetails' in data and 'requirement_details' not in data:
+            data['requirement_details'] = data['requirementDetails']
+        if 'nextAction' in data and 'next_action' not in data:
+            data['next_action'] = data['nextAction']
+        if 'nextFollowUpDate' in data and 'next_follow_up_date' not in data:
+            data['next_follow_up_date'] = data['nextFollowUpDate']
+
+        if not data.get('id'):
+            data['id'] = data.get('visit_no') or data.get('visitNo')
+        if not data.get('id') or not data.get('visit_no'):
             num_setting = NumberingSetting.objects.filter(doc_type='visit').first()
             code = num_setting.generate_next_number(increment=True) if num_setting else f"VST-2026-{SiteVisit.objects.count() + 1:04d}"
             data['id'] = code
@@ -256,6 +301,40 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
     queryset = Exhibition.objects.all().order_by('-start_date')
     serializer_class = ExhibitionSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if 'expoName' in data and 'expo_name' not in data:
+            data['expo_name'] = data['expoName']
+        if 'startDate' in data and 'start_date' not in data:
+            data['start_date'] = data['startDate']
+        if 'endDate' in data and 'end_date' not in data:
+            data['end_date'] = data['endDate']
+        if 'stallNumber' in data and 'stall_number' not in data:
+            data['stall_number'] = data['stallNumber']
+        if 'contactPerson' in data and 'contact_person' not in data:
+            data['contact_person'] = data['contactPerson']
+        if 'assignedTeam' in data and 'assigned_team' not in data:
+            data['assigned_team'] = data['assignedTeam']
+        if 'productsDisplayed' in data and 'products_displayed' not in data:
+            data['products_displayed'] = data['productsDisplayed']
+        if 'totalContacts' in data and 'total_contacts' not in data:
+            data['total_contacts'] = data['totalContacts']
+        if 'qualifiedLeads' in data and 'qualified_leads' not in data:
+            data['qualified_leads'] = data['qualifiedLeads']
+        if 'quotationsSent' in data and 'quotations_sent' not in data:
+            data['quotations_sent'] = data['quotationsSent']
+        if 'convertedCustomers' in data and 'converted_customers' not in data:
+            data['converted_customers'] = data['convertedCustomers']
+
+        if not data.get('id'):
+            code = f"EXPO-2026-{Exhibition.objects.count() + 1:02d}"
+            data['id'] = code
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class QuotationViewSet(viewsets.ModelViewSet):

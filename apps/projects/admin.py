@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ProjectJobMaster, ProjectPlanningStage, ProjectMilestone, ProjectTask, DepartmentAssignment, ProjectIssue, ProjectDelay, CustomerChangeRequest, ProjectCost
+from .models import ProjectJobMaster, ProjectPlanningStage, ProjectMilestone, ProjectTask, DepartmentAssignment, ProjectIssue, ProjectDelay, CustomerChangeRequest, ProjectCost, ProjectDocument
 
 @admin.register(ProjectJobMaster)
 class ProjectJobMasterAdmin(admin.ModelAdmin):
@@ -53,3 +53,10 @@ class ProjectCostAdmin(admin.ModelAdmin):
     list_display = ('id', 'project_id', 'category', 'estimated_amount', 'actual_amount')
     search_fields = ('id', 'project_id')
     list_filter = ('category',)
+
+@admin.register(ProjectDocument)
+class ProjectDocumentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'project_id', 'job_number', 'document_name', 'type', 'version', 'uploaded_by', 'upload_date')
+    search_fields = ('id', 'project_id', 'job_number', 'document_name', 'uploaded_by')
+    list_filter = ('type', 'department')
+

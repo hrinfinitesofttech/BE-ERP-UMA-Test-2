@@ -9,6 +9,7 @@ from .models import (
     ProjectJobMaster,
     ProjectPlanningStage,
     ProjectMilestone,
+    ProjectDocument,
     ProjectTask,
     DepartmentAssignment,
     ProjectIssue,
@@ -20,6 +21,7 @@ from .serializers import (
     ProjectJobMasterSerializer,
     ProjectPlanningStageSerializer,
     ProjectMilestoneSerializer,
+    ProjectDocumentSerializer,
     ProjectTaskSerializer,
     DepartmentAssignmentSerializer,
     ProjectIssueSerializer,
@@ -170,15 +172,100 @@ class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
 
 
 class ProjectMilestoneViewSet(viewsets.ModelViewSet):
-    queryset = ProjectMilestone.objects.all().order_by('target_date')
+    queryset = ProjectMilestone.objects.all().order_by('planned_date', 'target_date')
     serializer_class = ProjectMilestoneSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"MS-{uuid.uuid4().hex[:8]}"
+        if 'milestone_name' not in data:
+            data['milestone_name'] = data.get('milestoneName') or data.get('title') or 'Milestone Checkpoint'
+        if 'title' not in data:
+            data['title'] = data['milestone_name']
+        if 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+        if 'project_number' not in data:
+            data['project_number'] = data.get('projectNumber') or ''
+        if 'job_number' not in data:
+            data['job_number'] = data.get('jobNumber') or ''
+        if 'planned_date' not in data:
+            data['planned_date'] = data.get('plannedDate') or data.get('target_date') or datetime.now().strftime('%Y-%m-%d')
+        if 'target_date' not in data:
+            data['target_date'] = data['planned_date']
+        if 'owner' not in data:
+            data['owner'] = data.get('owner') or 'Bhavin Shah'
+        if 'status' not in data:
+            data['status'] = 'pending'
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectTaskViewSet(viewsets.ModelViewSet):
     queryset = ProjectTask.objects.all().order_by('-due_date')
     serializer_class = ProjectTaskSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"TSK-2026-{ProjectTask.objects.count() + 1:03d}"
+        if 'title' not in data:
+            data['title'] = data.get('task_name') or data.get('taskName') or 'Project Task'
+        if 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+        if 'task_number' not in data:
+            data['task_number'] = data.get('taskNumber') or data['id']
+        if 'department' not in data:
+            data['department'] = data.get('department') or 'production'
+        if 'assigned_to_name' not in data:
+            data['assigned_to_name'] = data.get('assignedTo') or data.get('assigned_to') or 'Bhavin Shah'
+        if 'due_date' not in data:
+            data['due_date'] = data.get('dueDate') or data.get('due_date') or ''
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ProjectDocumentViewSet(viewsets.ModelViewSet):
+    queryset = ProjectDocument.objects.all().order_by('-created_at')
+    serializer_class = ProjectDocumentSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"DOC-{uuid.uuid4().hex[:8]}"
+        if 'document_name' not in data:
+            data['document_name'] = data.get('documentName') or data.get('name') or 'Project Document'
+        if 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+        if 'job_number' not in data:
+            data['job_number'] = data.get('jobNumber') or ''
+        if 'type' not in data:
+            data['type'] = data.get('docType') or 'Drawing'
+        if 'version' not in data:
+            data['version'] = data.get('version') or 'v1.0'
+        if 'uploaded_by' not in data:
+            data['uploaded_by'] = data.get('uploadedBy') or 'Super Admin'
+        if 'department' not in data:
+            data['department'] = data.get('department') or 'Design'
+        if 'file_size' not in data:
+            data['file_size'] = data.get('fileSize') or '1.5 MB'
+        if 'upload_date' not in data:
+            data['upload_date'] = data.get('uploadDate') or datetime.now().strftime('%Y-%m-%d')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class DepartmentAssignmentViewSet(viewsets.ModelViewSet):
@@ -200,9 +287,55 @@ class ProjectDelayViewSet(viewsets.ModelViewSet):
 
 
 class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
-    queryset = CustomerChangeRequest.objects.all().order_by('-request_date')
+    queryset = CustomerChangeRequest.objects.all().order_by('-created_at')
     serializer_class = CustomerChangeRequestSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"CR-{uuid.uuid4().hex[:8]}"
+        if 'change_request_no' not in data:
+            data['change_request_no'] = data.get('changeRequestNo') or data['id']
+        if 'request_no' not in data:
+            data['request_no'] = data.get('change_request_no') or data['id']
+        if 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+        if 'project_number' not in data:
+            data['project_number'] = data.get('projectNumber') or ''
+        if 'job_number' not in data:
+            data['job_number'] = data.get('jobNumber') or ''
+        if 'customer_name' not in data:
+            data['customer_name'] = data.get('customerName') or ''
+        if 'requested_by' not in data:
+            data['requested_by'] = data.get('requestedBy') or 'Customer Representative'
+        if 'title' not in data:
+            data['title'] = data.get('changeDescription') or data.get('change_description') or 'Change Request'
+        if 'change_description' not in data:
+            data['change_description'] = data.get('changeDescription') or data.get('description') or ''
+        if 'description' not in data:
+            data['description'] = data.get('change_description') or ''
+        if 'reason' not in data:
+            data['reason'] = data.get('reason') or ''
+        if 'design_impact' not in data:
+            data['design_impact'] = data.get('designImpact') or ''
+        if 'material_impact' not in data:
+            data['material_impact'] = data.get('materialImpact') or ''
+        if 'cost_impact' not in data:
+            data['cost_impact'] = data.get('costImpact') or 0
+        if 'timeline_impact_days' not in data:
+            data['timeline_impact_days'] = data.get('timelineImpactDays') or 0
+        if 'approval_status' not in data:
+            data['approval_status'] = data.get('approvalStatus') or 'requested'
+        if 'status' not in data:
+            data['status'] = data.get('status') or 'pending'
+        if 'request_date' not in data:
+            data['request_date'] = data.get('requestDate') or datetime.now().strftime('%Y-%m-%d')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProjectCostViewSet(viewsets.ModelViewSet):

@@ -133,6 +133,18 @@ def deploy():
         '/api/purchase-orders/',
         '/api/financial-years/',
         '/api/chart-of-accounts/',
+        '/api/customer-machines/',
+        '/api/drawings-2d/',
+        '/api/models-3d/',
+        '/api/customer-requirements/',
+        '/api/design-tasks/',
+        '/api/project-documents/',
+        '/api/project-delays/',
+        '/api/customer-change-requests/',
+        '/api/customer-360-summaries/',
+        '/api/employee-360-summaries/',
+        '/api/backup-records/',
+        '/api/bug-tickets/',
     ]
 
     base_api = f"https://{DOMAIN}"

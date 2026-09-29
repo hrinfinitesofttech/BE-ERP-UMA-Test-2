@@ -7,7 +7,14 @@ from .models import (
     BOMHeader,
     DesignRevisionLog,
     TechnicalDocumentItem,
+    DesignTask,
 )
+
+
+class DesignTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DesignTask
+        fields = '__all__'
 
 
 class CustomerRequirementSerializer(serializers.ModelSerializer):

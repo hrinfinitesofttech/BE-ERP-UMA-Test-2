@@ -5,8 +5,32 @@ from rest_framework.response import Response
 from django.utils import timezone
 from datetime import timedelta
 
-from .models import ApprovalItem, ERPAlertItem
-from .serializers import ApprovalItemSerializer, ERPAlertItemSerializer
+from .models import (
+    ApprovalItem,
+    ERPAlertItem,
+    Job360Overview,
+    ExecutiveDashboardKPI,
+    Customer360Summary,
+    Supplier360Summary,
+    ItemMaterial360Summary,
+    Employee360Summary,
+    GlobalActivityLog,
+    ERPReportCenterItem,
+    JobProfitabilityRecord,
+)
+from .serializers import (
+    ApprovalItemSerializer,
+    ERPAlertItemSerializer,
+    Job360OverviewSerializer,
+    ExecutiveDashboardKPISerializer,
+    Customer360SummarySerializer,
+    Supplier360SummarySerializer,
+    ItemMaterial360SummarySerializer,
+    Employee360SummarySerializer,
+    GlobalActivityLogSerializer,
+    ERPReportCenterItemSerializer,
+    JobProfitabilityRecordSerializer,
+)
 
 # Module models
 from apps.crm.models import Customer, Lead, Quotation, CustomerPO, SalesOrder
@@ -305,3 +329,58 @@ class Job360APIView(APIView):
         }
 
         return Response(full_payload, status=status.HTTP_200_OK)
+
+
+class Job360OverviewViewSet(viewsets.ModelViewSet):
+    queryset = Job360Overview.objects.all().order_by('-created_at')
+    serializer_class = Job360OverviewSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ExecutiveDashboardKPIViewSet(viewsets.ModelViewSet):
+    queryset = ExecutiveDashboardKPI.objects.all().order_by('kpi_name')
+    serializer_class = ExecutiveDashboardKPISerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class Customer360SummaryViewSet(viewsets.ModelViewSet):
+    queryset = Customer360Summary.objects.all().order_by('customer_name')
+    serializer_class = Customer360SummarySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class Supplier360SummaryViewSet(viewsets.ModelViewSet):
+    queryset = Supplier360Summary.objects.all().order_by('supplier_name')
+    serializer_class = Supplier360SummarySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ItemMaterial360SummaryViewSet(viewsets.ModelViewSet):
+    queryset = ItemMaterial360Summary.objects.all().order_by('item_code')
+    serializer_class = ItemMaterial360SummarySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class Employee360SummaryViewSet(viewsets.ModelViewSet):
+    queryset = Employee360Summary.objects.all().order_by('employee_name')
+    serializer_class = Employee360SummarySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class GlobalActivityLogViewSet(viewsets.ModelViewSet):
+    queryset = GlobalActivityLog.objects.all().order_by('-created_at')
+    serializer_class = GlobalActivityLogSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ERPReportCenterItemViewSet(viewsets.ModelViewSet):
+    queryset = ERPReportCenterItem.objects.all().order_by('report_code')
+    serializer_class = ERPReportCenterItemSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class JobProfitabilityRecordViewSet(viewsets.ModelViewSet):
+    queryset = JobProfitabilityRecord.objects.all().order_by('-created_at')
+    serializer_class = JobProfitabilityRecordSerializer
+    permission_classes = [permissions.AllowAny]
+

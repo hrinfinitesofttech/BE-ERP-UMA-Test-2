@@ -9,6 +9,7 @@ from .models import (
     ProjectDelay,
     CustomerChangeRequest,
     ProjectCost,
+    ProjectDocument,
 )
 
 
@@ -42,15 +43,44 @@ class ProjectMilestoneSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'project_id',
+            'project_number',
+            'job_number',
             'title',
+            'milestone_name',
             'milestone_code',
+            'owner',
+            'planned_date',
+            'actual_date',
             'target_date',
             'completion_date',
             'status',
             'payment_percentage',
             'payment_amount',
             'department',
+            'remarks',
         ]
+
+
+class ProjectDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectDocument
+        fields = [
+            'id',
+            'project_id',
+            'job_number',
+            'document_name',
+            'type',
+            'version',
+            'uploaded_by',
+            'department',
+            'related_record',
+            'description',
+            'file_size',
+            'file_url',
+            'upload_date',
+            'created_at',
+        ]
+
 
 
 class ProjectTaskSerializer(serializers.ModelSerializer):
@@ -89,52 +119,19 @@ class DepartmentAssignmentSerializer(serializers.ModelSerializer):
 class ProjectIssueSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectIssue
-        fields = [
-            'id',
-            'project_id',
-            'title',
-            'description',
-            'department',
-            'severity',
-            'status',
-            'reported_by',
-            'assigned_to',
-            'created_date',
-            'resolved_date',
-        ]
+        fields = '__all__'
 
 
 class ProjectDelaySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectDelay
-        fields = [
-            'id',
-            'project_id',
-            'reason',
-            'department',
-            'delayed_days',
-            'impact',
-            'mitigation_plan',
-            'recorded_by',
-            'date',
-        ]
+        fields = '__all__'
 
 
 class CustomerChangeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerChangeRequest
-        fields = [
-            'id',
-            'project_id',
-            'request_no',
-            'title',
-            'description',
-            'impact_on_timeline_days',
-            'impact_on_cost',
-            'status',
-            'approved_by',
-            'request_date',
-        ]
+        fields = '__all__'
 
 
 class ProjectCostSerializer(serializers.ModelSerializer):
