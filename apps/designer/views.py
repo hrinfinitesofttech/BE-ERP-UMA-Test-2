@@ -8,6 +8,7 @@ from .models import (
     CustomerRequirement,
     Drawing2D,
     Design3DModel,
+    AssemblyDrawing,
     BOMHeader,
     DesignRevisionLog,
     TechnicalDocumentItem,
@@ -18,11 +19,58 @@ from .serializers import (
     CustomerRequirementSerializer,
     Drawing2DSerializer,
     Design3DModelSerializer,
+    AssemblyDrawingSerializer,
     BOMHeaderSerializer,
     DesignRevisionLogSerializer,
     TechnicalDocumentItemSerializer,
     DesignTaskSerializer,
 )
+
+
+class AssemblyDrawingViewSet(viewsets.ModelViewSet):
+    queryset = AssemblyDrawing.objects.all().order_by('-created_at')
+    serializer_class = AssemblyDrawingSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            code = data.get('assembly_number') or data.get('assemblyNumber') or f"ASM-2026-{AssemblyDrawing.objects.count() + 1:04d}"
+            data['id'] = code
+        if 'assembly_number' not in data:
+            data['assembly_number'] = data.get('assemblyNumber') or f"ASM-{data.get('id', '001')}"
+        if 'assembly_title' not in data:
+            data['assembly_title'] = data.get('assemblyTitle') or 'Sub-Assembly Drawing'
+        if 'sub_assembly_code' not in data:
+            data['sub_assembly_code'] = data.get('subAssemblyCode') or ''
+        if 'parent_assembly_number' not in data:
+            data['parent_assembly_number'] = data.get('parentAssemblyNumber') or ''
+        if 'revision_number' not in data:
+            data['revision_number'] = data.get('revisionNumber') or 'REV-00'
+        if 'file_format' not in data:
+            data['file_format'] = data.get('fileFormat') or 'DWG'
+        if 'file_size' not in data:
+            data['file_size'] = data.get('fileSize') or '5.0 MB'
+        if 'file_url' not in data:
+            data['file_url'] = data.get('fileUrl') or '#'
+        if 'linked_bom_item_id' not in data:
+            data['linked_bom_item_id'] = data.get('linkedBOMItemId') or ''
+        if 'drawn_by' not in data:
+            data['drawn_by'] = data.get('drawnBy') or ''
+        if 'approved_by' not in data:
+            data['approved_by'] = data.get('approvedBy') or ''
+        if 'design_job_id' not in data:
+            data['design_job_id'] = data.get('designJobId') or ''
+        if 'job_number' not in data:
+            data['job_number'] = data.get('jobNumber') or ''
+        if 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or ''
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class DesignJobViewSet(viewsets.ModelViewSet):

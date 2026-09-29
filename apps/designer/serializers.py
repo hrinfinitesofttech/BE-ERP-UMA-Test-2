@@ -4,11 +4,18 @@ from .models import (
     CustomerRequirement,
     Drawing2D,
     Design3DModel,
+    AssemblyDrawing,
     BOMHeader,
     DesignRevisionLog,
     TechnicalDocumentItem,
     DesignTask,
 )
+
+
+class AssemblyDrawingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssemblyDrawing
+        fields = '__all__'
 
 
 class DesignTaskSerializer(serializers.ModelSerializer):

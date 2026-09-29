@@ -80,11 +80,41 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        if not data.get('id') or not data.get('grn_number') and not data.get('grnNumber'):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id') and not data.get('grn_number') and not data.get('grnNumber'):
             code = f"GRN-2026-{GoodsReceiptNote.objects.count() + 1:04d}"
             data['id'] = code
             data['grn_number'] = code
+        elif not data.get('id'):
+            data['id'] = data.get('grn_number') or data.get('grnNumber')
+
+        if 'grn_number' not in data:
+            data['grn_number'] = data.get('grnNumber') or data.get('id')
+        if 'date' not in data:
+            data['date'] = data.get('grnDate') or data.get('receiptDate') or datetime.now().strftime('%Y-%m-%d')
+        if 'po_id' not in data:
+            data['po_id'] = data.get('poId') or ''
+        if 'po_number' not in data:
+            data['po_number'] = data.get('poNumber') or ''
+        if 'supplier_id' not in data:
+            data['supplier_id'] = data.get('supplierId') or 'SUP-001'
+        if 'supplier_name' not in data:
+            data['supplier_name'] = data.get('supplierName') or 'Supplier'
+        if 'challan_number' not in data:
+            data['challan_number'] = data.get('deliveryChallanNumber') or data.get('challanNumber') or ''
+        if 'invoice_number' not in data:
+            data['invoice_number'] = data.get('invoiceNumber') or ''
+        if 'vehicle_number' not in data:
+            data['vehicle_number'] = data.get('vehicleNumber') or ''
+        if 'received_by' not in data:
+            data['received_by'] = data.get('receivedBy') or 'Store Officer'
+        if 'warehouse_id' not in data:
+            data['warehouse_id'] = data.get('warehouseId') or 'WH-001'
+        if 'notes' not in data:
+            data['notes'] = data.get('remarks') or data.get('notes') or ''
+        if 'items' not in data or not data['items']:
+            data['items'] = []
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         grn = serializer.save()

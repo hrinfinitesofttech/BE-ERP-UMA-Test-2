@@ -175,3 +175,26 @@ class DesignTask(models.Model):
     def __str__(self):
         return f"{self.id} - {self.task_name} ({self.designer})"
 
+
+class AssemblyDrawing(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    assembly_number = models.CharField(max_length=100)
+    assembly_title = models.CharField(max_length=200)
+    sub_assembly_code = models.CharField(max_length=100, blank=True, default='')
+    parent_assembly_number = models.CharField(max_length=100, blank=True, default='')
+    revision_number = models.CharField(max_length=30, default='REV-00')
+    file_format = models.CharField(max_length=30, default='DWG')
+    file_size = models.CharField(max_length=50, default='5.0 MB')
+    file_url = models.CharField(max_length=255, blank=True, default='#')
+    linked_bom_item_id = models.CharField(max_length=64, blank=True, default='')
+    drawn_by = models.CharField(max_length=150, blank=True, default='')
+    approved_by = models.CharField(max_length=150, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.assembly_number} - {self.assembly_title}"
+
+
