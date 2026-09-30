@@ -241,6 +241,56 @@ class QuotationSerializer(serializers.ModelSerializer):
         model = Quotation
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        ret = {}
+        ret['id'] = data.get('id') or data.get('quotationNumber') or data.get('quotation_number')
+        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or ret.get('id')
+        ret['current_revision'] = data.get('current_revision') or data.get('currentRevision') or 'Rev-00'
+        ret['date'] = data.get('date') or datetime.now().strftime('%Y-%m-%d')
+        ret['valid_until'] = data.get('valid_until') or data.get('validUntil') or ''
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or ''
+        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or ''
+        ret['contact_person'] = data.get('contact_person') or data.get('contactPerson') or ''
+        ret['contact_mobile'] = data.get('contact_mobile') or data.get('contactMobile') or ''
+        ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or ''
+        ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or None
+        ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or None
+        ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or ''
+        ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or ''
+        ret['revisions'] = data.get('revisions') or []
+        ret['notes'] = data.get('notes') or ''
+        return ret
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['id'] = instance.id
+        rep['quotationNumber'] = instance.quotation_number
+        rep['currentRevision'] = instance.current_revision
+        rep['date'] = instance.date
+        rep['validUntil'] = instance.valid_until
+        rep['customerId'] = instance.customer_id
+        rep['customerName'] = instance.customer_name
+        rep['contactPerson'] = instance.contact_person
+        rep['contactMobile'] = instance.contact_mobile
+        rep['contactEmail'] = instance.contact_email
+        rep['enquiryId'] = instance.enquiry_id
+        rep['opportunityId'] = instance.opportunity_id
+        rep['salesPersonId'] = instance.sales_person_id
+        rep['salesPersonName'] = instance.sales_person_name
+        rep['revisions'] = instance.revisions or []
+        rep['notes'] = instance.notes
+        
+        # Calculate latestSummary for frontend convenience
+        revs = instance.revisions or []
+        last_rev = revs[-1] if revs else {}
+        first_item = (last_rev.get('items') or [{}])[0]
+        rep['latestSummary'] = {
+            'machineProduct': first_item.get('productName', 'Process Equipment'),
+            'grandTotal': last_rev.get('grandTotal', 0),
+            'status': last_rev.get('status', 'draft')
+        }
+        return rep
+
 
 class CustomerPOSerializer(serializers.ModelSerializer):
     poNumber = serializers.CharField(source='po_number', required=False)
@@ -264,6 +314,50 @@ class CustomerPOSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerPO
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = {}
+        ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber')
+        ret['po_number'] = data.get('po_number') or data.get('poNumber') or ret.get('id') or 'PO/GEN'
+        ret['internal_cpo_no'] = data.get('internal_cpo_no') or data.get('internalCpoNo') or ''
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or ''
+        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or ''
+        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or None
+        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or ''
+        ret['po_date'] = data.get('po_date') or data.get('poDate') or datetime.now().strftime('%Y-%m-%d')
+        ret['received_date'] = data.get('received_date') or data.get('receivedDate') or ret['po_date']
+        ret['delivery_date'] = data.get('delivery_date') or data.get('deliveryDate') or ''
+        ret['po_value'] = float(data.get('po_value') or data.get('poValue') or data.get('poAmount') or data.get('po_amount') or 0)
+        ret['scope_of_work'] = data.get('scope_of_work') or data.get('scopeOfWork') or data.get('remarks') or ''
+        ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or ''
+        ret['po_document_url'] = data.get('po_document_url') or data.get('poDocumentUrl') or ''
+        ret['status'] = data.get('status') or 'received'
+        ret['converted_so_id'] = data.get('converted_so_id') or data.get('convertedSoId') or data.get('salesOrderId') or None
+        ret['special_conditions'] = data.get('special_conditions') or data.get('specialConditions') or ''
+        return ret
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['id'] = instance.id
+        rep['poNumber'] = instance.po_number
+        rep['internalCpoNo'] = instance.internal_cpo_no
+        rep['customerId'] = instance.customer_id
+        rep['customerName'] = instance.customer_name
+        rep['quotationId'] = instance.quotation_id
+        rep['quotationNumber'] = instance.quotation_number
+        rep['poDate'] = instance.po_date
+        rep['receivedDate'] = instance.received_date
+        rep['deliveryDate'] = instance.delivery_date
+        rep['poAmount'] = instance.po_value
+        rep['poValue'] = instance.po_value
+        rep['scopeOfWork'] = instance.scope_of_work
+        rep['paymentTerms'] = instance.payment_terms
+        rep['poDocumentUrl'] = instance.po_document_url
+        rep['status'] = instance.status
+        rep['convertedSoId'] = instance.converted_so_id
+        rep['salesOrderId'] = instance.converted_so_id
+        rep['specialConditions'] = instance.special_conditions
+        return rep
 
 
 class SalesOrderSerializer(serializers.ModelSerializer):
