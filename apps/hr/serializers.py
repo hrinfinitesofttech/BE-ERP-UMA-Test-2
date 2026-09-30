@@ -360,6 +360,41 @@ class HolidaySerializer(serializers.ModelSerializer):
         model = Holiday
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'holidayName' in data:
+            ret['holiday_name'] = data['holidayName']
+        if 'holidayDate' in data:
+            ret['holiday_date'] = data['holidayDate']
+        if 'holidayType' in data:
+            ret['holiday_type'] = data['holidayType']
+        if 'applicableDepartments' in data:
+            ret['applicable_departments'] = data['applicableDepartments']
+        if 'isOptional' in data:
+            ret['is_optional'] = data['isOptional']
+        if 'financialYear' in data:
+            ret['financial_year'] = data['financialYear']
+        return ret
+
+    def validate(self, data):
+        holiday_name = (data.get('holiday_name') or '').strip()
+        if not holiday_name and not self.instance:
+            raise serializers.ValidationError({"holiday_name": "Please enter the holiday name."})
+
+        holiday_date = data.get('holiday_date')
+        if not holiday_date and not self.instance:
+            raise serializers.ValidationError({"holiday_date": "Please select the holiday date."})
+
+        # Check duplicate holiday on the same date
+        if holiday_date:
+            qs = Holiday.objects.filter(holiday_date=holiday_date)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({"holiday_date": "A holiday already exists on this date."})
+
+        return data
+
 
 class EmployeeAppraisalSerializer(serializers.ModelSerializer):
     appraisalNumber = serializers.CharField(source='appraisal_number', required=False)
