@@ -224,50 +224,46 @@ class ExhibitionSerializer(serializers.ModelSerializer):
 
 
 class QuotationSerializer(serializers.ModelSerializer):
+    quotationNumber = serializers.CharField(source='quotation_number', required=False)
+    currentRevision = serializers.CharField(source='current_revision', required=False)
+    validUntil = serializers.CharField(source='valid_until', required=False, allow_blank=True)
+    customerId = serializers.CharField(source='customer_id', required=False)
+    customerName = serializers.CharField(source='customer_name', required=False)
+    contactPerson = serializers.CharField(source='contact_person', required=False, allow_blank=True)
+    contactMobile = serializers.CharField(source='contact_mobile', required=False, allow_blank=True)
+    contactEmail = serializers.CharField(source='contact_email', required=False, allow_blank=True)
+    enquiryId = serializers.CharField(source='enquiry_id', required=False, allow_blank=True, allow_null=True)
+    opportunityId = serializers.CharField(source='opportunity_id', required=False, allow_blank=True, allow_null=True)
+    salesPersonId = serializers.CharField(source='sales_person_id', required=False, allow_blank=True)
+    salesPersonName = serializers.CharField(source='sales_person_name', required=False, allow_blank=True)
+
     class Meta:
         model = Quotation
-        fields = [
-            'id',
-            'quotation_number',
-            'current_revision',
-            'date',
-            'valid_until',
-            'customer_id',
-            'customer_name',
-            'contact_person',
-            'contact_mobile',
-            'contact_email',
-            'enquiry_id',
-            'opportunity_id',
-            'sales_person_id',
-            'sales_person_name',
-            'revisions',
-            'notes',
-        ]
+        fields = '__all__'
 
 
 class CustomerPOSerializer(serializers.ModelSerializer):
+    poNumber = serializers.CharField(source='po_number', required=False)
+    internalCpoNo = serializers.CharField(source='internal_cpo_no', required=False, allow_blank=True)
+    customerId = serializers.CharField(source='customer_id', required=False)
+    customerName = serializers.CharField(source='customer_name', required=False)
+    quotationId = serializers.CharField(source='quotation_id', required=False, allow_blank=True, allow_null=True)
+    quotationNumber = serializers.CharField(source='quotation_number', required=False, allow_blank=True)
+    poDate = serializers.CharField(source='po_date', required=False)
+    receivedDate = serializers.CharField(source='received_date', required=False, allow_blank=True)
+    deliveryDate = serializers.CharField(source='delivery_date', required=False, allow_blank=True)
+    poAmount = serializers.FloatField(source='po_value', required=False)
+    poValue = serializers.FloatField(source='po_value', required=False)
+    scopeOfWork = serializers.CharField(source='scope_of_work', required=False, allow_blank=True)
+    paymentTerms = serializers.CharField(source='payment_terms', required=False, allow_blank=True)
+    poDocumentUrl = serializers.CharField(source='po_document_url', required=False, allow_blank=True)
+    convertedSoId = serializers.CharField(source='converted_so_id', required=False, allow_blank=True, allow_null=True)
+    salesOrderId = serializers.CharField(source='converted_so_id', required=False, allow_blank=True, allow_null=True)
+    specialConditions = serializers.CharField(source='special_conditions', required=False, allow_blank=True)
+
     class Meta:
         model = CustomerPO
-        fields = [
-            'id',
-            'po_number',
-            'internal_cpo_no',
-            'customer_id',
-            'customer_name',
-            'quotation_id',
-            'quotation_number',
-            'po_date',
-            'received_date',
-            'delivery_date',
-            'po_value',
-            'scope_of_work',
-            'payment_terms',
-            'po_document_url',
-            'status',
-            'converted_so_id',
-            'special_conditions',
-        ]
+        fields = '__all__'
 
 
 class SalesOrderSerializer(serializers.ModelSerializer):
