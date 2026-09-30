@@ -137,11 +137,39 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 
 
 class ProductionOrderViewSet(viewsets.ModelViewSet):
-    queryset = ProductionOrder.objects.all()
+    queryset = ProductionOrder.objects.all().order_by('-created_at')
     serializer_class = ProductionOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['production_order_number', 'job_number', 'work_order_number']
     filterset_fields = ['status', 'work_order_id']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        po_num = data.get('production_order_number') or data.get('productionOrderNumber')
+        if not po_num:
+            count = ProductionOrder.objects.count() + 1
+            po_num = f"PO-PROD-{datetime.now().year}-{count:03d}"
+        
+        data['id'] = data.get('id') or po_num
+        data['production_order_number'] = po_num
+        data['work_order_id'] = data.get('work_order_id') or data.get('workOrderId', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['product_name'] = data.get('product_name') or data.get('productName', 'Manufactured Component')
+        data['quantity'] = data.get('quantity') or 1
+        data['bom_revision'] = data.get('bom_revision') or data.get('bomRevision', 'REV-01')
+        data['design_revision'] = data.get('design_revision') or data.get('designRevision', 'REV-01')
+        data['planned_start_date'] = data.get('planned_start_date') or data.get('plannedStartDate')
+        data['planned_end_date'] = data.get('planned_end_date') or data.get('plannedEndDate')
+        data['production_manager'] = data.get('production_manager') or data.get('productionManager', 'Production Head')
+        data['status'] = data.get('status', 'In Progress')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
