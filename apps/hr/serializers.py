@@ -14,11 +14,28 @@ class DesignationSerializer(serializers.ModelSerializer):
         model = Designation
         fields = '__all__'
 
+    def validate_designation_name(self, value):
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Designation title cannot be blank.")
+        if len(str(value).strip()) < 2:
+            raise serializers.ValidationError("Designation title must be at least 2 characters.")
+        return str(value).strip()
+
+    def validate_department(self, value):
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Department is required.")
+        return str(value).strip()
+
 
 class EmployeeDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmployeeDocument
         fields = '__all__'
+
+    def validate_document_number(self, value):
+        if not value or not str(value).strip():
+            raise serializers.ValidationError("Document number cannot be blank.")
+        return str(value).strip().replace(' ', '')
 
 
 class ShiftMasterSerializer(serializers.ModelSerializer):
