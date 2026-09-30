@@ -348,9 +348,29 @@ class DesignRevisionLogViewSet(viewsets.ModelViewSet):
 
 
 class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
-    queryset = TechnicalDocumentItem.objects.all().order_by('-created_date')
+    queryset = TechnicalDocumentItem.objects.all().order_by('-created_at')
     serializer_class = TechnicalDocumentItemSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"TDOC-{TechnicalDocumentItem.objects.count() + 1:04d}"
+        if not data.get('doc_number') and not data.get('docNumber'):
+            data['doc_number'] = data['id']
+        if not data.get('upload_date') and not data.get('uploadDate'):
+            data['upload_date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('created_date') and not data.get('createdDate'):
+            data['created_date'] = datetime.now().strftime('%Y-%m-%d')
+        if 'documentName' in data and not data.get('document_name'):
+            data['document_name'] = data['documentName']
+        if not data.get('title') and data.get('document_name'):
+            data['title'] = data['document_name']
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class DesignTaskViewSet(viewsets.ModelViewSet):

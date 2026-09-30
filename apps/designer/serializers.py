@@ -231,15 +231,59 @@ class DesignRevisionLogSerializer(serializers.ModelSerializer):
 class TechnicalDocumentItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = TechnicalDocumentItem
-        fields = [
-            'id',
-            'design_job_id',
-            'doc_number',
-            'title',
-            'category',
-            'file_url',
-            'created_date',
-        ]
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'docNumber' in data and 'doc_number' not in data:
+            data['doc_number'] = data.pop('docNumber')
+        if 'documentName' in data and 'document_name' not in data:
+            data['document_name'] = data.pop('documentName')
+            if 'title' not in data or not data['title']:
+                data['title'] = data['document_name']
+        if 'title' in data and ('document_name' not in data or not data['document_name']):
+            data['document_name'] = data['title']
+        if 'uploadedBy' in data and 'uploaded_by' not in data:
+            data['uploaded_by'] = data.pop('uploadedBy')
+        if 'uploadDate' in data and 'upload_date' not in data:
+            data['upload_date'] = data.pop('uploadDate')
+        if 'accessPermission' in data and 'access_permission' not in data:
+            data['access_permission'] = data.pop('accessPermission')
+        if 'fileSize' in data and 'file_size' not in data:
+            data['file_size'] = data.pop('fileSize')
+        if 'fileUrl' in data and 'file_url' not in data:
+            data['file_url'] = data.pop('fileUrl')
+        if 'createdDate' in data and 'created_date' not in data:
+            data['created_date'] = data.pop('createdDate')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        doc_name = ret.get('document_name') or ret.get('title') or ret.get('doc_number') or ''
+        return {
+            'id': ret.get('id'),
+            'designJobId': ret.get('design_job_id', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'docNumber': ret.get('doc_number', ret.get('id')),
+            'documentName': doc_name,
+            'title': doc_name,
+            'category': ret.get('category', 'Calculation'),
+            'version': ret.get('version', 'v1.0'),
+            'revision': ret.get('revision', 'REV-00'),
+            'uploadedBy': ret.get('uploaded_by', 'Dharmesh Joshi'),
+            'uploadDate': ret.get('upload_date') or ret.get('created_date') or '',
+            'accessPermission': ret.get('access_permission', 'public'),
+            'fileSize': ret.get('file_size', '5.2 MB'),
+            'fileUrl': ret.get('file_url', '#'),
+            'createdAt': ret.get('created_at', ''),
+        }
 
 
 class DesignJobSerializer(serializers.ModelSerializer):

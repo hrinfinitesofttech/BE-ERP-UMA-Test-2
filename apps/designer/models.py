@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class DesignJob(models.Model):
@@ -140,15 +141,26 @@ class DesignRevisionLog(models.Model):
 
 class TechnicalDocumentItem(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
-    design_job_id = models.CharField(max_length=64)
-    doc_number = models.CharField(max_length=64)
-    title = models.CharField(max_length=200)
-    category = models.CharField(max_length=50) # e.g. 'Calculations', 'Manual', 'DQ/IQ/OQ'
-    file_url = models.CharField(max_length=255, blank=True, default='')
-    created_date = models.CharField(max_length=50)
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    doc_number = models.CharField(max_length=64, blank=True, default='')
+    title = models.CharField(max_length=200, blank=True, default='')
+    document_name = models.CharField(max_length=200, blank=True, default='')
+    category = models.CharField(max_length=50, blank=True, default='Calculation')
+    version = models.CharField(max_length=30, blank=True, default='v1.0')
+    revision = models.CharField(max_length=30, blank=True, default='REV-00')
+    uploaded_by = models.CharField(max_length=150, blank=True, default='Dharmesh Joshi')
+    upload_date = models.CharField(max_length=50, blank=True, default='')
+    access_permission = models.CharField(max_length=50, blank=True, default='public')
+    file_size = models.CharField(max_length=50, blank=True, default='5.2 MB')
+    file_url = models.CharField(max_length=255, blank=True, default='#')
+    created_date = models.CharField(max_length=50, blank=True, default='')
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.doc_number} - {self.title}"
+        return f"{self.id} - {self.document_name or self.title}"
 
 
 class DesignTask(models.Model):
