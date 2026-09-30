@@ -206,9 +206,42 @@ class EmployeeOnboardingSerializer(serializers.ModelSerializer):
 
 
 class EmployeeTransferSerializer(serializers.ModelSerializer):
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    effectiveDate = serializers.DateField(source='effective_date', required=False)
+    fromDepartment = serializers.CharField(source='from_department', required=False, allow_blank=True)
+    toDepartment = serializers.CharField(source='to_department', required=False)
+    fromDesignation = serializers.CharField(source='from_designation', required=False, allow_blank=True)
+    toDesignation = serializers.CharField(source='to_designation', required=False, allow_blank=True)
+    fromLocation = serializers.CharField(source='from_location', required=False, allow_blank=True)
+    toLocation = serializers.CharField(source='to_location', required=False, allow_blank=True)
+    approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
+
     class Meta:
         model = EmployeeTransfer
         fields = '__all__'
+
+    def validate(self, data):
+        employee_id = data.get('employee_id')
+        if not employee_id and not self.instance:
+            raise serializers.ValidationError({"employee_id": "Please select the employee."})
+        
+        from_dept = data.get('from_department', '') or ''
+        to_dept = data.get('to_department', '') or ''
+        
+        if not to_dept and not self.instance:
+            raise serializers.ValidationError({"to_department": "Please select the new department."})
+        
+        if to_dept and from_dept and to_dept.strip().lower() == from_dept.strip().lower():
+            raise serializers.ValidationError({"to_department": "The new department cannot be the same as the current department."})
+        
+        effective_date = data.get('effective_date')
+        if effective_date:
+            from datetime import date
+            if effective_date < date.today():
+                raise serializers.ValidationError({"effective_date": "The transfer effective date cannot be in the past."})
+        
+        return data
 
 
 class EmployeePromotionSerializer(serializers.ModelSerializer):
