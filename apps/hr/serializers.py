@@ -245,15 +245,75 @@ class EmployeeTransferSerializer(serializers.ModelSerializer):
 
 
 class EmployeePromotionSerializer(serializers.ModelSerializer):
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    effectiveDate = serializers.DateField(source='effective_date', required=False)
+    oldDesignation = serializers.CharField(source='old_designation', required=False, allow_blank=True)
+    newDesignation = serializers.CharField(source='new_designation', required=False)
+    oldGrade = serializers.CharField(source='old_grade', required=False, allow_blank=True)
+    newGrade = serializers.CharField(source='new_grade', required=False, allow_blank=True)
+    oldCTC = serializers.DecimalField(source='old_ctc', max_digits=14, decimal_places=2, required=False)
+    newCTC = serializers.DecimalField(source='new_ctc', max_digits=14, decimal_places=2, required=False)
+    incrementPercentage = serializers.DecimalField(source='increment_percentage', max_digits=6, decimal_places=2, required=False)
+    approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
+
     class Meta:
         model = EmployeePromotion
         fields = '__all__'
 
+    def validate(self, data):
+        employee_id = data.get('employee_id')
+        if not employee_id and not self.instance:
+            raise serializers.ValidationError({"employee_id": "Please select the employee."})
+        
+        effective_date = data.get('effective_date')
+        if not effective_date and not self.instance:
+            raise serializers.ValidationError({"effective_date": "Please select the effective date."})
+
+        new_ctc = data.get('new_ctc')
+        if new_ctc is not None and new_ctc <= 0:
+            raise serializers.ValidationError({"new_ctc": "Please enter the increment amount. Amount must be greater than zero."})
+
+        return data
+
 
 class EmployeeExitSerializer(serializers.ModelSerializer):
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    resignationDate = serializers.DateField(source='resignation_date', required=False)
+    lastWorkingDate = serializers.DateField(source='last_working_date', required=False)
+    noticePeriodDays = serializers.IntegerField(source='notice_period_days', required=False)
+    exitInterviewNotes = serializers.CharField(source='exit_interview_notes', required=False, allow_blank=True)
+    departmentClearance = serializers.BooleanField(source='department_clearance', required=False)
+    assetReturnClearance = serializers.BooleanField(source='asset_return_clearance', required=False)
+    hrClearance = serializers.BooleanField(source='hr_clearance', required=False)
+    accountsClearance = serializers.BooleanField(source='accounts_clearance', required=False)
+
     class Meta:
         model = EmployeeExit
         fields = '__all__'
+
+    def validate(self, data):
+        employee_id = data.get('employee_id')
+        if not employee_id and not self.instance:
+            raise serializers.ValidationError({"employee_id": "Please select the employee."})
+        
+        res_date = data.get('resignation_date')
+        if not res_date and not self.instance:
+            raise serializers.ValidationError({"resignation_date": "Please select the resignation date."})
+
+        lwd = data.get('last_working_date')
+        if not lwd and not self.instance:
+            raise serializers.ValidationError({"last_working_date": "Please select the last working day."})
+
+        if res_date and lwd and lwd < res_date:
+            raise serializers.ValidationError({"last_working_date": "The last working day cannot be earlier than the resignation date."})
+
+        reason = data.get('reason', '')
+        if not reason and not self.instance:
+            raise serializers.ValidationError({"reason": "Please enter the reason for leaving."})
+
+        return data
 
 
 class HolidaySerializer(serializers.ModelSerializer):
