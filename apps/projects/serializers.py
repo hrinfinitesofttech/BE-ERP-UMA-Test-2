@@ -105,15 +105,37 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
 class DepartmentAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DepartmentAssignment
-        fields = [
-            'id',
-            'project_id',
-            'department',
-            'lead_person_id',
-            'lead_person_name',
-            'status',
-            'notes',
-        ]
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = {}
+        proj = data.get('projectId') or data.get('project_id') or 'PRJ'
+        dept = data.get('department') or 'DEPT'
+        ret['id'] = data.get('id') or f"DA-{proj}-{dept}"
+        ret['project_id'] = data.get('project_id') or data.get('projectId') or ''
+        ret['department'] = data.get('department') or ''
+        ret['lead_person_id'] = data.get('lead_person_id') or data.get('leadPersonId') or data.get('managerId') or ''
+        ret['lead_person_name'] = data.get('lead_person_name') or data.get('leadPersonName') or data.get('manager') or data.get('assignedEmployee') or ''
+        ret['status'] = data.get('status') or 'in_progress'
+        ret['notes'] = data.get('notes') or data.get('responsibility') or data.get('remarks') or ''
+        return ret
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['id'] = instance.id
+        rep['projectId'] = instance.project_id
+        rep['projectNumber'] = instance.project_id
+        rep['jobNumber'] = instance.project_id
+        rep['department'] = instance.department
+        rep['manager'] = instance.lead_person_name or 'Unassigned'
+        rep['assignedEmployee'] = instance.lead_person_name or 'Unassigned'
+        rep['responsibility'] = instance.notes
+        rep['startDate'] = ''
+        rep['dueDate'] = ''
+        rep['status'] = instance.status or 'in_progress'
+        rep['priority'] = 'high'
+        rep['remarks'] = instance.notes
+        return rep
 
 
 class ProjectIssueSerializer(serializers.ModelSerializer):
