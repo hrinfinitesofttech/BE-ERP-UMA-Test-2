@@ -1,5 +1,15 @@
 from django.contrib import admin
-from .models import Supplier, SupplierContact, PurchaseRequisition, RequestForQuotation, SupplierQuotation, QuotationComparison, PurchaseOrder, PurchaseReturn
+from .models import (
+    Supplier,
+    SupplierContact,
+    PurchaseRequisition,
+    RequestForQuotation,
+    SupplierQuotation,
+    QuotationComparison,
+    PurchaseOrder,
+    PurchaseReturn,
+    MaterialRequirement,
+)
 
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
@@ -48,3 +58,10 @@ class PurchaseReturnAdmin(admin.ModelAdmin):
     list_display = ('id', 'return_number', 'po_id', 'po_number', 'grn_id', 'grn_number')
     search_fields = ('id', 'return_number', 'po_id', 'po_number')
     list_filter = ('status', 'created_at')
+
+@admin.register(MaterialRequirement)
+class MaterialRequirementAdmin(admin.ModelAdmin):
+    list_display = ('id', 'item_name', 'job_id', 'required_quantity', 'available_stock', 'shortage_quantity', 'status')
+    search_fields = ('id', 'item_name', 'part_number', 'job_id', 'bom_id')
+    list_filter = ('status', 'category', 'procurement_status', 'created_at')
+

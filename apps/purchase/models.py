@@ -167,3 +167,38 @@ class PurchaseReturn(models.Model):
 
     def __str__(self):
         return f"{self.return_number} to {self.supplier_name}"
+
+
+class MaterialRequirement(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    job_id = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    customer_name = models.CharField(max_length=200, blank=True, default='')
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
+    bom_id = models.CharField(max_length=64, blank=True, default='')
+    bom_number = models.CharField(max_length=64, blank=True, default='')
+    bom_revision = models.CharField(max_length=30, default='REV-01')
+    part_number = models.CharField(max_length=100, blank=True, default='')
+    item_code = models.CharField(max_length=100, blank=True, default='')
+    item_name = models.CharField(max_length=200)
+    material_name = models.CharField(max_length=200, blank=True, default='')
+    specification = models.TextField(blank=True, default='')
+    category = models.CharField(max_length=100, default='Raw Material')
+    required_quantity = models.FloatField(default=0)
+    unit_of_measure = models.CharField(max_length=30, default='NOS')
+    available_stock = models.FloatField(default=0)
+    reserved_stock = models.FloatField(default=0)
+    on_order_quantity = models.FloatField(default=0)
+    shortage_quantity = models.FloatField(default=0)
+    required_by_date = models.CharField(max_length=50, blank=True, default='')
+    procurement_type = models.CharField(max_length=50, default='Purchase')
+    procurement_status = models.CharField(max_length=50, default='Pending')
+    drawing_number = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=50, default='shortage')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.item_name} ({self.job_id}) - Shortage: {self.shortage_quantity}"
+

@@ -12,6 +12,7 @@ from .models import (
     QuotationComparison,
     PurchaseOrder,
     PurchaseReturn,
+    MaterialRequirement,
 )
 from .serializers import (
     SupplierSerializer,
@@ -22,7 +23,23 @@ from .serializers import (
     QuotationComparisonSerializer,
     PurchaseOrderSerializer,
     PurchaseReturnSerializer,
+    MaterialRequirementSerializer,
 )
+
+
+class MaterialRequirementViewSet(viewsets.ModelViewSet):
+    queryset = MaterialRequirement.objects.all().order_by('-created_at')
+    serializer_class = MaterialRequirementSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = f"MRP-REQ-{MaterialRequirement.objects.count() + 1:05d}"
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
@@ -43,7 +60,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         pr_num = data.get('prNumber') or data.get('pr_number') or f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
         data['id'] = data.get('id') or pr_num
         data['pr_number'] = pr_num
@@ -89,11 +106,33 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
     serializer_class = RequestForQuotationSerializer
     permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            rfq_num = data.get('rfqNumber') or data.get('rfq_number') or f"RFQ-2026-{RequestForQuotation.objects.count() + 1:04d}"
+            data['id'] = rfq_num
+            data['rfq_number'] = rfq_num
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class SupplierQuotationViewSet(viewsets.ModelViewSet):
     queryset = SupplierQuotation.objects.all().order_by('-date')
     serializer_class = SupplierQuotationSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            sq_num = data.get('quotationNumber') or data.get('quotation_number') or f"SQ-2026-{SupplierQuotation.objects.count() + 1:04d}"
+            data['id'] = sq_num
+            data['quotation_number'] = sq_num
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class QuotationComparisonViewSet(viewsets.ModelViewSet):

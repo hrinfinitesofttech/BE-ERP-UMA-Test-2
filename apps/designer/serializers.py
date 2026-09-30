@@ -23,38 +23,134 @@ class DesignTaskSerializer(serializers.ModelSerializer):
         model = DesignTask
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'taskName' in data and 'task_name' not in data:
+            data['task_name'] = data.pop('taskName')
+        if 'customerName' in data and 'customer_name' not in data:
+            data['customer_name'] = data.pop('customerName')
+        if 'machineName' in data and 'machine_name' not in data:
+            data['machine_name'] = data.pop('machineName')
+        if 'startDate' in data and 'start_date' not in data:
+            data['start_date'] = data.pop('startDate')
+        if 'targetDate' in data and 'target_date' not in data:
+            data['target_date'] = data.pop('targetDate')
+        if 'dueDate' in data and 'due_date' not in data:
+            data['due_date'] = data.pop('dueDate')
+        if 'estimatedHours' in data and 'estimated_hours' not in data:
+            data['estimated_hours'] = data.pop('estimatedHours')
+        if 'actualHours' in data and 'actual_hours' not in data:
+            data['actual_hours'] = data.pop('actualHours')
+        if 'progressPercent' in data and 'progress_percent' not in data:
+            data['progress_percent'] = data.pop('progressPercent')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            'id': ret.get('id'),
+            'designJobId': ret.get('design_job_id', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'taskName': ret.get('task_name', ''),
+            'customerName': ret.get('customer_name', ''),
+            'machineName': ret.get('machine_name', ''),
+            'designer': ret.get('designer', 'Dharmesh Joshi'),
+            'startDate': ret.get('start_date', ''),
+            'targetDate': ret.get('target_date', ''),
+            'dueDate': ret.get('due_date', ''),
+            'priority': ret.get('priority', 'high'),
+            'estimatedHours': ret.get('estimated_hours', 16),
+            'actualHours': ret.get('actual_hours', 0),
+            'progressPercent': ret.get('progress_percent', 0),
+            'status': ret.get('status', 'pending'),
+            'remarks': ret.get('remarks', ''),
+            'createdAt': ret.get('created_at', ''),
+            'updatedAt': ret.get('updated_at', ''),
+        }
+
 
 class CustomerRequirementSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerRequirement
-        fields = [
-            'id',
-            'design_job_id',
-            'project_id',
-            'job_number',
-            'customer_name',
-            'contact_person',
-            'contact_mobile',
-            'machine_name',
-            'machine_type',
-            'model',
-            'quantity',
-            'capacity',
-            'application',
-            'production_requirement',
-            'dimensions',
-            'material',
-            'power_requirement',
-            'speed',
-            'output',
-            'automation_level',
-            'control_system',
-            'safety_requirements',
-            'special_requirements',
-            'customer_drawing_url',
-            'customer_notes',
-            'designer_notes',
-        ]
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'customerName' in data and 'customer_name' not in data:
+            data['customer_name'] = data.pop('customerName')
+        if 'contactPerson' in data and 'contact_person' not in data:
+            data['contact_person'] = data.pop('contactPerson')
+        if 'contactMobile' in data and 'contact_mobile' not in data:
+            data['contact_mobile'] = data.pop('contactMobile')
+        if 'machineName' in data and 'machine_name' not in data:
+            data['machine_name'] = data.pop('machineName')
+        if 'machineType' in data and 'machine_type' not in data:
+            data['machine_type'] = data.pop('machineType')
+        if 'powerRequirement' in data and 'power_requirement' not in data:
+            data['power_requirement'] = data.pop('powerRequirement')
+        if 'productionRequirement' in data and 'production_requirement' not in data:
+            data['production_requirement'] = data.pop('productionRequirement')
+        if 'automationLevel' in data and 'automation_level' not in data:
+            data['automation_level'] = data.pop('automationLevel')
+        if 'controlSystem' in data and 'control_system' not in data:
+            data['control_system'] = data.pop('controlSystem')
+        if 'safetyRequirements' in data and 'safety_requirements' not in data:
+            data['safety_requirements'] = data.pop('safetyRequirements')
+        if 'specialRequirements' in data and 'special_requirements' not in data:
+            data['special_requirements'] = data.pop('specialRequirements')
+        if 'customerDrawingUrl' in data and 'customer_drawing_url' not in data:
+            data['customer_drawing_url'] = data.pop('customerDrawingUrl')
+        if 'customerNotes' in data and 'customer_notes' not in data:
+            data['customer_notes'] = data.pop('customerNotes')
+        if 'designerNotes' in data and 'designer_notes' not in data:
+            data['designer_notes'] = data.pop('designerNotes')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            'id': ret.get('id'),
+            'designJobId': ret.get('design_job_id', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'customerName': ret.get('customer_name', ''),
+            'contactPerson': ret.get('contact_person', ''),
+            'contactMobile': ret.get('contact_mobile', ''),
+            'machineName': ret.get('machine_name', ''),
+            'machineType': ret.get('machine_type', ''),
+            'model': ret.get('model', ''),
+            'quantity': ret.get('quantity', 1),
+            'capacity': ret.get('capacity', ''),
+            'application': ret.get('application', ''),
+            'productionRequirement': ret.get('production_requirement', ''),
+            'dimensions': ret.get('dimensions', ''),
+            'material': ret.get('material', ''),
+            'powerRequirement': ret.get('power_requirement', ''),
+            'speed': ret.get('speed', ''),
+            'output': ret.get('output', ''),
+            'automationLevel': ret.get('automation_level', ''),
+            'controlSystem': ret.get('control_system', ''),
+            'safetyRequirements': ret.get('safety_requirements', ''),
+            'specialRequirements': ret.get('special_requirements', ''),
+            'customerDrawingUrl': ret.get('customer_drawing_url', ''),
+            'customerNotes': ret.get('customer_notes', ''),
+            'designerNotes': ret.get('designer_notes', ''),
+            'status': 'approved',
+            'createdAt': ret.get('created_at', ''),
+        }
 
 
 class Drawing2DSerializer(serializers.ModelSerializer):

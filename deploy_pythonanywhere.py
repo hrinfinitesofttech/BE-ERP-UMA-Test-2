@@ -11,7 +11,8 @@ LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 
 EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea'}
-EXCLUDE_EXTS = {'.pyc', '.log'}
+EXCLUDE_EXTS = {'.pyc', '.log', '.sqlite3'}
+EXCLUDE_FILES = {'db.sqlite3', 'db.sqlite3-journal'}
 
 def upload_with_retry(session, url, content, headers, max_retries=5):
     for attempt in range(max_retries):
@@ -63,7 +64,7 @@ def deploy():
     for root, dirs, files in os.walk(LOCAL_DIR):
         dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
         for file in files:
-            if any(file.endswith(ext) for ext in EXCLUDE_EXTS):
+            if file in EXCLUDE_FILES or any(file.endswith(ext) for ext in EXCLUDE_EXTS):
                 continue
             local_path = os.path.join(root, file)
             rel_path = os.path.relpath(local_path, LOCAL_DIR).replace('\\', '/')

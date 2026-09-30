@@ -50,6 +50,8 @@ from apps.designer.views import (
     BOMHeaderViewSet,
     DesignRevisionLogViewSet,
     TechnicalDocumentItemViewSet,
+    DesignTaskViewSet,
+    AssemblyDrawingViewSet,
 )
 from apps.purchase.views import (
     SupplierViewSet,
@@ -60,6 +62,7 @@ from apps.purchase.views import (
     QuotationComparisonViewSet,
     PurchaseOrderViewSet,
     PurchaseReturnViewSet,
+    MaterialRequirementViewSet,
 )
 from apps.store.views import (
     ItemCategoryViewSet,
@@ -187,15 +190,18 @@ api_router.register(r'project-costs', ProjectCostViewSet, basename='project-cost
 
 # Design & Engineering
 api_router.register(r'design-jobs', DesignJobViewSet, basename='design-job')
+api_router.register(r'design-tasks', DesignTaskViewSet, basename='design-task')
 api_router.register(r'design-requirements', CustomerRequirementViewSet, basename='design-requirement')
 api_router.register(r'customer-requirements', CustomerRequirementViewSet, basename='customer-requirement')
 api_router.register(r'drawings-2d', Drawing2DViewSet, basename='drawing-2d')
 api_router.register(r'models-3d', Design3DModelViewSet, basename='model-3d')
+api_router.register(r'assembly-drawings', AssemblyDrawingViewSet, basename='assembly-drawing')
 api_router.register(r'boms', BOMHeaderViewSet, basename='bom')
 api_router.register(r'design-revisions', DesignRevisionLogViewSet, basename='design-revision')
 api_router.register(r'technical-documents', TechnicalDocumentItemViewSet, basename='technical-document')
 
 # Purchase & Procurement
+api_router.register(r'material-requirements', MaterialRequirementViewSet, basename='material-requirement')
 api_router.register(r'suppliers', SupplierViewSet, basename='supplier')
 api_router.register(r'supplier-contacts', SupplierContactViewSet, basename='supplier-contact')
 api_router.register(r'purchase-requisitions', PurchaseRequisitionViewSet, basename='purchase-requisition')
