@@ -40,6 +40,7 @@ from apps.projects.views import (
     ProjectDelayViewSet,
     CustomerChangeRequestViewSet,
     ProjectCostViewSet,
+    ProjectDocumentViewSet,
 )
 from apps.designer.views import (
     DesignJobViewSet,
@@ -179,6 +180,8 @@ api_router.register(r'project-tasks', ProjectTaskViewSet, basename='project-task
 api_router.register(r'project-issues', ProjectIssueViewSet, basename='project-issue')
 api_router.register(r'project-delays', ProjectDelayViewSet, basename='project-delay')
 api_router.register(r'change-requests', CustomerChangeRequestViewSet, basename='change-request')
+api_router.register(r'project-documents', ProjectDocumentViewSet, basename='project-document')
+api_router.register(r'documents', ProjectDocumentViewSet, basename='document')
 api_router.register(r'department-assignments', DepartmentAssignmentViewSet, basename='department-assignment')
 api_router.register(r'project-costs', ProjectCostViewSet, basename='project-cost')
 
