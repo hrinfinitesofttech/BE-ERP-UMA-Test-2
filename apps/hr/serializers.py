@@ -83,9 +83,76 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
 
 
 class LeaveRequestSerializer(serializers.ModelSerializer):
+    leaveNumber = serializers.CharField(source='leave_number', required=False)
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    leaveTypeId = serializers.CharField(source='leave_type_id', required=False, allow_blank=True)
+    leaveName = serializers.CharField(source='leave_name', required=False)
+    fromDate = serializers.DateField(source='from_date', required=False)
+    toDate = serializers.DateField(source='to_date', required=False)
+    numberOfDays = serializers.DecimalField(source='number_of_days', max_digits=5, decimal_places=1, required=False, default=1.0)
+    isHalfDay = serializers.BooleanField(source='is_half_day', required=False, default=False)
+    attachmentUrl = serializers.CharField(source='attachment_url', required=False, allow_blank=True)
+    reportingManager = serializers.CharField(source='reporting_manager', required=False, allow_blank=True)
+    appliedDate = serializers.DateField(source='applied_date', required=False)
+    approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
+    approvedDate = serializers.DateField(source='approved_date', required=False, allow_null=True)
+
     class Meta:
         model = LeaveRequest
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'leaveNumber' in data:
+            ret['leave_number'] = data['leaveNumber']
+        if 'employeeId' in data:
+            ret['employee_id'] = data['employeeId']
+        if 'employeeName' in data:
+            ret['employee_name'] = data['employeeName']
+        if 'leaveTypeId' in data:
+            ret['leave_type_id'] = data['leaveTypeId']
+        if 'leaveName' in data:
+            ret['leave_name'] = data['leaveName']
+        if 'fromDate' in data:
+            ret['from_date'] = data['fromDate']
+        if 'toDate' in data:
+            ret['to_date'] = data['toDate']
+        if 'numberOfDays' in data:
+            ret['number_of_days'] = data['numberOfDays']
+        if 'isHalfDay' in data:
+            ret['is_half_day'] = data['isHalfDay']
+        if 'attachmentUrl' in data:
+            ret['attachment_url'] = data['attachmentUrl']
+        if 'reportingManager' in data:
+            ret['reporting_manager'] = data['reportingManager']
+        if 'appliedDate' in data:
+            ret['applied_date'] = data['appliedDate']
+        return ret
+
+    def validate(self, data):
+        if not data.get('employee_id') and not self.instance:
+            raise serializers.ValidationError({"employee_id": "Please select the employee."})
+
+        if not data.get('leave_name') and not data.get('leave_type_id') and not self.instance:
+            raise serializers.ValidationError({"leave_type_id": "Please select the leave type."})
+
+        from_date = data.get('from_date')
+        if not from_date and not self.instance:
+            raise serializers.ValidationError({"from_date": "Please select the start date."})
+
+        to_date = data.get('to_date')
+        if not to_date and not self.instance:
+            raise serializers.ValidationError({"to_date": "Please select the end date."})
+
+        if from_date and to_date and to_date < from_date:
+            raise serializers.ValidationError({"to_date": "The end date cannot be earlier than the start date."})
+
+        reason = (data.get('reason') or '').strip()
+        if not reason and not self.instance:
+            raise serializers.ValidationError({"reason": "Please enter the reason for leave."})
+
+        return data
 
 
 class WFHRequestSerializer(serializers.ModelSerializer):
