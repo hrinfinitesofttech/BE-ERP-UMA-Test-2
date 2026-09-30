@@ -39,9 +39,41 @@ class EmployeeDocumentSerializer(serializers.ModelSerializer):
 
 
 class ShiftMasterSerializer(serializers.ModelSerializer):
+    shiftName = serializers.CharField(source='shift_name', required=False)
+    startTime = serializers.CharField(source='start_time', required=False)
+    endTime = serializers.CharField(source='end_time', required=False)
+    gracePeriodMinutes = serializers.IntegerField(source='grace_period_minutes', required=False)
+    breakDurationMinutes = serializers.IntegerField(source='break_duration_minutes', required=False)
+    lateRule = serializers.CharField(source='late_rule', required=False, allow_blank=True)
+    earlyCheckoutRule = serializers.CharField(source='early_checkout_rule', required=False, allow_blank=True)
+    overtimeRule = serializers.CharField(source='overtime_rule', required=False, allow_blank=True)
+    weeklyOff = serializers.CharField(source='weekly_off', required=False, allow_blank=True)
+
     class Meta:
         model = ShiftMaster
         fields = '__all__'
+
+    def validate(self, data):
+        shift_name = data.get('shift_name', '')
+        if not shift_name and not self.instance:
+            raise serializers.ValidationError({"shift_name": "Please enter the shift name."})
+
+        if shift_name:
+            qs = ShiftMaster.objects.filter(shift_name__iexact=shift_name.strip())
+            if self.instance:
+                qs = qs.exclude(id=self.instance.id)
+            if qs.exists():
+                raise serializers.ValidationError({"shift_name": "A shift with this name already exists."})
+
+        start_time = data.get('start_time', '')
+        if not start_time and not self.instance:
+            raise serializers.ValidationError({"start_time": "Please select the start time."})
+
+        end_time = data.get('end_time', '')
+        if not end_time and not self.instance:
+            raise serializers.ValidationError({"end_time": "Please select the end time."})
+
+        return data
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
