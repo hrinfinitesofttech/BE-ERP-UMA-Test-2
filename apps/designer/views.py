@@ -376,6 +376,25 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             bom.release_date = datetime.now().strftime('%Y-%m-%d')
             bom.save()
 
+        # Also advance linked ProjectJobMaster & Planning Stage in Project module
+        try:
+            from apps.projects.models import ProjectJobMaster, ProjectPlanningStage
+            proj_job = ProjectJobMaster.objects.filter(
+                models.Q(job_number=job.job_number) | models.Q(project_number=job.project_id) | models.Q(id=job.project_id)
+            ).first()
+            if proj_job:
+                if proj_job.current_status in ['planning', 'design', 'pending']:
+                    proj_job.current_status = 'in_progress'
+                proj_job.stage = 'Manufacturing & Store Readiness'
+                proj_job.progress_percent = max(proj_job.progress_percent, 35)
+                proj_job.save()
+
+            ProjectPlanningStage.objects.filter(
+                models.Q(project_id=job.project_id) & (models.Q(name__icontains='Design') | models.Q(department__icontains='Design'))
+            ).update(status='completed', progress=100, completed_by=releaser, completed_at=date_str)
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'message': f'Design Job {job.design_job_number} officially released to Production!',
