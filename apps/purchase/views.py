@@ -54,10 +54,21 @@ class SupplierContactViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 
+from django.db.models import Q
+from django.http import Http404
+
+
 class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     queryset = PurchaseRequisition.objects.all().order_by('-request_date')
     serializer_class = PurchaseRequisitionSerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        obj = PurchaseRequisition.objects.filter(Q(id=pk) | Q(pr_number=pk)).first()
+        if not obj:
+            raise Http404(f"Purchase Requisition '{pk}' not found")
+        return obj
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -83,6 +94,53 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
             }
         )
         return Response(PurchaseRequisitionSerializer(pr_obj).data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        pr = self.get_object()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if 'status' in data:
+            pr.status = data['status']
+        if 'approvedBy' in data or 'approved_by' in data:
+            pr.approved_by = data.get('approvedBy') or data.get('approved_by')
+        if 'remarks' in data:
+            pr.remarks = data['remarks']
+        if 'priority' in data:
+            pr.priority = data['priority']
+        if 'items' in data and isinstance(data['items'], list):
+            pr.items = data['items']
+        if 'estimatedCost' in data or 'total_estimated_cost' in data:
+            pr.total_estimated_cost = float(data.get('estimatedCost') or data.get('total_estimated_cost') or pr.total_estimated_cost)
+        pr.save()
+        return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='approve')
+    def approve(self, request, pk=None):
+        pr = self.get_object()
+        pr.status = 'Approved'
+        pr.approved_by = request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin'
+        pr.save()
+        return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='reject')
+    def reject(self, request, pk=None):
+        pr = self.get_object()
+        pr.status = 'Rejected'
+        if 'remarks' in request.data:
+            pr.remarks = request.data['remarks']
+        pr.save()
+        return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='disapprove')
+    def disapprove(self, request, pk=None):
+        pr = self.get_object()
+        pr.status = 'Rejected'
+        if 'remarks' in request.data:
+            pr.remarks = request.data['remarks']
+        pr.save()
+        return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='convert-to-rfq')
     def convert_to_rfq(self, request, pk=None):
@@ -149,6 +207,13 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseOrderSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        obj = PurchaseOrder.objects.filter(Q(id=pk) | Q(po_number=pk)).first()
+        if not obj:
+            raise Http404(f"Purchase Order '{pk}' not found")
+        return obj
+
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         if not data.get('id') or not data.get('po_number') and not data.get('poNumber'):
@@ -160,12 +225,19 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], url_path='approve')
+    @action(detail=True, methods=['post', 'patch'], url_path='approve')
     def approve_po(self, request, pk=None):
         po = self.get_object()
         po.status = 'approved'
         po.approved_by = request.data.get('approvedBy') or request.data.get('approved_by', 'Rajesh Patel')
         po.save(update_fields=['status', 'approved_by'])
+        return Response(PurchaseOrderSerializer(po).data)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='reject')
+    def reject_po(self, request, pk=None):
+        po = self.get_object()
+        po.status = 'rejected'
+        po.save(update_fields=['status'])
         return Response(PurchaseOrderSerializer(po).data)
 
 

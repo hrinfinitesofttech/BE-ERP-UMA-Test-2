@@ -119,17 +119,32 @@ class DesignJobViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='release-to-production')
     def release_to_production(self, request, pk=None):
-        job = self.get_object()
+        job = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+        if not job:
+            try:
+                job = self.get_object()
+            except Exception:
+                job = None
+
+        if not job:
+            return Response({'error': f'Design job {pk} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        releaser = request.data.get('releasedBy') or 'Super Admin'
+        remarks = request.data.get('remarks') or f"Released to shop floor by {releaser} on {datetime.now().strftime('%m/%d/%Y')}"
         job.status = 'released_to_production'
-        job.remarks = request.data.get('remarks') or f"Released to shop floor by {request.data.get('releasedBy', 'Super Admin')}"
-        job.save(update_fields=['status', 'remarks'])
+        job.remarks = remarks
+        job.save()
 
         # Also release linked BOM
-        bom = BOMHeader.objects.filter(design_job_id=job.id).first() or BOMHeader.objects.filter(job_number=job.job_number).first()
+        bom = BOMHeader.objects.filter(
+            models.Q(design_job_id=job.id) | models.Q(design_job_id=job.design_job_number) | models.Q(job_number=job.job_number)
+        ).first()
         if bom:
             bom.status = 'released'
             bom.release_date = datetime.now().strftime('%Y-%m-%d')
-            bom.save(update_fields=['status', 'release_date'])
+            bom.save()
 
         return Response({
             'success': True,
@@ -140,15 +155,29 @@ class DesignJobViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='revoke-release')
     def revoke_release(self, request, pk=None):
-        job = self.get_object()
-        job.status = 'in_progress'
-        job.remarks = request.data.get('remarks') or f"Release revoked / disapproved by {request.data.get('revokedBy', 'Super Admin')}"
-        job.save(update_fields=['status', 'remarks'])
+        job = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+        if not job:
+            try:
+                job = self.get_object()
+            except Exception:
+                job = None
 
-        bom = BOMHeader.objects.filter(design_job_id=job.id).first() or BOMHeader.objects.filter(job_number=job.job_number).first()
+        if not job:
+            return Response({'error': f'Design job {pk} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        revoker = request.data.get('revokedBy') or 'Super Admin'
+        job.status = 'in_progress'
+        job.remarks = request.data.get('remarks') or f"Release revoked / disapproved by {revoker} on {datetime.now().strftime('%m/%d/%Y')}"
+        job.save()
+
+        bom = BOMHeader.objects.filter(
+            models.Q(design_job_id=job.id) | models.Q(design_job_id=job.design_job_number) | models.Q(job_number=job.job_number)
+        ).first()
         if bom:
             bom.status = 'draft'
-            bom.save(update_fields=['status'])
+            bom.save()
 
         return Response({
             'success': True,
