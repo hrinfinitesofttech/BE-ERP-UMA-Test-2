@@ -202,6 +202,8 @@ class SupplierQuotationSerializer(serializers.ModelSerializer):
             data['date'] = data.pop('quotationDate')
         if 'validityDate' in data and 'valid_until' not in data:
             data['valid_until'] = data.pop('validityDate')
+        elif 'validUntil' in data and 'valid_until' not in data:
+            data['valid_until'] = data.pop('validUntil')
         if 'subTotal' in data and 'sub_total' not in data:
             data['sub_total'] = data.pop('subTotal')
         if 'taxTotal' in data and 'tax_amount' not in data:
