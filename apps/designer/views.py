@@ -26,6 +26,34 @@ from .serializers import (
     DesignTaskSerializer,
 )
 
+# Auto-migration / Schema ensure logic for production SQLite compatibility
+def _ensure_designer_schema():
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("PRAGMA table_info(designer_designjob);")
+            columns = {row[1]: row for row in cursor.fetchall()}
+            if columns:
+                if 'approval_notes' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN approval_notes text DEFAULT '';")
+                if 'approved_by' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN approved_by varchar(150) DEFAULT '';")
+                if 'approved_date' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN approved_date varchar(50) DEFAULT '';")
+                if 'disapproved_by' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN disapproved_by varchar(150) DEFAULT '';")
+                if 'disapproved_date' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN disapproved_date varchar(50) DEFAULT '';")
+                if 'rejection_reason' not in columns:
+                    cursor.execute("ALTER TABLE designer_designjob ADD COLUMN rejection_reason text DEFAULT '';")
+    except Exception as err:
+        pass
+
+try:
+    _ensure_designer_schema()
+except Exception:
+    pass
+
 
 class AssemblyDrawingViewSet(viewsets.ModelViewSet):
     queryset = AssemblyDrawing.objects.all().order_by('-created_at')
