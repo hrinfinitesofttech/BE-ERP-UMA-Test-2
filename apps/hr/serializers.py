@@ -360,12 +360,22 @@ class EmployeeTransferSerializer(serializers.ModelSerializer):
         if to_dept and from_dept and to_dept.strip().lower() == from_dept.strip().lower():
             raise serializers.ValidationError({"to_department": "The new department cannot be the same as the current department."})
         
+        to_desg = data.get('to_designation', '') or ''
+        if not to_desg and not self.instance:
+            raise serializers.ValidationError({"to_designation": "Please select the new designation."})
+
         effective_date = data.get('effective_date')
-        if effective_date:
+        if not effective_date and not self.instance:
+            raise serializers.ValidationError({"effective_date": "Please select the transfer effective date."})
+        elif effective_date:
             from datetime import date
             if effective_date < date.today():
                 raise serializers.ValidationError({"effective_date": "The transfer effective date cannot be in the past."})
-        
+
+        reason = data.get('reason', '') or ''
+        if not reason and not self.instance:
+            raise serializers.ValidationError({"reason": "Please enter the transfer reason."})
+
         return data
 
 

@@ -168,14 +168,127 @@ class DesignJobViewSet(viewsets.ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
+    @action(detail=True, methods=['post', 'patch'], url_path='approve')
+    def approve(self, request, pk=None):
+        job = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+
+        approver = request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin User'
+        notes = request.data.get('approvalNotes') or request.data.get('approval_notes') or request.data.get('notes') or 'Approved after engineering verification.'
+        date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+        if not job:
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job = DesignJob.objects.create(
+                id=job_id,
+                design_job_number=request.data.get('designJobNumber') or job_id,
+                project_id=request.data.get('projectId') or 'PRJ-2026-0001',
+                job_number=request.data.get('jobNumber') or '',
+                customer_id=request.data.get('customerId') or 'CUST-001',
+                customer_name=request.data.get('customerName') or 'Customer',
+                product_name=request.data.get('productName') or 'Custom Equipment',
+                delivery_date=request.data.get('deliveryDate') or datetime.now().strftime('%Y-%m-%d'),
+                created_date=request.data.get('createdDate') or datetime.now().strftime('%Y-%m-%d'),
+                assigned_designer=request.data.get('assignedDesigner') or 'Dharmesh Joshi',
+                design_manager=request.data.get('designManager') or 'Ketan Patel',
+                active_revision=request.data.get('activeRevision') or 'REV-00',
+                status='approved',
+                approved_by=approver,
+                approved_date=date_str,
+                approval_notes=notes,
+                remarks=f"Approved by {approver} on {date_str}. {notes}",
+            )
+        else:
+            job.status = 'approved'
+            job.approved_by = approver
+            job.approved_date = date_str
+            job.approval_notes = notes
+            job.disapproved_by = ''
+            job.disapproved_date = ''
+            job.rejection_reason = ''
+            job.remarks = f"Approved by {approver} on {date_str}. {notes}"
+            job.save()
+
+        # Update linked BOM status to approved
+        bom = BOMHeader.objects.filter(
+            models.Q(design_job_id=job.id) | models.Q(design_job_id=job.design_job_number) | models.Q(job_number=job.job_number)
+        ).first()
+        if bom:
+            bom.status = 'approved'
+            bom.approved_by = approver
+            bom.save()
+
+        return Response({
+            'success': True,
+            'message': f'Design Job {job.design_job_number} approved successfully by {approver}.',
+            'job': DesignJobSerializer(job).data,
+            'bom': BOMHeaderSerializer(bom).data if bom else None,
+        })
+
+    @action(detail=True, methods=['post', 'patch'], url_path='disapprove')
+    def disapprove(self, request, pk=None):
+        job = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+
+        disapprover = request.data.get('disapprovedBy') or request.data.get('disapproved_by') or 'Admin User'
+        reason = request.data.get('rejectionReason') or request.data.get('rejection_reason') or request.data.get('reason') or 'Design requires revision and engineering adjustments.'
+        date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+
+        if not job:
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job = DesignJob.objects.create(
+                id=job_id,
+                design_job_number=request.data.get('designJobNumber') or job_id,
+                project_id=request.data.get('projectId') or 'PRJ-2026-0001',
+                job_number=request.data.get('jobNumber') or '',
+                customer_id=request.data.get('customerId') or 'CUST-001',
+                customer_name=request.data.get('customerName') or 'Customer',
+                product_name=request.data.get('productName') or 'Custom Equipment',
+                delivery_date=request.data.get('deliveryDate') or datetime.now().strftime('%Y-%m-%d'),
+                created_date=request.data.get('createdDate') or datetime.now().strftime('%Y-%m-%d'),
+                assigned_designer=request.data.get('assignedDesigner') or 'Dharmesh Joshi',
+                design_manager=request.data.get('designManager') or 'Ketan Patel',
+                active_revision=request.data.get('activeRevision') or 'REV-00',
+                status='disapproved',
+                disapproved_by=disapprover,
+                disapproved_date=date_str,
+                rejection_reason=reason,
+                remarks=f"Disapproved by {disapprover} on {date_str}. Reason: {reason}",
+            )
+        else:
+            job.status = 'disapproved'
+            job.disapproved_by = disapprover
+            job.disapproved_date = date_str
+            job.rejection_reason = reason
+            job.remarks = f"Disapproved by {disapprover} on {date_str}. Reason: {reason}"
+            job.save()
+
+        # Update linked BOM status to draft / under_revision
+        bom = BOMHeader.objects.filter(
+            models.Q(design_job_id=job.id) | models.Q(design_job_id=job.design_job_number) | models.Q(job_number=job.job_number)
+        ).first()
+        if bom:
+            bom.status = 'draft'
+            bom.save()
+
+        return Response({
+            'success': True,
+            'message': f'Design Job {job.design_job_number} disapproved. Reason recorded: {reason}',
+            'job': DesignJobSerializer(job).data,
+            'bom': BOMHeaderSerializer(bom).data if bom else None,
+        })
+
     @action(detail=True, methods=['post', 'patch'], url_path='release-to-production')
     def release_to_production(self, request, pk=None):
         job = DesignJob.objects.filter(
             models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
         ).first()
 
-        releaser = request.data.get('releasedBy') or 'Super Admin'
-        remarks = request.data.get('remarks') or f"Released to shop floor by {releaser} on {datetime.now().strftime('%m/%d/%Y')}"
+        releaser = request.data.get('releasedBy') or request.data.get('released_by') or 'Super Admin'
+        date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+        remarks = request.data.get('remarks') or f"Released to shop floor by {releaser} on {date_str}"
 
         if not job:
             job_id = pk or request.data.get('designJobNumber') or request.data.get('design_job_number') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
@@ -193,10 +306,15 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 design_manager=request.data.get('designManager') or request.data.get('design_manager') or 'Ketan Patel',
                 active_revision=request.data.get('activeRevision') or request.data.get('active_revision') or 'REV-00',
                 status='released_to_production',
+                approved_by=job.approved_by if job and job.approved_by else releaser,
+                approved_date=job.approved_date if job and job.approved_date else date_str,
                 remarks=remarks,
             )
         else:
             job.status = 'released_to_production'
+            if not job.approved_by:
+                job.approved_by = releaser
+                job.approved_date = date_str
             job.remarks = remarks
             job.save()
 
@@ -223,7 +341,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         ).first()
 
         revoker = request.data.get('revokedBy') or 'Super Admin'
-        remarks = request.data.get('remarks') or f"Release disapproved / revoked by {revoker} on {datetime.now().strftime('%m/%d/%Y')}"
+        date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
+        remarks = request.data.get('remarks') or f"Status set to pending by {revoker} on {date_str}"
 
         if job:
             job.status = 'in_progress'
@@ -239,7 +358,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
 
         return Response({
             'success': True,
-            'message': f'Design Job {job.design_job_number if job else pk} release revoked / disapproved.',
+            'message': f'Design Job {job.design_job_number if job else pk} reset to review.',
             'job': DesignJobSerializer(job).data if job else None,
             'bom': BOMHeaderSerializer(bom).data if bom else None,
         })
