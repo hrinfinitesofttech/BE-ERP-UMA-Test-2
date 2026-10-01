@@ -330,6 +330,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 customer_id=request.data.get('customerId') or request.data.get('customer_id') or 'CUST-001',
                 customer_name=request.data.get('customerName') or request.data.get('customer_name') or 'Customer',
                 product_name=request.data.get('productName') or request.data.get('product_name') or 'Custom Equipment',
+                machine_type=request.data.get('machineType') or request.data.get('machine_type') or 'Process Equipment',
+                quantity=int(request.data.get('quantity') or 1),
                 delivery_date=request.data.get('deliveryDate') or request.data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d'),
                 created_date=request.data.get('createdDate') or request.data.get('created_date') or datetime.now().strftime('%Y-%m-%d'),
                 assigned_designer=request.data.get('assignedDesigner') or request.data.get('assigned_designer') or 'Dharmesh Joshi',
@@ -342,10 +344,27 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             )
         else:
             job.status = 'released_to_production'
-            if not job.approved_by:
-                job.approved_by = releaser
-                job.approved_date = date_str
+            job.approved_by = releaser
+            job.approved_date = date_str
             job.remarks = remarks
+            if request.data.get('customerName') or request.data.get('customer_name'):
+                job.customer_name = request.data.get('customerName') or request.data.get('customer_name')
+            if request.data.get('productName') or request.data.get('product_name'):
+                job.product_name = request.data.get('productName') or request.data.get('product_name')
+            if request.data.get('jobNumber') or request.data.get('job_number'):
+                job.job_number = request.data.get('jobNumber') or request.data.get('job_number')
+            if request.data.get('projectId') or request.data.get('project_id'):
+                job.project_id = request.data.get('projectId') or request.data.get('project_id')
+            if request.data.get('machineType') or request.data.get('machine_type'):
+                job.machine_type = request.data.get('machineType') or request.data.get('machine_type')
+            if request.data.get('assignedDesigner') or request.data.get('assigned_designer'):
+                job.assigned_designer = request.data.get('assignedDesigner') or request.data.get('assigned_designer')
+            if request.data.get('designManager') or request.data.get('design_manager'):
+                job.design_manager = request.data.get('designManager') or request.data.get('design_manager')
+            if request.data.get('activeRevision') or request.data.get('active_revision'):
+                job.active_revision = request.data.get('activeRevision') or request.data.get('active_revision')
+            if request.data.get('deliveryDate') or request.data.get('delivery_date'):
+                job.delivery_date = request.data.get('deliveryDate') or request.data.get('delivery_date')
             job.save()
 
         # Also release linked BOM
