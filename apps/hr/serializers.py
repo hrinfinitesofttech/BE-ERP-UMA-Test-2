@@ -316,6 +316,32 @@ class EmployeeTransferSerializer(serializers.ModelSerializer):
     toLocation = serializers.CharField(source='to_location', required=False, allow_blank=True)
     approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
 
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        if 'id' in data:
+            ret['id'] = data['id']
+        if 'employeeId' in data and 'employee_id' not in ret:
+            ret['employee_id'] = data['employeeId']
+        if 'employeeName' in data and 'employee_name' not in ret:
+            ret['employee_name'] = data['employeeName']
+        if 'effectiveDate' in data and 'effective_date' not in ret:
+            ret['effective_date'] = data['effectiveDate']
+        if 'fromDepartment' in data and 'from_department' not in ret:
+            ret['from_department'] = data['fromDepartment']
+        if 'toDepartment' in data and 'to_department' not in ret:
+            ret['to_department'] = data['toDepartment']
+        if 'fromDesignation' in data and 'from_designation' not in ret:
+            ret['from_designation'] = data['fromDesignation']
+        if 'toDesignation' in data and 'to_designation' not in ret:
+            ret['to_designation'] = data['toDesignation']
+        if 'fromLocation' in data and 'from_location' not in ret:
+            ret['from_location'] = data['fromLocation']
+        if 'toLocation' in data and 'to_location' not in ret:
+            ret['to_location'] = data['toLocation']
+        if 'approvedBy' in data and 'approved_by' not in ret:
+            ret['approved_by'] = data['approvedBy']
+        return ret
+
     class Meta:
         model = EmployeeTransfer
         fields = '__all__'

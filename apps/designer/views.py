@@ -117,25 +117,88 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['post'], url_path='release-to-production')
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        obj = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+        if not obj:
+            raise Http404(f"Design Job '{pk}' not found")
+        return obj
+
+    def update(self, request, *args, **kwargs):
+        pk = self.kwargs.get('pk')
+        job = DesignJob.objects.filter(
+            models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
+        ).first()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not job:
+            job_id = pk or data.get('designJobNumber') or data.get('design_job_number') or data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job = DesignJob.objects.create(
+                id=job_id,
+                design_job_number=data.get('designJobNumber') or data.get('design_job_number') or job_id,
+                project_id=data.get('projectId') or data.get('project_id') or 'PRJ-2026-0001',
+                job_number=data.get('jobNumber') or data.get('job_number') or '',
+                customer_id=data.get('customerId') or data.get('customer_id') or 'CUST-001',
+                customer_name=data.get('customerName') or data.get('customer_name') or 'Customer',
+                product_name=data.get('productName') or data.get('product_name') or 'Custom Equipment',
+                delivery_date=data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d'),
+                created_date=data.get('createdDate') or data.get('created_date') or datetime.now().strftime('%Y-%m-%d'),
+                assigned_designer=data.get('assignedDesigner') or data.get('assigned_designer') or 'Dharmesh Joshi',
+                design_manager=data.get('designManager') or data.get('design_manager') or 'Ketan Patel',
+                active_revision=data.get('activeRevision') or data.get('active_revision') or 'REV-00',
+                status=data.get('status', 'in_progress'),
+                remarks=data.get('remarks', ''),
+            )
+            return Response(DesignJobSerializer(job).data, status=status.HTTP_201_CREATED)
+
+        if 'status' in data:
+            job.status = data['status']
+        if 'remarks' in data:
+            job.remarks = data['remarks']
+        if 'assignedDesigner' in data or 'assigned_designer' in data:
+            job.assigned_designer = data.get('assignedDesigner') or data.get('assigned_designer')
+        if 'designManager' in data or 'design_manager' in data:
+            job.design_manager = data.get('designManager') or data.get('design_manager')
+        if 'activeRevision' in data or 'active_revision' in data:
+            job.active_revision = data.get('activeRevision') or data.get('active_revision')
+        job.save()
+        return Response(DesignJobSerializer(job).data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='release-to-production')
     def release_to_production(self, request, pk=None):
         job = DesignJob.objects.filter(
             models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
         ).first()
-        if not job:
-            try:
-                job = self.get_object()
-            except Exception:
-                job = None
-
-        if not job:
-            return Response({'error': f'Design job {pk} not found'}, status=status.HTTP_404_NOT_FOUND)
 
         releaser = request.data.get('releasedBy') or 'Super Admin'
         remarks = request.data.get('remarks') or f"Released to shop floor by {releaser} on {datetime.now().strftime('%m/%d/%Y')}"
-        job.status = 'released_to_production'
-        job.remarks = remarks
-        job.save()
+
+        if not job:
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('design_job_number') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job = DesignJob.objects.create(
+                id=job_id,
+                design_job_number=request.data.get('designJobNumber') or request.data.get('design_job_number') or job_id,
+                project_id=request.data.get('projectId') or request.data.get('project_id') or 'PRJ-2026-0001',
+                job_number=request.data.get('jobNumber') or request.data.get('job_number') or '',
+                customer_id=request.data.get('customerId') or request.data.get('customer_id') or 'CUST-001',
+                customer_name=request.data.get('customerName') or request.data.get('customer_name') or 'Customer',
+                product_name=request.data.get('productName') or request.data.get('product_name') or 'Custom Equipment',
+                delivery_date=request.data.get('deliveryDate') or request.data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d'),
+                created_date=request.data.get('createdDate') or request.data.get('created_date') or datetime.now().strftime('%Y-%m-%d'),
+                assigned_designer=request.data.get('assignedDesigner') or request.data.get('assigned_designer') or 'Dharmesh Joshi',
+                design_manager=request.data.get('designManager') or request.data.get('design_manager') or 'Ketan Patel',
+                active_revision=request.data.get('activeRevision') or request.data.get('active_revision') or 'REV-00',
+                status='released_to_production',
+                remarks=remarks,
+            )
+        else:
+            job.status = 'released_to_production'
+            job.remarks = remarks
+            job.save()
 
         # Also release linked BOM
         bom = BOMHeader.objects.filter(
@@ -153,36 +216,31 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             'bom': BOMHeaderSerializer(bom).data if bom else None,
         })
 
-    @action(detail=True, methods=['post'], url_path='revoke-release')
+    @action(detail=True, methods=['post', 'patch'], url_path='revoke-release')
     def revoke_release(self, request, pk=None):
         job = DesignJob.objects.filter(
             models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
         ).first()
-        if not job:
-            try:
-                job = self.get_object()
-            except Exception:
-                job = None
-
-        if not job:
-            return Response({'error': f'Design job {pk} not found'}, status=status.HTTP_404_NOT_FOUND)
 
         revoker = request.data.get('revokedBy') or 'Super Admin'
-        job.status = 'in_progress'
-        job.remarks = request.data.get('remarks') or f"Release revoked / disapproved by {revoker} on {datetime.now().strftime('%m/%d/%Y')}"
-        job.save()
+        remarks = request.data.get('remarks') or f"Release disapproved / revoked by {revoker} on {datetime.now().strftime('%m/%d/%Y')}"
+
+        if job:
+            job.status = 'in_progress'
+            job.remarks = remarks
+            job.save()
 
         bom = BOMHeader.objects.filter(
             models.Q(design_job_id=job.id) | models.Q(design_job_id=job.design_job_number) | models.Q(job_number=job.job_number)
-        ).first()
+        ).first() if job else None
         if bom:
             bom.status = 'draft'
             bom.save()
 
         return Response({
             'success': True,
-            'message': f'Design Job {job.design_job_number} release revoked / disapproved.',
-            'job': DesignJobSerializer(job).data,
+            'message': f'Design Job {job.design_job_number if job else pk} release revoked / disapproved.',
+            'job': DesignJobSerializer(job).data if job else None,
             'bom': BOMHeaderSerializer(bom).data if bom else None,
         })
 
