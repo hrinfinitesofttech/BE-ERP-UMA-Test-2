@@ -286,64 +286,6 @@ class SupplierSerializer(serializers.ModelSerializer):
         ]
 
 
-class PurchaseRequisitionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PurchaseRequisition
-        fields = [
-            'id',
-            'pr_number',
-            'project_id',
-            'job_code',
-            'requested_by',
-            'department',
-            'request_date',
-            'required_by_date',
-            'priority',
-            'status',
-            'items',
-            'total_estimated_cost',
-            'remarks',
-            'approved_by',
-        ]
-
-
-class RequestForQuotationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RequestForQuotation
-        fields = [
-            'id',
-            'rfq_number',
-            'pr_id',
-            'rfq_date',
-            'due_date',
-            'suppliers',
-            'items',
-            'status',
-            'terms_and_conditions',
-        ]
-
-
-class SupplierQuotationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SupplierQuotation
-        fields = [
-            'id',
-            'quotation_number',
-            'rfq_id',
-            'supplier_id',
-            'supplier_name',
-            'date',
-            'valid_until',
-            'items',
-            'sub_total',
-            'tax_amount',
-            'grand_total',
-            'delivery_lead_time',
-            'payment_terms',
-            'status',
-        ]
-
-
 class QuotationComparisonSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuotationComparison

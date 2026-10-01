@@ -61,25 +61,28 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        pr_num = data.get('prNumber') or data.get('pr_number') or f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
-        data['id'] = data.get('id') or pr_num
-        data['pr_number'] = pr_num
-        data['project_id'] = data.get('projectId') or data.get('project_id', '')
-        data['job_code'] = data.get('jobId') or data.get('jobNumber') or data.get('job_code', '')
-        data['requested_by'] = data.get('requestedBy') or data.get('requested_by') or 'Purchase Admin'
-        data['department'] = data.get('department') or 'Purchase / Planning'
-        data['request_date'] = data.get('requisitionDate') or data.get('prDate') or data.get('request_date') or datetime.now().strftime('%Y-%m-%d')
-        data['required_by_date'] = data.get('requiredByDate') or data.get('required_by_date') or '2026-12-31'
-        data['priority'] = data.get('priority') or 'High'
-        data['status'] = data.get('status') or 'Submitted'
-        data['items'] = data.get('items') or []
-        data['total_estimated_cost'] = float(data.get('estimatedCost') or data.get('total_estimated_cost') or 0)
-        data['remarks'] = data.get('remarks', '')
+        pr_num = data.get('prNumber') or data.get('pr_number') or data.get('id') or f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
+        pr_id = data.get('id') or pr_num
 
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        pr_obj, _ = PurchaseRequisition.objects.update_or_create(
+            id=pr_id,
+            defaults={
+                'pr_number': pr_num,
+                'project_id': data.get('projectId') or data.get('project_id', '') or 'PRJ-2026-0001',
+                'job_code': data.get('jobId') or data.get('jobNumber') or data.get('job_code', '') or 'JOB-2026-001',
+                'requested_by': data.get('requestedBy') or data.get('requested_by') or 'Purchase Admin',
+                'department': data.get('department') or 'Purchase / Planning',
+                'request_date': data.get('requisitionDate') or data.get('prDate') or data.get('request_date') or datetime.now().strftime('%Y-%m-%d'),
+                'required_by_date': data.get('requiredByDate') or data.get('required_by_date') or data.get('requiredDate') or '2026-12-31',
+                'priority': data.get('priority') or 'High',
+                'status': data.get('status') or 'Submitted',
+                'items': data.get('items') if isinstance(data.get('items'), list) else [],
+                'total_estimated_cost': float(data.get('estimatedCost') or data.get('total_estimated_cost') or 0),
+                'remarks': data.get('remarks', ''),
+                'approved_by': data.get('approvedBy') or data.get('approved_by'),
+            }
+        )
+        return Response(PurchaseRequisitionSerializer(pr_obj).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='convert-to-rfq')
     def convert_to_rfq(self, request, pk=None):

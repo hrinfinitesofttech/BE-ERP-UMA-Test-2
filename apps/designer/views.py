@@ -121,10 +121,11 @@ class DesignJobViewSet(viewsets.ModelViewSet):
     def release_to_production(self, request, pk=None):
         job = self.get_object()
         job.status = 'released_to_production'
-        job.save(update_fields=['status'])
+        job.remarks = request.data.get('remarks') or f"Released to shop floor by {request.data.get('releasedBy', 'Super Admin')}"
+        job.save(update_fields=['status', 'remarks'])
 
         # Also release linked BOM
-        bom = BOMHeader.objects.filter(design_job_id=job.id).first()
+        bom = BOMHeader.objects.filter(design_job_id=job.id).first() or BOMHeader.objects.filter(job_number=job.job_number).first()
         if bom:
             bom.status = 'released'
             bom.release_date = datetime.now().strftime('%Y-%m-%d')
@@ -133,6 +134,25 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         return Response({
             'success': True,
             'message': f'Design Job {job.design_job_number} officially released to Production!',
+            'job': DesignJobSerializer(job).data,
+            'bom': BOMHeaderSerializer(bom).data if bom else None,
+        })
+
+    @action(detail=True, methods=['post'], url_path='revoke-release')
+    def revoke_release(self, request, pk=None):
+        job = self.get_object()
+        job.status = 'in_progress'
+        job.remarks = request.data.get('remarks') or f"Release revoked / disapproved by {request.data.get('revokedBy', 'Super Admin')}"
+        job.save(update_fields=['status', 'remarks'])
+
+        bom = BOMHeader.objects.filter(design_job_id=job.id).first() or BOMHeader.objects.filter(job_number=job.job_number).first()
+        if bom:
+            bom.status = 'draft'
+            bom.save(update_fields=['status'])
+
+        return Response({
+            'success': True,
+            'message': f'Design Job {job.design_job_number} release revoked / disapproved.',
             'job': DesignJobSerializer(job).data,
             'bom': BOMHeaderSerializer(bom).data if bom else None,
         })
