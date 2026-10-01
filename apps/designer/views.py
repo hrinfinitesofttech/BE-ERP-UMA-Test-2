@@ -1,4 +1,6 @@
 from datetime import datetime
+from django.db import models, connection
+from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -334,8 +336,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 design_manager=request.data.get('designManager') or request.data.get('design_manager') or 'Ketan Patel',
                 active_revision=request.data.get('activeRevision') or request.data.get('active_revision') or 'REV-00',
                 status='released_to_production',
-                approved_by=job.approved_by if job and job.approved_by else releaser,
-                approved_date=job.approved_date if job and job.approved_date else date_str,
+                approved_by=releaser,
+                approved_date=date_str,
                 remarks=remarks,
             )
         else:
