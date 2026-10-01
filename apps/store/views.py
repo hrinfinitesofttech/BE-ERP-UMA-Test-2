@@ -335,33 +335,62 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
         issue = serializer.save()
 
         # Deduct from Stock Balance and log outward in Stock Ledger
-        for itm in (issue.items or []):
-            item_code = itm.get('itemCode') or itm.get('item_code')
-            qty = float(itm.get('issuedQty') or itm.get('issuedQuantity') or itm.get('quantity', 0))
-            rate = float(itm.get('unitPrice') or itm.get('unitRate') or itm.get('standardCost', 0))
+        raw_items = data.get('items') or getattr(issue, 'items', []) or []
+        if isinstance(raw_items, str):
+            try:
+                import json
+                raw_items = json.loads(raw_items)
+            except Exception:
+                raw_items = []
+        if not isinstance(raw_items, list):
+            raw_items = [raw_items]
 
-            bal = StockBalance.objects.filter(item_code=item_code).first()
+        for itm in raw_items:
+            if isinstance(itm, str):
+                try:
+                    import json
+                    itm = json.loads(itm)
+                except Exception:
+                    itm = {}
+            if not isinstance(itm, dict):
+                continue
+            item_code = itm.get('itemCode') or itm.get('item_code') or itm.get('itemId') or itm.get('item_id') or ''
+            item_code_clean = str(item_code).strip()
+            qty = float(itm.get('issuedQty') or itm.get('issued_qty') or itm.get('issuedQuantity') or itm.get('issued_quantity') or itm.get('quantity') or 0)
+            rate = float(itm.get('unitPrice') or itm.get('unit_price') or itm.get('unitRate') or itm.get('unit_rate') or itm.get('standardCost') or itm.get('standard_cost') or 0)
+
+            bal = StockBalance.objects.filter(item_code__iexact=item_code_clean).first() or \
+                  StockBalance.objects.filter(id__iexact=item_code_clean).first() or \
+                  StockBalance.objects.filter(item_id__iexact=item_code_clean).first()
+            if not bal and item_code_clean:
+                bal = StockBalance.objects.filter(item_code__icontains=item_code_clean).first() or \
+                      StockBalance.objects.filter(id__icontains=item_code_clean).first()
             if bal:
-                bal.quantity = max(0, bal.quantity - qty)
-                bal.available_quantity = max(0, bal.available_quantity - qty)
-                bal.total_value = bal.quantity * (bal.unit_rate or rate)
+                bal.quantity = max(0.0, float(bal.quantity) - qty)
+                if getattr(bal, 'reserved_quantity', 0) > 0:
+                    bal.reserved_quantity = max(0.0, float(bal.reserved_quantity) - qty)
+                bal.available_quantity = max(0.0, float(bal.quantity) - float(bal.reserved_quantity or 0))
+                bal.total_value = float(bal.quantity) * float(bal.unit_rate or rate)
                 bal.save()
 
-                StockLedgerEntry.objects.create(
-                    id=f"ledg-{issue.issue_number.lower()}-{item_code.lower()}",
-                    date=issue.issue_date,
-                    transaction_type='Material Issue',
-                    reference_number=issue.issue_number,
-                    item_id=bal.item_id,
-                    item_code=item_code,
-                    item_name=bal.item_name,
-                    warehouse_id=issue.warehouse_id,
-                    inward_quantity=0,
-                    outward_quantity=qty,
-                    closing_quantity=bal.quantity,
-                    unit_rate=bal.unit_rate or rate,
-                    total_amount=qty * (bal.unit_rate or rate),
-                    performed_by=issue.issued_to,
+                ledg_id = f"ledg-{str(issue.issue_number).lower()}-{item_code_clean.lower()}"
+                StockLedgerEntry.objects.update_or_create(
+                    id=ledg_id,
+                    defaults={
+                        'date': issue.issue_date,
+                        'transaction_type': 'Material Issue',
+                        'reference_number': issue.issue_number,
+                        'item_id': bal.item_id,
+                        'item_code': bal.item_code or item_code_clean,
+                        'item_name': bal.item_name,
+                        'warehouse_id': issue.warehouse_id,
+                        'inward_quantity': 0,
+                        'outward_quantity': qty,
+                        'closing_quantity': bal.quantity,
+                        'unit_rate': bal.unit_rate or rate,
+                        'total_amount': qty * (bal.unit_rate or rate),
+                        'performed_by': issue.issued_to,
+                    }
                 )
 
         return Response(MaterialIssueSerializer(issue).data, status=status.HTTP_201_CREATED)

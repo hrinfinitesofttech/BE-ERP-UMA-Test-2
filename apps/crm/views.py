@@ -344,11 +344,21 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('quotation_number') and not data.get('quotationNumber'):
+        quo_num = data.get('quotation_number') or data.get('quotationNumber') or data.get('id')
+        if not quo_num:
             num_setting = NumberingSetting.objects.filter(doc_type='quotation').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"QT-2026-{Quotation.objects.count() + 1:04d}"
-            data['id'] = code
-            data['quotation_number'] = code
+            quo_num = num_setting.generate_next_number(increment=True) if num_setting else f"QT-2026-{Quotation.objects.count() + 1:04d}"
+        data['id'] = data.get('id') or quo_num
+        data['quotation_number'] = quo_num
+
+        # If ID already exists in DB, perform partial update
+        existing = Quotation.objects.filter(id=data.get('id')).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -372,9 +382,13 @@ class QuotationViewSet(viewsets.ModelViewSet):
         revision_no = request.data.get('revisionNumber') or request.data.get('revision_number')
         new_status = request.data.get('status')
         revisions = list(quotation.revisions or [])
+        matched = False
         for r in revisions:
-            if (r.get('revisionNumber') == revision_no) or (r.get('revision_number') == revision_no):
+            if not revision_no or (r.get('revisionNumber') == revision_no) or (r.get('revision_number') == revision_no):
                 r['status'] = new_status
+                matched = True
+        if not matched and revisions:
+            revisions[-1]['status'] = new_status
         quotation.revisions = revisions
         quotation.save(update_fields=['revisions'])
         return Response(QuotationSerializer(quotation).data)
@@ -387,15 +401,28 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id'):
+        po_num = data.get('po_number') or data.get('poNumber')
+        cpo_id = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo')
+        if not cpo_id:
             num_setting = NumberingSetting.objects.filter(doc_type='customer_po').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"CPO-2026-{CustomerPO.objects.count() + 1:04d}"
-            data['id'] = code
-            data['internal_cpo_no'] = code
+            cpo_id = num_setting.generate_next_number(increment=True) if num_setting else f"CPO-2026-{CustomerPO.objects.count() + 1:04d}"
+        data['id'] = cpo_id
+        data['internal_cpo_no'] = cpo_id
+        if po_num:
+            data['po_number'] = po_num
         if not data.get('received_date') and not data.get('receivedDate'):
             data['received_date'] = data.get('po_date') or data.get('poDate') or datetime.now().strftime('%Y-%m-%d')
         if not data.get('po_value') and not data.get('poValue'):
-            data['po_value'] = data.get('poAmount') or 0
+            data['po_value'] = data.get('poAmount') or data.get('po_amount') or 0
+
+        # If ID already exists in DB, perform partial update
+        existing = CustomerPO.objects.filter(id=data.get('id')).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -406,6 +433,8 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
         po = self.get_object()
         so_num = NumberingSetting.objects.filter(doc_type='sales_order').first()
         so_code = so_num.generate_next_number(increment=True) if so_num else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
+        while SalesOrder.objects.filter(id=so_code).exists():
+            so_code = f"SO-2026-{SalesOrder.objects.count() + 1:04d}-{datetime.now().strftime('%M%S')}"
 
         # Fetch quotation details if linked
         quotation = Quotation.objects.filter(id=po.quotation_id).first() if po.quotation_id else None
@@ -418,6 +447,19 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
             total_amount = latest_rev.get('subTotal', po.po_value)
             tax_amount = latest_rev.get('taxAmount', 0)
 
+        if not items:
+            items = [
+                {
+                    'id': 'so-item-1',
+                    'productName': f"Custom Equipment (Ref {po.quotation_number or po.po_number})",
+                    'specification': po.scope_of_work or 'As per approved Quotation & Customer PO specs',
+                    'quantity': 1,
+                    'unit': 'Set',
+                    'rate': po.po_value,
+                    'amount': po.po_value,
+                }
+            ]
+
         so = SalesOrder.objects.create(
             id=so_code,
             sales_order_number=so_code,
@@ -428,7 +470,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
             customer_id=po.customer_id,
             customer_name=po.customer_name,
             order_date=datetime.now().strftime('%Y-%m-%d'),
-            target_delivery_date=po.delivery_date,
+            target_delivery_date=po.delivery_date or datetime.now().strftime('%Y-%m-%d'),
             items=items,
             total_amount=total_amount,
             tax_amount=tax_amount,
@@ -451,11 +493,12 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('sales_order_number') and not data.get('salesOrderNumber'):
+        so_num = data.get('sales_order_number') or data.get('salesOrderNumber') or data.get('id')
+        if not so_num:
             num_setting = NumberingSetting.objects.filter(doc_type='sales_order').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
-            data['id'] = code
-            data['sales_order_number'] = code
+            so_num = num_setting.generate_next_number(increment=True) if num_setting else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
+        data['id'] = data.get('id') or so_num
+        data['sales_order_number'] = so_num
         if not data.get('target_delivery_date') and not data.get('targetDeliveryDate'):
             data['target_delivery_date'] = data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d')
         if not data.get('order_date') and not data.get('orderDate'):
@@ -464,6 +507,15 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             data['grand_total'] = data.get('orderValue') or data.get('totalAmount') or 0
         if not data.get('total_amount') and not data.get('totalAmount'):
             data['total_amount'] = data.get('orderValue') or data.get('grandTotal') or 0
+
+        # If ID already exists in DB, perform partial update
+        existing = SalesOrder.objects.filter(id=data.get('id')).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -474,3 +526,4 @@ class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.all().order_by('-created_at')
     serializer_class = ActivitySerializer
     permission_classes = [permissions.AllowAny]
+

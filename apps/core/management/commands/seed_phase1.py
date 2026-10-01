@@ -279,11 +279,11 @@ class Command(BaseCommand):
         ]
 
         for item in emp_data:
-            user = User.objects.filter(id=item['id']).first()
-            if not user:
-                user = User(id=item['id'])
-            for key, val in item.items():
-                setattr(user, key, val)
+            User.objects.filter(username=item['username']).exclude(id=item['id']).delete()
+            user, _ = User.objects.update_or_create(
+                id=item['id'],
+                defaults={**item}
+            )
             user.set_password('admin123')
             user.save()
         self.stdout.write(self.style.SUCCESS(f'[OK] {len(emp_data)} Users/Employees seeded with default password: admin123.'))

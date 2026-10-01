@@ -1,3 +1,4 @@
+from datetime import datetime
 from rest_framework import serializers
 from .models import (
     Lead,
@@ -242,23 +243,36 @@ class QuotationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def to_internal_value(self, data):
+        inst = getattr(self, 'instance', None)
         ret = {}
-        ret['id'] = data.get('id') or data.get('quotationNumber') or data.get('quotation_number')
-        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or ret.get('id')
-        ret['current_revision'] = data.get('current_revision') or data.get('currentRevision') or 'Rev-00'
-        ret['date'] = data.get('date') or datetime.now().strftime('%Y-%m-%d')
-        ret['valid_until'] = data.get('valid_until') or data.get('validUntil') or ''
-        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or ''
-        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or ''
-        ret['contact_person'] = data.get('contact_person') or data.get('contactPerson') or ''
-        ret['contact_mobile'] = data.get('contact_mobile') or data.get('contactMobile') or ''
-        ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or ''
-        ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or None
-        ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or None
-        ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or ''
-        ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or ''
-        ret['revisions'] = data.get('revisions') or []
-        ret['notes'] = data.get('notes') or ''
+        ret['id'] = data.get('id') or data.get('quotationNumber') or data.get('quotation_number') or (inst.id if inst else None)
+        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or ret.get('id') or (inst.quotation_number if inst else '')
+        ret['current_revision'] = data.get('current_revision') or data.get('currentRevision') or (inst.current_revision if inst else 'Rev-00')
+        ret['date'] = data.get('date') or (inst.date if inst else datetime.now().strftime('%Y-%m-%d'))
+        ret['valid_until'] = data.get('valid_until') or data.get('validUntil') or (inst.valid_until if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
+        ret['contact_person'] = data.get('contact_person') or data.get('contactPerson') or (inst.contact_person if inst else '')
+        ret['contact_mobile'] = data.get('contact_mobile') or data.get('contactMobile') or (inst.contact_mobile if inst else '')
+        ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or (inst.contact_email if inst else '')
+        ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or (inst.enquiry_id if inst else None)
+        ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or (inst.opportunity_id if inst else None)
+        ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or (inst.sales_person_id if inst else '')
+        ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or (inst.sales_person_name if inst else '')
+        
+        if 'revisions' in data:
+            ret['revisions'] = data.get('revisions') or []
+        elif inst:
+            ret['revisions'] = inst.revisions or []
+        else:
+            ret['revisions'] = []
+
+        if 'notes' in data:
+            ret['notes'] = data.get('notes') or ''
+        elif inst:
+            ret['notes'] = inst.notes or ''
+        else:
+            ret['notes'] = ''
         return ret
 
     def to_representation(self, instance):
@@ -316,24 +330,33 @@ class CustomerPOSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def to_internal_value(self, data):
+        inst = getattr(self, 'instance', None)
         ret = {}
-        ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber')
-        ret['po_number'] = data.get('po_number') or data.get('poNumber') or ret.get('id') or 'PO/GEN'
-        ret['internal_cpo_no'] = data.get('internal_cpo_no') or data.get('internalCpoNo') or ''
-        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or ''
-        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or ''
-        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or None
-        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or ''
-        ret['po_date'] = data.get('po_date') or data.get('poDate') or datetime.now().strftime('%Y-%m-%d')
-        ret['received_date'] = data.get('received_date') or data.get('receivedDate') or ret['po_date']
-        ret['delivery_date'] = data.get('delivery_date') or data.get('deliveryDate') or ''
-        ret['po_value'] = float(data.get('po_value') or data.get('poValue') or data.get('poAmount') or data.get('po_amount') or 0)
-        ret['scope_of_work'] = data.get('scope_of_work') or data.get('scopeOfWork') or data.get('remarks') or ''
-        ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or ''
-        ret['po_document_url'] = data.get('po_document_url') or data.get('poDocumentUrl') or ''
-        ret['status'] = data.get('status') or 'received'
-        ret['converted_so_id'] = data.get('converted_so_id') or data.get('convertedSoId') or data.get('salesOrderId') or None
-        ret['special_conditions'] = data.get('special_conditions') or data.get('specialConditions') or ''
+        ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber') or (inst.id if inst else None)
+        ret['po_number'] = data.get('po_number') or data.get('poNumber') or (inst.po_number if inst else ret.get('id') or 'PO/GEN')
+        ret['internal_cpo_no'] = data.get('internal_cpo_no') or data.get('internalCpoNo') or (inst.internal_cpo_no if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
+        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or (inst.quotation_id if inst else None)
+        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or (inst.quotation_number if inst else '')
+        ret['po_date'] = data.get('po_date') or data.get('poDate') or (inst.po_date if inst else datetime.now().strftime('%Y-%m-%d'))
+        ret['received_date'] = data.get('received_date') or data.get('receivedDate') or (inst.received_date if inst else ret['po_date'])
+        ret['delivery_date'] = data.get('delivery_date') or data.get('deliveryDate') or (inst.delivery_date if inst else '')
+        
+        po_val = data.get('po_value') if 'po_value' in data else (data.get('poValue') if 'poValue' in data else (data.get('poAmount') if 'poAmount' in data else (data.get('po_amount') if 'po_amount' in data else None)))
+        if po_val is not None:
+            ret['po_value'] = float(po_val)
+        elif inst:
+            ret['po_value'] = inst.po_value
+        else:
+            ret['po_value'] = 0.0
+
+        ret['scope_of_work'] = data.get('scope_of_work') or data.get('scopeOfWork') or data.get('remarks') or (inst.scope_of_work if inst else '')
+        ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or (inst.payment_terms if inst else '')
+        ret['po_document_url'] = data.get('po_document_url') or data.get('poDocumentUrl') or (inst.po_document_url if inst else '')
+        ret['status'] = data.get('status') or (inst.status if inst else 'received')
+        ret['converted_so_id'] = data.get('converted_so_id') or data.get('convertedSoId') or data.get('salesOrderId') or (inst.converted_so_id if inst else None)
+        ret['special_conditions'] = data.get('special_conditions') or data.get('specialConditions') or (inst.special_conditions if inst else '')
         return ret
 
     def to_representation(self, instance):
@@ -351,6 +374,7 @@ class CustomerPOSerializer(serializers.ModelSerializer):
         rep['poAmount'] = instance.po_value
         rep['poValue'] = instance.po_value
         rep['scopeOfWork'] = instance.scope_of_work
+        rep['remarks'] = instance.scope_of_work
         rep['paymentTerms'] = instance.payment_terms
         rep['poDocumentUrl'] = instance.po_document_url
         rep['status'] = instance.status
@@ -361,31 +385,111 @@ class CustomerPOSerializer(serializers.ModelSerializer):
 
 
 class SalesOrderSerializer(serializers.ModelSerializer):
+    salesOrderNumber = serializers.CharField(source='sales_order_number', required=False)
+    customerPoId = serializers.CharField(source='customer_po_id', required=False, allow_blank=True, allow_null=True)
+    customerPoNumber = serializers.CharField(source='customer_po_number', required=False, allow_blank=True)
+    quotationId = serializers.CharField(source='quotation_id', required=False, allow_blank=True, allow_null=True)
+    quotationNumber = serializers.CharField(source='quotation_number', required=False, allow_blank=True)
+    customerId = serializers.CharField(source='customer_id', required=False)
+    customerName = serializers.CharField(source='customer_name', required=False)
+    orderDate = serializers.CharField(source='order_date', required=False)
+    targetDeliveryDate = serializers.CharField(source='target_delivery_date', required=False, allow_blank=True)
+    deliveryDate = serializers.CharField(source='target_delivery_date', required=False, allow_blank=True)
+    totalAmount = serializers.FloatField(source='total_amount', required=False)
+    taxAmount = serializers.FloatField(source='tax_amount', required=False)
+    grandTotal = serializers.FloatField(source='grand_total', required=False)
+    orderValue = serializers.FloatField(source='grand_total', required=False)
+    paymentTerms = serializers.CharField(source='payment_terms', required=False, allow_blank=True)
+    billingAddress = serializers.CharField(source='billing_address', required=False, allow_blank=True)
+    shippingAddress = serializers.CharField(source='shipping_address', required=False, allow_blank=True)
+    projectId = serializers.CharField(source='project_id', required=False, allow_blank=True, allow_null=True)
+    createdBy = serializers.CharField(source='created_by', required=False, allow_blank=True)
+    approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
+
     class Meta:
         model = SalesOrder
-        fields = [
-            'id',
-            'sales_order_number',
-            'customer_po_id',
-            'customer_po_number',
-            'quotation_id',
-            'quotation_number',
-            'customer_id',
-            'customer_name',
-            'order_date',
-            'target_delivery_date',
-            'items',
-            'total_amount',
-            'tax_amount',
-            'grand_total',
-            'payment_terms',
-            'billing_address',
-            'shipping_address',
-            'status',
-            'project_id',
-            'created_by',
-            'approved_by',
-        ]
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        inst = getattr(self, 'instance', None)
+        ret = {}
+        ret['id'] = data.get('id') or data.get('salesOrderNumber') or data.get('sales_order_number') or (inst.id if inst else None)
+        ret['sales_order_number'] = data.get('sales_order_number') or data.get('salesOrderNumber') or ret.get('id') or (inst.sales_order_number if inst else 'SO-GEN')
+        ret['customer_po_id'] = data.get('customer_po_id') or data.get('customerPoId') or (inst.customer_po_id if inst else None)
+        ret['customer_po_number'] = data.get('customer_po_number') or data.get('customerPoNumber') or (inst.customer_po_number if inst else '')
+        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or (inst.quotation_id if inst else None)
+        ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or (inst.quotation_number if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
+        ret['order_date'] = data.get('order_date') or data.get('orderDate') or (inst.order_date if inst else datetime.now().strftime('%Y-%m-%d'))
+        ret['target_delivery_date'] = data.get('target_delivery_date') or data.get('targetDeliveryDate') or data.get('deliveryDate') or data.get('delivery_date') or (inst.target_delivery_date if inst else '')
+        
+        if 'items' in data:
+            ret['items'] = data.get('items') or []
+        elif inst:
+            ret['items'] = inst.items or []
+        else:
+            ret['items'] = []
+            
+        tot_val = data.get('total_amount') if 'total_amount' in data else (data.get('totalAmount') if 'totalAmount' in data else (data.get('orderValue') if 'orderValue' in data else None))
+        if tot_val is not None:
+            ret['total_amount'] = float(tot_val)
+        elif inst:
+            ret['total_amount'] = inst.total_amount
+        else:
+            ret['total_amount'] = 0.0
+
+        tax_val = data.get('tax_amount') if 'tax_amount' in data else (data.get('taxAmount') if 'taxAmount' in data else None)
+        if tax_val is not None:
+            ret['tax_amount'] = float(tax_val)
+        elif inst:
+            ret['tax_amount'] = inst.tax_amount
+        else:
+            ret['tax_amount'] = 0.0
+
+        gt_val = data.get('grand_total') if 'grand_total' in data else (data.get('grandTotal') if 'grandTotal' in data else (data.get('orderValue') if 'orderValue' in data else None))
+        if gt_val is not None:
+            ret['grand_total'] = float(gt_val)
+        elif inst:
+            ret['grand_total'] = inst.grand_total
+        else:
+            ret['grand_total'] = ret['total_amount']
+
+        ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or (inst.payment_terms if inst else '')
+        ret['billing_address'] = data.get('billing_address') or data.get('billingAddress') or (inst.billing_address if inst else '')
+        ret['shipping_address'] = data.get('shipping_address') or data.get('shippingAddress') or (inst.shipping_address if inst else '')
+        ret['status'] = data.get('status') or (inst.status if inst else 'confirmed')
+        ret['project_id'] = data.get('project_id') or data.get('projectId') or (inst.project_id if inst else None)
+        ret['created_by'] = data.get('created_by') or data.get('createdBy') or (inst.created_by if inst else '')
+        ret['approved_by'] = data.get('approved_by') or data.get('approvedBy') or (inst.approved_by if inst else '')
+        return ret
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['id'] = instance.id
+        rep['salesOrderNumber'] = instance.sales_order_number
+        rep['customerPoId'] = instance.customer_po_id
+        rep['customerPoNumber'] = instance.customer_po_number
+        rep['quotationId'] = instance.quotation_id
+        rep['quotationNumber'] = instance.quotation_number
+        rep['customerId'] = instance.customer_id
+        rep['customerName'] = instance.customer_name
+        rep['orderDate'] = instance.order_date
+        rep['targetDeliveryDate'] = instance.target_delivery_date
+        rep['deliveryDate'] = instance.target_delivery_date
+        rep['items'] = instance.items or []
+        rep['totalAmount'] = instance.total_amount
+        rep['taxAmount'] = instance.tax_amount
+        rep['grandTotal'] = instance.grand_total
+        rep['orderValue'] = instance.grand_total
+        rep['paymentTerms'] = instance.payment_terms
+        rep['billingAddress'] = instance.billing_address
+        rep['shippingAddress'] = instance.shipping_address
+        rep['status'] = instance.status
+        rep['projectId'] = instance.project_id
+        rep['createdBy'] = instance.created_by
+        rep['approvedBy'] = instance.approved_by
+        return rep
 
 
 class ActivitySerializer(serializers.ModelSerializer):
