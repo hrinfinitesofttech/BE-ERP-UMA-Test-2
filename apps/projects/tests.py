@@ -65,3 +65,29 @@ class Phase3ProjectDesignTestCase(TestCase):
         data = response.json()
         self.assertTrue(data['success'])
         self.assertEqual(data['job']['status'], 'released_to_production')
+
+    def test_create_custom_planning_stage_and_persistence(self):
+        payload = {
+            'projectId': 'PRJ-2026-0046',
+            'jobNumber': 'JOB-2026-0055',
+            'stageNumber': 17,
+            'stageName': 'Custom Trial Inspection & Load Testing',
+            'responsibleDepartment': 'production',
+            'responsibleEmployee': 'Bhavin Shah',
+            'assignedEmployees': [{'name': 'Bhavin Shah', 'department': 'production'}],
+            'status': 'in_progress',
+            'progressPercent': 40,
+            'plannedStart': '2026-10-05',
+            'plannedEnd': '2026-10-12',
+            'remarks': 'Special hydro test with customer team',
+        }
+        res = self.client.post('/api/planning-stages/', payload, format='json')
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        self.assertEqual(data['stageName'], 'Custom Trial Inspection & Load Testing')
+        self.assertEqual(data['responsibleDepartment'], 'production')
+
+        # Check in DB
+        db_stage = ProjectPlanningStage.objects.filter(project_id='PRJ-2026-0046', stage_number=17).first()
+        self.assertIsNotNone(db_stage)
+        self.assertEqual(db_stage.name, 'Custom Trial Inspection & Load Testing')

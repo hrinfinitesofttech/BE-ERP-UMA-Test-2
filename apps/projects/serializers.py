@@ -36,6 +36,70 @@ class ProjectPlanningStageSerializer(serializers.ModelSerializer):
             'completion_notes',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'stageNumber' in data and 'stage_number' not in data:
+            data['stage_number'] = data.pop('stageNumber')
+        if 'stageName' in data and 'name' not in data:
+            data['name'] = data.pop('stageName')
+        elif 'stage_name' in data and 'name' not in data:
+            data['name'] = data.pop('stage_name')
+        if 'responsibleDepartment' in data and 'department' not in data:
+            data['department'] = data.pop('responsibleDepartment')
+        elif 'responsible_department' in data and 'department' not in data:
+            data['department'] = data.pop('responsible_department')
+        if 'responsibleEmployee' in data and 'assigned_employee_name' not in data:
+            data['assigned_employee_name'] = data.pop('responsibleEmployee')
+        elif 'responsible_employee' in data and 'assigned_employee_name' not in data:
+            data['assigned_employee_name'] = data.pop('responsible_employee')
+        if 'assignedEmployees' in data and 'assignees' not in data:
+            data['assignees'] = data.pop('assignedEmployees')
+        elif 'assigned_employees' in data and 'assignees' not in data:
+            data['assignees'] = data.pop('assigned_employees')
+        if 'progressPercent' in data and 'progress' not in data:
+            data['progress'] = data.pop('progressPercent')
+        elif 'progress_percent' in data and 'progress' not in data:
+            data['progress'] = data.pop('progress_percent')
+        if 'plannedStart' in data and 'start_date' not in data:
+            data['start_date'] = data.pop('plannedStart')
+        elif 'planned_start' in data and 'start_date' not in data:
+            data['start_date'] = data.pop('planned_start')
+        if 'plannedEnd' in data and 'end_date' not in data:
+            data['end_date'] = data.pop('plannedEnd')
+        elif 'planned_end' in data and 'end_date' not in data:
+            data['end_date'] = data.pop('planned_end')
+        if 'remarks' in data and 'description' not in data:
+            data['description'] = data.pop('remarks')
+        if 'completedBy' in data and 'completed_by' not in data:
+            data['completed_by'] = data.pop('completedBy')
+        if 'completedAt' in data and 'completed_at' not in data:
+            data['completed_at'] = data.pop('completedAt')
+        if 'completionNotes' in data and 'completion_notes' not in data:
+            data['completion_notes'] = data.pop('completionNotes')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'stageNumber': ret.get('stage_number', 1),
+            'stageName': ret.get('name', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('project_id', '').replace('PRJ-', 'JOB-'),
+            'responsibleDepartment': ret.get('department', 'production'),
+            'responsibleEmployee': ret.get('assigned_employee_name', ''),
+            'assignedEmployees': ret.get('assignees', []),
+            'progressPercent': ret.get('progress', 0),
+            'plannedStart': ret.get('start_date', ''),
+            'plannedEnd': ret.get('end_date', ''),
+            'remarks': ret.get('description', ''),
+            'completedBy': ret.get('completed_by', ''),
+            'completedAt': ret.get('completed_at', ''),
+            'completionNotes': ret.get('completion_notes', ''),
+        }
+
 
 class ProjectMilestoneSerializer(serializers.ModelSerializer):
     class Meta:
@@ -59,6 +123,43 @@ class ProjectMilestoneSerializer(serializers.ModelSerializer):
             'department',
             'remarks',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'projectNumber' in data and 'project_number' not in data:
+            data['project_number'] = data.pop('projectNumber')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'milestoneName' in data and 'milestone_name' not in data:
+            data['milestone_name'] = data.pop('milestoneName')
+        if 'plannedDate' in data and 'planned_date' not in data:
+            data['planned_date'] = data.pop('plannedDate')
+        if 'actualDate' in data and 'actual_date' not in data:
+            data['actual_date'] = data.pop('actualDate')
+        if 'targetDate' in data and 'target_date' not in data:
+            data['target_date'] = data.pop('targetDate')
+        if 'paymentPercentage' in data and 'payment_percentage' not in data:
+            data['payment_percentage'] = data.pop('paymentPercentage')
+        if 'paymentAmount' in data and 'payment_amount' not in data:
+            data['payment_amount'] = data.pop('paymentAmount')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'projectId': ret.get('project_id', ''),
+            'projectNumber': ret.get('project_number', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'milestoneName': ret.get('milestone_name') or ret.get('title', ''),
+            'plannedDate': ret.get('planned_date', ''),
+            'actualDate': ret.get('actual_date', ''),
+            'targetDate': ret.get('target_date', ''),
+            'paymentPercentage': ret.get('payment_percentage', 0),
+            'paymentAmount': ret.get('payment_amount', 0),
+        }
 
 
 class ProjectDocumentSerializer(serializers.ModelSerializer):
@@ -101,7 +202,6 @@ class ProjectDocumentSerializer(serializers.ModelSerializer):
         return rep
 
 
-
 class ProjectTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectTask
@@ -119,6 +219,34 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             'due_date',
             'completion_date',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'taskNumber' in data and 'task_number' not in data:
+            data['task_number'] = data.pop('taskNumber')
+        if 'taskName' in data and 'title' not in data:
+            data['title'] = data.pop('taskName')
+        if 'assignedToName' in data and 'assigned_to_name' not in data:
+            data['assigned_to_name'] = data.pop('assignedToName')
+        elif 'assignedEmployee' in data and 'assigned_to_name' not in data:
+            data['assigned_to_name'] = data.pop('assignedEmployee')
+        if 'dueDate' in data and 'due_date' not in data:
+            data['due_date'] = data.pop('dueDate')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'projectId': ret.get('project_id', ''),
+            'taskNumber': ret.get('task_number', ''),
+            'taskName': ret.get('title', ''),
+            'assignedToName': ret.get('assigned_to_name', ''),
+            'assignedEmployee': ret.get('assigned_to_name', ''),
+            'dueDate': ret.get('due_date', ''),
+        }
 
 
 class DepartmentAssignmentSerializer(serializers.ModelSerializer):

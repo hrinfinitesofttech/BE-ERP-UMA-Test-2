@@ -130,33 +130,21 @@ class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if 'name' not in data or not data.get('name'):
-            data['name'] = data.get('stage_name') or data.get('stageName') or 'Planning Stage'
-        if 'department' not in data or not data.get('department'):
-            data['department'] = data.get('responsible_department') or data.get('responsibleDepartment') or 'General'
-        if 'project_id' not in data or not data.get('project_id'):
-            data['project_id'] = data.get('projectId') or 'PRJ-DEFAULT'
-        if 'stage_number' not in data or not data.get('stage_number'):
-            data['stage_number'] = data.get('stageNumber') or 1
-        if 'assigned_employee_name' not in data or not data.get('assigned_employee_name'):
-            data['assigned_employee_name'] = data.get('responsible_employee') or data.get('responsibleEmployee') or ''
-        if 'assignees' not in data or not data.get('assignees'):
-            data['assignees'] = data.get('assigned_employees') or data.get('assignedEmployees') or []
-        if 'progress' not in data or data.get('progress') is None:
-            data['progress'] = data.get('progress_percent') or data.get('progressPercent') or 0
-        if 'start_date' not in data or not data.get('start_date'):
-            data['start_date'] = data.get('planned_start') or data.get('plannedStart') or ''
-        if 'end_date' not in data or not data.get('end_date'):
-            data['end_date'] = data.get('planned_end') or data.get('plannedEnd') or ''
-        if 'description' not in data or not data.get('description'):
-            data['description'] = data.get('remarks') or ''
-        if 'id' not in data or not data.get('id'):
-            data['id'] = f"STG-{data.get('project_id', 'PRJ')}-{uuid.uuid4().hex[:6]}"
-            
-        serializer = ProjectPlanningStageSerializer(data=data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        serializer.save()
+        proj_id = data.get('project_id') or data.get('projectId') or 'PRJ-DEFAULT'
+        data['project_id'] = proj_id
+        stage_num = data.get('stage_number') or data.get('stageNumber') or (ProjectPlanningStage.objects.filter(project_id=proj_id).count() + 1)
+        data['stage_number'] = stage_num
+
+        stage_id = data.get('id')
+        if not stage_id or ProjectPlanningStage.objects.filter(id=stage_id).exists():
+            stage_id = f"STG-{proj_id}-{stage_num:02d}"
+            while ProjectPlanningStage.objects.filter(id=stage_id).exists():
+                stage_id = f"STG-{proj_id}-{stage_num:02d}-{uuid.uuid4().hex[:4]}"
+        data['id'] = stage_id
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='complete')
