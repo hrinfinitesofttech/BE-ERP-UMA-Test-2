@@ -345,19 +345,27 @@ class QuotationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         quo_num = data.get('quotation_number') or data.get('quotationNumber') or data.get('id')
-        if not quo_num:
+        if not quo_num or Quotation.objects.filter(id=quo_num).exists():
+            import re
+            all_ids = list(Quotation.objects.values_list('id', flat=True))
+            max_num = 0
+            for qid in all_ids:
+                match = re.search(r'(\d+)$', str(qid))
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
             num_setting = NumberingSetting.objects.filter(doc_type='quotation').first()
-            quo_num = num_setting.generate_next_number(increment=True) if num_setting else f"QT-2026-{Quotation.objects.count() + 1:04d}"
-        data['id'] = data.get('id') or quo_num
+            prefix = num_setting.prefix if num_setting else "QT-2026-"
+            digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
+            next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
+            quo_num = f"{prefix}{next_num:0{digit_count}d}"
+            while Quotation.objects.filter(id=quo_num).exists():
+                next_num += 1
+                quo_num = f"{prefix}{next_num:0{digit_count}d}"
+            if num_setting:
+                num_setting.current_number = next_num
+                num_setting.save(update_fields=['current_number'])
+        data['id'] = quo_num
         data['quotation_number'] = quo_num
-
-        # If ID already exists in DB, perform partial update
-        existing = Quotation.objects.filter(id=data.get('id')).first()
-        if existing:
-            serializer = self.get_serializer(existing, data=data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -403,9 +411,28 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         po_num = data.get('po_number') or data.get('poNumber')
         cpo_id = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo')
-        if not cpo_id:
+        
+        # Ensure a truly unique fresh ID so existing records are NEVER overwritten on create
+        if not cpo_id or CustomerPO.objects.filter(id=cpo_id).exists():
+            import re
+            all_ids = list(CustomerPO.objects.values_list('id', flat=True))
+            max_num = 0
+            for cid in all_ids:
+                match = re.search(r'(\d+)$', str(cid))
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
             num_setting = NumberingSetting.objects.filter(doc_type='customer_po').first()
-            cpo_id = num_setting.generate_next_number(increment=True) if num_setting else f"CPO-2026-{CustomerPO.objects.count() + 1:04d}"
+            prefix = num_setting.prefix if num_setting else "CPO-2026-"
+            digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
+            next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
+            cpo_id = f"{prefix}{next_num:0{digit_count}d}"
+            while CustomerPO.objects.filter(id=cpo_id).exists():
+                next_num += 1
+                cpo_id = f"{prefix}{next_num:0{digit_count}d}"
+            if num_setting:
+                num_setting.current_number = next_num
+                num_setting.save(update_fields=['current_number'])
+
         data['id'] = cpo_id
         data['internal_cpo_no'] = cpo_id
         if po_num:
@@ -414,14 +441,6 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
             data['received_date'] = data.get('po_date') or data.get('poDate') or datetime.now().strftime('%Y-%m-%d')
         if not data.get('po_value') and not data.get('poValue'):
             data['po_value'] = data.get('poAmount') or data.get('po_amount') or 0
-
-        # If ID already exists in DB, perform partial update
-        existing = CustomerPO.objects.filter(id=data.get('id')).first()
-        if existing:
-            serializer = self.get_serializer(existing, data=data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -494,10 +513,26 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         so_num = data.get('sales_order_number') or data.get('salesOrderNumber') or data.get('id')
-        if not so_num:
+        if not so_num or SalesOrder.objects.filter(id=so_num).exists():
+            import re
+            all_ids = list(SalesOrder.objects.values_list('id', flat=True))
+            max_num = 0
+            for soid in all_ids:
+                match = re.search(r'(\d+)$', str(soid))
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
             num_setting = NumberingSetting.objects.filter(doc_type='sales_order').first()
-            so_num = num_setting.generate_next_number(increment=True) if num_setting else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
-        data['id'] = data.get('id') or so_num
+            prefix = num_setting.prefix if num_setting else "SO-2026-"
+            digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
+            next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
+            so_num = f"{prefix}{next_num:0{digit_count}d}"
+            while SalesOrder.objects.filter(id=so_num).exists():
+                next_num += 1
+                so_num = f"{prefix}{next_num:0{digit_count}d}"
+            if num_setting:
+                num_setting.current_number = next_num
+                num_setting.save(update_fields=['current_number'])
+        data['id'] = so_num
         data['sales_order_number'] = so_num
         if not data.get('target_delivery_date') and not data.get('targetDeliveryDate'):
             data['target_delivery_date'] = data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d')
@@ -507,14 +542,6 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             data['grand_total'] = data.get('orderValue') or data.get('totalAmount') or 0
         if not data.get('total_amount') and not data.get('totalAmount'):
             data['total_amount'] = data.get('orderValue') or data.get('grandTotal') or 0
-
-        # If ID already exists in DB, perform partial update
-        existing = SalesOrder.objects.filter(id=data.get('id')).first()
-        if existing:
-            serializer = self.get_serializer(existing, data=data, partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
