@@ -172,6 +172,46 @@ class Drawing2DSerializer(serializers.ModelSerializer):
             'file_url',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'drawingNumber' in data and 'drawing_number' not in data:
+            data['drawing_number'] = data.pop('drawingNumber')
+        if 'drawingTitle' in data and 'title' not in data:
+            data['title'] = data.pop('drawingTitle')
+        if 'sheetSize' in data and 'sheet_size' not in data:
+            data['sheet_size'] = data.pop('sheetSize')
+        if 'preparedBy' in data and 'prepared_by' not in data:
+            data['prepared_by'] = data.pop('preparedBy')
+        elif 'drawnBy' in data and 'prepared_by' not in data:
+            data['prepared_by'] = data.pop('drawnBy')
+        if 'checkedBy' in data and 'checked_by' not in data:
+            data['checked_by'] = data.pop('checkedBy')
+        if 'approvedBy' in data and 'approved_by' not in data:
+            data['approved_by'] = data.pop('approvedBy')
+        if 'releaseDate' in data and 'release_date' not in data:
+            data['release_date'] = data.pop('releaseDate')
+        if 'fileUrl' in data and 'file_url' not in data:
+            data['file_url'] = data.pop('fileUrl')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'designJobId': ret.get('design_job_id', ''),
+            'drawingNumber': ret.get('drawing_number', ''),
+            'drawingTitle': ret.get('title', ''),
+            'sheetSize': ret.get('sheet_size', 'A1'),
+            'preparedBy': ret.get('prepared_by', 'Dharmesh Joshi'),
+            'drawnBy': ret.get('prepared_by', 'Dharmesh Joshi'),
+            'checkedBy': ret.get('checked_by', ''),
+            'approvedBy': ret.get('approved_by', ''),
+            'releaseDate': ret.get('release_date', ''),
+            'fileUrl': ret.get('file_url', ''),
+        }
+
 
 class Design3DModelSerializer(serializers.ModelSerializer):
     class Meta:
@@ -189,6 +229,46 @@ class Design3DModelSerializer(serializers.ModelSerializer):
             'modeled_by',
             'file_url',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'modelNumber' in data and 'model_number' not in data:
+            data['model_number'] = data.pop('modelNumber')
+        elif 'designNumber' in data and 'model_number' not in data:
+            data['model_number'] = data.pop('designNumber')
+        if 'modelName' in data and 'model_name' not in data:
+            data['model_name'] = data.pop('modelName')
+        elif 'modelTitle' in data and 'model_name' not in data:
+            data['model_name'] = data.pop('modelTitle')
+        if 'massKg' in data and 'mass_kg' not in data:
+            data['mass_kg'] = data.pop('massKg')
+        elif 'totalWeightKg' in data and 'mass_kg' not in data:
+            data['mass_kg'] = data.pop('totalWeightKg')
+        if 'volumeM3' in data and 'volume_m3' not in data:
+            data['volume_m3'] = data.pop('volumeM3')
+        if 'modeledBy' in data and 'modeled_by' not in data:
+            data['modeled_by'] = data.pop('modeledBy')
+        elif 'designer' in data and 'modeled_by' not in data:
+            data['modeled_by'] = data.pop('designer')
+        if 'fileUrl' in data and 'file_url' not in data:
+            data['file_url'] = data.pop('fileUrl')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'designJobId': ret.get('design_job_id', ''),
+            'modelNumber': ret.get('model_number', ''),
+            'modelName': ret.get('model_name', ''),
+            'massKg': ret.get('mass_kg', 0),
+            'volumeM3': ret.get('volume_m3', 0),
+            'modeledBy': ret.get('modeled_by', 'Dharmesh Joshi'),
+            'designer': ret.get('modeled_by', 'Dharmesh Joshi'),
+            'fileUrl': ret.get('file_url', ''),
+        }
 
 
 class BOMHeaderSerializer(serializers.ModelSerializer):
@@ -212,6 +292,49 @@ class BOMHeaderSerializer(serializers.ModelSerializer):
             'revisions',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'bomNumber' in data and 'bom_number' not in data:
+            data['bom_number'] = data.pop('bomNumber')
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'activeRevision' in data and 'active_revision' not in data:
+            data['active_revision'] = data.pop('activeRevision')
+        if 'totalItems' in data and 'total_items' not in data:
+            data['total_items'] = data.pop('totalItems')
+        if 'totalWeightKg' in data and 'total_weight_kg' not in data:
+            data['total_weight_kg'] = data.pop('totalWeightKg')
+        if 'totalEstimatedCost' in data and 'total_estimated_cost' not in data:
+            data['total_estimated_cost'] = data.pop('totalEstimatedCost')
+        if 'preparedBy' in data and 'prepared_by' not in data:
+            data['prepared_by'] = data.pop('preparedBy')
+        if 'approvedBy' in data and 'approved_by' not in data:
+            data['approved_by'] = data.pop('approvedBy')
+        if 'releaseDate' in data and 'release_date' not in data:
+            data['release_date'] = data.pop('releaseDate')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'bomNumber': ret.get('bom_number', ''),
+            'designJobId': ret.get('design_job_id', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'activeRevision': ret.get('active_revision', 'REV-00'),
+            'totalItems': ret.get('total_items', 0),
+            'totalWeightKg': ret.get('total_weight_kg', 0),
+            'totalEstimatedCost': ret.get('total_estimated_cost', 0),
+            'preparedBy': ret.get('prepared_by', 'Dharmesh Joshi'),
+            'approvedBy': ret.get('approved_by', ''),
+            'releaseDate': ret.get('release_date', ''),
+        }
+
 
 class DesignRevisionLogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -226,6 +349,31 @@ class DesignRevisionLogSerializer(serializers.ModelSerializer):
             'approved_by',
             'date',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'designJobId' in data and 'design_job_id' not in data:
+            data['design_job_id'] = data.pop('designJobId')
+        if 'revisionNumber' in data and 'revision_number' not in data:
+            data['revision_number'] = data.pop('revisionNumber')
+        if 'changesSummary' in data and 'changes_summary' not in data:
+            data['changes_summary'] = data.pop('changesSummary')
+        if 'requestedBy' in data and 'requested_by' not in data:
+            data['requested_by'] = data.pop('requestedBy')
+        if 'approvedBy' in data and 'approved_by' not in data:
+            data['approved_by'] = data.pop('approvedBy')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'designJobId': ret.get('design_job_id', ''),
+            'revisionNumber': ret.get('revision_number', ''),
+            'changesSummary': ret.get('changes_summary', ''),
+            'requestedBy': ret.get('requested_by', ''),
+            'approvedBy': ret.get('approved_by', ''),
+        }
 
 
 class TechnicalDocumentItemSerializer(serializers.ModelSerializer):
@@ -321,3 +469,50 @@ class DesignJobSerializer(serializers.ModelSerializer):
             'models_3d',
             'boms',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'designJobNumber': 'design_job_number',
+            'projectId': 'project_id',
+            'projectNumber': 'project_number',
+            'jobNumber': 'job_number',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'customerPoNumber': 'customer_po_number',
+            'salesOrderNumber': 'sales_order_number',
+            'productName': 'product_name',
+            'machineType': 'machine_type',
+            'deliveryDate': 'delivery_date',
+            'designManager': 'design_manager',
+            'assignedDesigner': 'assigned_designer',
+            'requiredDate': 'required_date',
+            'activeRevision': 'active_revision',
+            'createdDate': 'created_date',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'designJobNumber': ret.get('design_job_number', ret.get('id', '')),
+            'projectId': ret.get('project_id', ''),
+            'projectNumber': ret.get('project_number', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'customerId': ret.get('customer_id', ''),
+            'customerName': ret.get('customer_name', ''),
+            'customerPoNumber': ret.get('customer_po_number', ''),
+            'salesOrderNumber': ret.get('sales_order_number', ''),
+            'productName': ret.get('product_name', ''),
+            'machineType': ret.get('machine_type', ''),
+            'deliveryDate': ret.get('delivery_date', ''),
+            'designManager': ret.get('design_manager', 'Dharmesh Joshi'),
+            'assignedDesigner': ret.get('assigned_designer', 'Dharmesh Joshi'),
+            'requiredDate': ret.get('required_date', ''),
+            'activeRevision': ret.get('active_revision', 'REV-00'),
+            'createdDate': ret.get('created_date', ''),
+        }

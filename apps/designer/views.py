@@ -80,38 +80,35 @@ class DesignJobViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id'):
-            code = data.get('design_job_number') or data.get('designJobNumber') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
-            data['id'] = code
-            data['design_job_number'] = code
-        if 'project_id' not in data:
-            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
-        if 'project_number' not in data:
-            data['project_number'] = data.get('projectNumber') or ''
-        if 'job_number' not in data:
-            data['job_number'] = data.get('jobNumber') or ''
-        if 'customer_id' not in data:
-            data['customer_id'] = data.get('customerId') or 'CUST-001'
-        if 'customer_name' not in data:
-            data['customer_name'] = data.get('customerName') or ''
-        if 'customer_po_number' not in data:
-            data['customer_po_number'] = data.get('customerPoNumber') or ''
-        if 'sales_order_number' not in data:
-            data['sales_order_number'] = data.get('salesOrderNumber') or ''
-        if 'product_name' not in data:
-            data['product_name'] = data.get('productName') or 'Custom Equipment'
-        if 'machine_type' not in data:
-            data['machine_type'] = data.get('machineType') or 'Process Equipment'
-        if 'delivery_date' not in data:
-            data['delivery_date'] = data.get('deliveryDate') or datetime.now().strftime('%Y-%m-%d')
-        if 'design_manager' not in data:
-            data['design_manager'] = data.get('designManager') or 'Dharmesh Joshi'
-        if 'assigned_designer' not in data:
-            data['assigned_designer'] = data.get('assignedDesigner') or 'Dharmesh Joshi'
-        if 'required_date' not in data:
-            data['required_date'] = data.get('requiredDate') or data.get('delivery_date') or ''
-        if 'active_revision' not in data:
-            data['active_revision'] = data.get('activeRevision') or 'REV-00'
+        job_id = data.get('id') or data.get('design_job_number') or data.get('designJobNumber')
+        if not job_id or DesignJob.objects.filter(id=job_id).exists() or DesignJob.objects.filter(design_job_number=job_id).exists():
+            import re
+            all_ids = list(DesignJob.objects.values_list('id', flat=True)) + list(DesignJob.objects.values_list('design_job_number', flat=True))
+            max_num = 0
+            for did in all_ids:
+                match = re.search(r'(\d+)$', str(did))
+                if match:
+                    max_num = max(max_num, int(match.group(1)))
+            next_num = max_num + 1
+            job_id = f"DES-2026-{next_num:04d}"
+            while DesignJob.objects.filter(id=job_id).exists() or DesignJob.objects.filter(design_job_number=job_id).exists():
+                next_num += 1
+                job_id = f"DES-2026-{next_num:04d}"
+
+        data['id'] = job_id
+        data['design_job_number'] = job_id
+        data['designJobNumber'] = job_id
+
+        if not data.get('project_id') and not data.get('projectId'):
+            data['project_id'] = 'PRJ-2026-0001'
+        if not data.get('customer_id') and not data.get('customerId'):
+            data['customer_id'] = 'CUST-001'
+        if not data.get('customer_name') and not data.get('customerName'):
+            data['customer_name'] = 'Customer'
+        if not data.get('product_name') and not data.get('productName'):
+            data['product_name'] = 'Custom Equipment'
+        if not data.get('delivery_date') and not data.get('deliveryDate'):
+            data['delivery_date'] = datetime.now().strftime('%Y-%m-%d')
         if not data.get('created_date') and not data.get('createdDate'):
             data['created_date'] = datetime.now().strftime('%Y-%m-%d')
 
