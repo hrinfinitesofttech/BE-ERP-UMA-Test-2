@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
-    WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem
+    WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
+    ProductionMaterialRequest
 )
 
 
@@ -310,4 +311,35 @@ class FinishedGoodsItemSerializer(serializers.ModelSerializer):
         data['locationBin'] = instance.location_bin
         data['completionDate'] = str(instance.completion_date) if instance.completion_date else ''
         data['qcStatus'] = instance.qc_status
+        return data
+
+
+class ProductionMaterialRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductionMaterialRequest
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['requestNumber'] = instance.request_number
+        data['issueNumber'] = instance.request_number
+        data['projectId'] = instance.project_id
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['bomNumber'] = instance.bom_number
+        data['bomRevision'] = instance.bom_revision
+        data['productionStage'] = instance.production_stage
+        data['requestedBy'] = instance.requested_by
+        data['issuedTo'] = instance.issued_to
+        data['issuedBy'] = instance.issued_by
+        data['requestDate'] = str(instance.request_date) if instance.request_date else ''
+        data['issueDate'] = str(instance.request_date) if instance.request_date else ''
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = instance.warehouse_name
+        data['totalValue'] = float(instance.total_value or 0)
+        data['totalIssueValue'] = float(instance.total_value or 0)
+        data['items'] = instance.items or []
+        data['status'] = instance.status
+        data['remarks'] = instance.remarks
         return data

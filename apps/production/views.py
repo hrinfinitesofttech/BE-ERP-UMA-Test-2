@@ -8,14 +8,15 @@ from django.utils import timezone
 from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
-    WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem
+    WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
+    ProductionMaterialRequest
 )
 from .serializers import (
     ManufacturingJobSerializer, ProductionPlanSerializer, WorkCenterSerializer,
     RoutingOperationSerializer, WorkOrderSerializer, ProductionOrderSerializer,
     ProductionScheduleItemSerializer, ProductionEntrySerializer, WIPRecordSerializer,
     ProductionHoldSerializer, ReworkOrderSerializer, ProductionScrapSerializer,
-    FinishedGoodsItemSerializer
+    FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer
 )
 
 
@@ -452,3 +453,39 @@ class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
         fg.status = 'Ready for Dispatch'
         fg.save()
         return Response({'message': f'Finished Good {fg.finished_goods_number} passed QC', 'qcStatus': fg.qc_status, 'status': fg.status})
+
+
+class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
+    queryset = ProductionMaterialRequest.objects.all().order_by('-created_at', '-id')
+    serializer_class = ProductionMaterialRequestSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to']
+    filterset_fields = ['status', 'production_stage', 'warehouse_id']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        req_num = data.get('request_number') or data.get('requestNumber') or data.get('issue_number') or data.get('issueNumber') or f"ISS-{datetime.now().year}-{ProductionMaterialRequest.objects.count() + 1:04d}"
+        
+        data['id'] = data.get('id') or req_num
+        data['request_number'] = req_num
+        data['job_number'] = data.get('job_number') or data.get('jobNumber') or data.get('job_id') or data.get('jobId', '')
+        data['job_id'] = data['job_number']
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber') or data.get('work_order_id') or ''
+        data['bom_number'] = data.get('bom_number') or data.get('bomNumber', 'BOM-2026-001')
+        data['bom_revision'] = data.get('bom_revision') or data.get('bomRevision', 'Rev-01')
+        data['production_stage'] = data.get('production_stage') or data.get('productionStage', 'Fabrication & Welding')
+        data['requested_by'] = data.get('requested_by') or data.get('requestedBy') or data.get('issued_to') or data.get('issuedTo', 'Production Head')
+        data['issued_to'] = data.get('issued_to') or data.get('issuedTo') or data['requested_by']
+        data['issued_by'] = data.get('issued_by') or data.get('issuedBy', 'Store Supervisor')
+        data['request_date'] = data.get('request_date') or data.get('requestDate') or data.get('issue_date') or data.get('issueDate') or datetime.now().strftime('%Y-%m-%d')
+        data['warehouse_id'] = data.get('warehouse_id') or data.get('warehouseId', 'WH-001')
+        data['warehouse_name'] = data.get('warehouse_name') or data.get('warehouseName', 'Raw Material Yard & Plate Store')
+        data['total_value'] = data.get('total_value') or data.get('totalValue') or data.get('total_issue_value') or data.get('totalIssueValue', 0)
+        data['items'] = data.get('items', [])
+        data['status'] = data.get('status', 'Fully Issued')
+        data['remarks'] = data.get('remarks') or data.get('notes', '')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

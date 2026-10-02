@@ -317,3 +317,33 @@ class FinishedGoodsItem(models.Model):
 
     def __str__(self):
         return f"{self.finished_goods_number} - {self.product_name}"
+
+
+class ProductionMaterialRequest(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    request_number = models.CharField(max_length=64, unique=True, verbose_name="Request / Issue Slip #")
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    job_id = models.CharField(max_length=64, blank=True, default='')
+    job_number = models.CharField(max_length=64, blank=True, default='')
+    work_order_number = models.CharField(max_length=64, blank=True, default='')
+    bom_number = models.CharField(max_length=64, blank=True, default='BOM-2026-001')
+    bom_revision = models.CharField(max_length=20, blank=True, default='Rev-01')
+    production_stage = models.CharField(max_length=150, blank=True, default='Fabrication & Welding')
+    requested_by = models.CharField(max_length=150, blank=True, default='Production Supervisor')
+    issued_to = models.CharField(max_length=150, blank=True, default='')
+    issued_by = models.CharField(max_length=150, blank=True, default='Store Supervisor')
+    request_date = models.DateField(null=True, blank=True)
+    warehouse_id = models.CharField(max_length=64, default='WH-001')
+    warehouse_name = models.CharField(max_length=200, blank=True, default='Raw Material Yard & Plate Store')
+    total_value = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    items = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=50, default='Fully Issued')
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Production Material Request & Issue"
+        verbose_name_plural = "Production Material Requests & Store Issues"
+
+    def __str__(self):
+        return f"{self.request_number} ({self.job_number or self.work_order_number})"

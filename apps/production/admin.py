@@ -1,5 +1,20 @@
 from django.contrib import admin
-from .models import ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation, WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry, WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem
+from .models import (
+    ManufacturingJob,
+    ProductionPlan,
+    WorkCenter,
+    RoutingOperation,
+    WorkOrder,
+    ProductionOrder,
+    ProductionScheduleItem,
+    ProductionEntry,
+    WIPRecord,
+    ProductionHold,
+    ReworkOrder,
+    ProductionScrap,
+    FinishedGoodsItem,
+    ProductionMaterialRequest,
+)
 
 @admin.register(ManufacturingJob)
 class ManufacturingJobAdmin(admin.ModelAdmin):
@@ -78,3 +93,10 @@ class FinishedGoodsItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'finished_goods_number', 'job_id', 'job_number', 'work_order_number', 'production_order_number')
     search_fields = ('id', 'finished_goods_number', 'job_id', 'job_number')
     list_filter = ('completion_date', 'qc_status', 'status', 'created_at')
+
+
+@admin.register(ProductionMaterialRequest)
+class ProductionMaterialRequestAdmin(admin.ModelAdmin):
+    list_display = ('id', 'request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to', 'warehouse_name', 'total_value', 'status')
+    search_fields = ('id', 'request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to')
+    list_filter = ('status', 'production_stage', 'created_at')
