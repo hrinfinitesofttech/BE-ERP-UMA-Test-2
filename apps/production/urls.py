@@ -5,10 +5,12 @@ from .views import (
     RoutingOperationViewSet, WorkOrderViewSet, ProductionOrderViewSet,
     ProductionScheduleItemViewSet, ProductionEntryViewSet, WIPRecordViewSet,
     ProductionHoldViewSet, ReworkOrderViewSet, ProductionScrapViewSet,
-    FinishedGoodsItemViewSet
+    FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet
 )
 
 router = DefaultRouter()
+router.register('material-requests', ProductionMaterialRequestViewSet, basename='material-request')
+router.register('material-issues', ProductionMaterialRequestViewSet, basename='material-issue')
 router.register('manufacturing-jobs', ManufacturingJobViewSet, basename='manufacturing-job')
 router.register('production-plans', ProductionPlanViewSet, basename='production-plan')
 router.register('work-centers', WorkCenterViewSet, basename='work-center')
