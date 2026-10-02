@@ -1,4 +1,6 @@
 from datetime import datetime
+from django.db import models
+from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -426,6 +428,27 @@ class QuotationViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        # Update linked enquiry if provided
+        enq_id = data.get('enquiry_id') or data.get('enquiryId')
+        cust_id = data.get('customer_id') or data.get('customerId')
+        if enq_id:
+            Enquiry.objects.filter(models.Q(id=enq_id) | models.Q(enquiry_no=enq_id)).update(
+                quotation_id=quo_num,
+                status='quotation_sent'
+            )
+            Lead.objects.filter(converted_enquiry_id=enq_id).update(
+                status='quotation_sent'
+            )
+        elif cust_id:
+            Enquiry.objects.filter(customer_id=cust_id, quotation_id__isnull=True).update(
+                quotation_id=quo_num,
+                status='quotation_sent'
+            )
+            Lead.objects.filter(converted_customer_id=cust_id).update(
+                status='quotation_sent'
+            )
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='add-revision')
