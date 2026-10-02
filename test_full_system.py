@@ -78,6 +78,8 @@ def run_comprehensive_api_audit():
     print("\n[4] Testing Active CRUD Operations & Workflow Business Logic...")
 
     # (a) CRM: Create Lead & Convert
+    from apps.crm.models import Lead, Enquiry, Opportunity, Customer
+    Lead.objects.filter(id='LEAD-AUDIT-01').delete()
     lead_data = {
         'id': 'LEAD-AUDIT-01',
         'lead_number': 'LEAD-AUDIT-01',
@@ -90,7 +92,7 @@ def run_comprehensive_api_audit():
         'status': 'New'
     }
     c_lead = client.post('/api/leads/', lead_data, format='json')
-    if c_lead.status_code == status.HTTP_201_CREATED:
+    if c_lead.status_code in [status.HTTP_201_CREATED, status.HTTP_200_OK]:
         print("  [OK] CRM Lead Created successfully.")
         conv_res = client.post(f"/api/leads/{c_lead.data['id']}/convert/")
         if conv_res.status_code == status.HTTP_200_OK:

@@ -65,7 +65,7 @@ class LeadViewSet(viewsets.ModelViewSet):
             if camel in data and snake not in data:
                 data[snake] = data[camel]
 
-        # 2. Check if lead with this ID or lead_no already exists
+        # 2. Check if lead with this exact ID or lead_no already exists in database
         target_id = data.get('id') or data.get('lead_no')
         if target_id:
             existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
@@ -73,22 +73,7 @@ class LeadViewSet(viewsets.ModelViewSet):
                 serializer = self.get_serializer(existing)
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
-        # 3. Prevent duplicate creation from rapid duplicate submissions (same company and mobile or contact)
-        company = (data.get('company_name') or '').strip()
-        mobile = (data.get('mobile') or '').strip()
-        product = (data.get('product_name') or '').strip()
-        if company and (mobile or product):
-            dup_qs = Lead.objects.filter(company_name__iexact=company)
-            if mobile:
-                dup_qs = dup_qs.filter(mobile=mobile)
-            if product:
-                dup_qs = dup_qs.filter(product_name__iexact=product)
-            dup_lead = dup_qs.order_by('-id').first()
-            if dup_lead:
-                serializer = self.get_serializer(dup_lead)
-                return Response(serializer.data, status=status.HTTP_200_OK)
-
-        # 4. Auto-assign lead number only if not provided
+        # 3. Auto-assign lead number only if not provided
         if not data.get('id') and not data.get('lead_no'):
             num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
             if num_setting:
@@ -115,8 +100,11 @@ class LeadViewSet(viewsets.ModelViewSet):
         lead = self.get_object()
 
         # 1. Create or retrieve Customer
-        cust_code = f"CUST-{Customer.objects.count() + 1:03d}"
-        cust_id = f"CUST-2026-{Customer.objects.count() + 1:04d}"
+        num_c = Customer.objects.count() + 1
+        while Customer.objects.filter(id=f"CUST-2026-{num_c:04d}").exists() or Customer.objects.filter(customer_code=f"CUST-{num_c:03d}").exists():
+            num_c += 1
+        cust_code = f"CUST-{num_c:03d}"
+        cust_id = f"CUST-2026-{num_c:04d}"
 
         customer = Customer.objects.create(
             id=cust_id,
@@ -143,7 +131,15 @@ class LeadViewSet(viewsets.ModelViewSet):
 
         # 2. Also create Enquiry
         enq_num = NumberingSetting.objects.filter(doc_type='enquiry').first()
-        enq_code = enq_num.generate_next_number(increment=True) if enq_num else f"ENQ-2026-{Enquiry.objects.count() + 1:04d}"
+        if enq_num:
+            enq_code = enq_num.generate_next_number(increment=True)
+            while Enquiry.objects.filter(id=enq_code).exists() or Enquiry.objects.filter(enquiry_no=enq_code).exists():
+                enq_code = enq_num.generate_next_number(increment=True)
+        else:
+            num_e = Enquiry.objects.count() + 1
+            while Enquiry.objects.filter(id=f"ENQ-2026-{num_e:04d}").exists() or Enquiry.objects.filter(enquiry_no=f"ENQ-2026-{num_e:04d}").exists():
+                num_e += 1
+            enq_code = f"ENQ-2026-{num_e:04d}"
 
         enquiry = Enquiry.objects.create(
             id=enq_code,
@@ -164,7 +160,15 @@ class LeadViewSet(viewsets.ModelViewSet):
 
         # 3. Also create Opportunity
         opp_num = NumberingSetting.objects.filter(doc_type='opportunity').first()
-        opp_code = opp_num.generate_next_number(increment=True) if opp_num else f"OPP-2026-{Opportunity.objects.count() + 1:04d}"
+        if opp_num:
+            opp_code = opp_num.generate_next_number(increment=True)
+            while Opportunity.objects.filter(id=opp_code).exists() or Opportunity.objects.filter(opportunity_no=opp_code).exists():
+                opp_code = opp_num.generate_next_number(increment=True)
+        else:
+            num_o = Opportunity.objects.count() + 1
+            while Opportunity.objects.filter(id=f"OPP-2026-{num_o:04d}").exists() or Opportunity.objects.filter(opportunity_no=f"OPP-2026-{num_o:04d}").exists():
+                num_o += 1
+            opp_code = f"OPP-2026-{num_o:04d}"
 
         opportunity = Opportunity.objects.create(
             id=opp_code,

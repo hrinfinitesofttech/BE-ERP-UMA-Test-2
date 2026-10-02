@@ -197,6 +197,47 @@ class StockReservationSerializer(serializers.ModelSerializer):
         model = StockReservation
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        ret = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'reservationNumber' in ret and 'reservation_number' not in ret:
+            ret['reservation_number'] = ret.pop('reservationNumber')
+        if 'projectId' in ret and 'project_id' not in ret:
+            ret['project_id'] = ret.pop('projectId')
+        if 'jobId' in ret and 'job_number' not in ret:
+            ret['job_number'] = ret.pop('jobId')
+        elif 'jobNumber' in ret and 'job_number' not in ret:
+            ret['job_number'] = ret.pop('jobNumber')
+        if 'itemId' in ret and 'item_id' not in ret:
+            ret['item_id'] = ret.pop('itemId')
+        if 'itemCode' in ret and 'item_code' not in ret:
+            ret['item_code'] = ret.pop('itemCode')
+        if 'itemName' in ret and 'item_name' not in ret:
+            ret['item_name'] = ret.pop('itemName')
+        if 'reservedQuantity' in ret and 'reserved_quantity' not in ret:
+            ret['reserved_quantity'] = ret.pop('reservedQuantity')
+        if 'reservedDate' in ret and 'reserved_date' not in ret:
+            ret['reserved_date'] = ret.pop('reservedDate')
+        elif 'createdAt' in ret and 'reserved_date' not in ret:
+            ret['reserved_date'] = ret.pop('createdAt')
+        if 'reservedBy' in ret and 'reserved_by' not in ret:
+            ret['reserved_by'] = ret.pop('reservedBy')
+        return super().to_internal_value(ret)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['reservationNumber'] = instance.reservation_number
+        data['projectId'] = instance.project_id
+        data['jobId'] = instance.job_number
+        data['jobNumber'] = instance.job_number
+        data['itemId'] = instance.item_id
+        data['itemCode'] = instance.item_code
+        data['itemName'] = instance.item_name
+        data['reservedQuantity'] = instance.reserved_quantity
+        data['reservedDate'] = instance.reserved_date
+        data['createdAt'] = instance.reserved_date
+        data['reservedBy'] = instance.reserved_by
+        return data
+
 
 class MaterialIssueSerializer(serializers.ModelSerializer):
     class Meta:

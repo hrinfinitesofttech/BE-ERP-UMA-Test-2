@@ -267,6 +267,17 @@ class QCInspectionViewSet(viewsets.ModelViewSet):
                 'supplierName': supp,
             }]
 
+        target_id = data.get('id')
+        existing = QCInspection.objects.filter(id=target_id).first() if target_id else None
+        if not existing and data.get('grn_number'):
+            existing = QCInspection.objects.filter(grn_number=data.get('grn_number')).first()
+
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            qc = serializer.save()
+            return Response(QCInspectionSerializer(qc).data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         qc = serializer.save()
@@ -283,6 +294,28 @@ class StockReservationViewSet(viewsets.ModelViewSet):
     queryset = StockReservation.objects.all().order_by('-reserved_date')
     serializer_class = StockReservationSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id') and not data.get('reservation_number') and not data.get('reservationNumber'):
+            code = f"RES-2026-{StockReservation.objects.count() + 1:04d}"
+            data['id'] = code
+            data['reservation_number'] = code
+        elif not data.get('id'):
+            data['id'] = data.get('reservation_number') or data.get('reservationNumber')
+
+        target_id = data.get('id')
+        existing = StockReservation.objects.filter(id=target_id).first() if target_id else None
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            res = serializer.save()
+            return Response(StockReservationSerializer(res).data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        res = serializer.save()
+        return Response(StockReservationSerializer(res).data, status=status.HTTP_201_CREATED)
 
 
 class MaterialIssueViewSet(viewsets.ModelViewSet):
