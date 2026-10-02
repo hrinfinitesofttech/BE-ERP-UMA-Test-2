@@ -42,8 +42,54 @@ class LeadViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('lead_no') or not data.get('leadNo'):
-            # Auto-assign lead number from numbering engine
+
+        # 1. Map camelCase fields to snake_case
+        field_mappings = {
+            'leadNo': 'lead_no',
+            'companyName': 'company_name',
+            'contactPerson': 'contact_person',
+            'altMobile': 'alt_mobile',
+            'productName': 'product_name',
+            'machineType': 'machine_type',
+            'requirementDescription': 'requirement_description',
+            'expectedDelivery': 'expected_delivery',
+            'assignedSalesPersonId': 'assigned_sales_person_id',
+            'assignedSalesPersonName': 'assigned_sales_person_name',
+            'nextFollowUpDate': 'next_follow_up_date',
+            'createdDate': 'created_date',
+            'convertedCustomerId': 'converted_customer_id',
+            'convertedEnquiryId': 'converted_enquiry_id',
+            'convertedOpportunityId': 'converted_opportunity_id',
+        }
+        for camel, snake in field_mappings.items():
+            if camel in data and snake not in data:
+                data[snake] = data[camel]
+
+        # 2. Check if lead with this ID or lead_no already exists
+        target_id = data.get('id') or data.get('lead_no')
+        if target_id:
+            existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # 3. Prevent duplicate creation from rapid duplicate submissions (same company and mobile or contact)
+        company = (data.get('company_name') or '').strip()
+        mobile = (data.get('mobile') or '').strip()
+        product = (data.get('product_name') or '').strip()
+        if company and (mobile or product):
+            dup_qs = Lead.objects.filter(company_name__iexact=company)
+            if mobile:
+                dup_qs = dup_qs.filter(mobile=mobile)
+            if product:
+                dup_qs = dup_qs.filter(product_name__iexact=product)
+            dup_lead = dup_qs.order_by('-id').first()
+            if dup_lead:
+                serializer = self.get_serializer(dup_lead)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # 4. Auto-assign lead number only if not provided
+        if not data.get('id') and not data.get('lead_no'):
             num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
             if num_setting:
                 code = num_setting.generate_next_number(increment=True)
@@ -51,8 +97,14 @@ class LeadViewSet(viewsets.ModelViewSet):
                 code = f"LEAD-2026-{Lead.objects.count() + 101:04d}"
             data['id'] = code
             data['lead_no'] = code
-        if not data.get('created_date') and not data.get('createdDate'):
+        elif not data.get('id'):
+            data['id'] = data.get('lead_no')
+        elif not data.get('lead_no'):
+            data['lead_no'] = data.get('id')
+
+        if not data.get('created_date'):
             data['created_date'] = datetime.now().strftime('%Y-%m-%d')
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
