@@ -11,11 +11,53 @@ class ManufacturingJobSerializer(serializers.ModelSerializer):
         model = ManufacturingJob
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['jobNumber'] = instance.job_number
+        data['projectId'] = instance.project_id
+        data['projectNumber'] = instance.project_number
+        data['customerId'] = instance.customer_id
+        data['customerName'] = instance.customer_name
+        data['salesOrderId'] = instance.sales_order_id
+        data['salesOrderNumber'] = instance.sales_order_number
+        data['customerPoNumber'] = instance.customer_po_number
+        data['productName'] = instance.product_name
+        data['designId'] = instance.design_id
+        data['designRevision'] = instance.design_revision
+        data['bomId'] = instance.bom_id
+        data['bomRevision'] = instance.bom_revision
+        data['projectManager'] = instance.project_manager
+        data['productionManager'] = instance.production_manager
+        data['plannedStartDate'] = str(instance.planned_start_date) if instance.planned_start_date else ''
+        data['plannedCompletionDate'] = str(instance.planned_completion_date) if instance.planned_completion_date else ''
+        data['actualStartDate'] = str(instance.actual_start_date) if instance.actual_start_date else ''
+        data['actualCompletionDate'] = str(instance.actual_completion_date) if instance.actual_completion_date else ''
+        data['productionProgress'] = instance.production_progress
+        return data
+
 
 class ProductionPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionPlan
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['planNumber'] = instance.plan_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['projectId'] = instance.project_id
+        data['productName'] = instance.product_name
+        data['requiredQuantity'] = float(instance.required_quantity or 0)
+        data['bomId'] = instance.bom_id
+        data['bomRevision'] = instance.bom_revision
+        data['materialAvailabilityStatus'] = instance.material_availability_status
+        data['plannedStartDate'] = str(instance.planned_start_date) if instance.planned_start_date else ''
+        data['plannedCompletionDate'] = str(instance.planned_completion_date) if instance.planned_completion_date else ''
+        data['assignedWorkCenters'] = instance.assigned_work_centers
+        data['plannedManpowerCount'] = instance.planned_manpower_count
+        data['productionManager'] = instance.production_manager
+        return data
 
 
 class WorkCenterSerializer(serializers.ModelSerializer):
@@ -23,11 +65,37 @@ class WorkCenterSerializer(serializers.ModelSerializer):
         model = WorkCenter
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['workCenterCode'] = instance.work_center_code
+        data['workCenterName'] = instance.work_center_name
+        data['machineName'] = instance.machine_name
+        data['machineNumber'] = instance.machine_number
+        data['capacityPerDayHours'] = float(instance.capacity_per_day_hours or 8)
+        data['availableHours'] = float(instance.available_hours or 8)
+        data['efficiencyPercent'] = float(instance.efficiency_percent or 100)
+        data['supervisorName'] = instance.supervisor_name
+        return data
+
 
 class RoutingOperationSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoutingOperation
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['operationNumber'] = instance.operation_number
+        data['operationName'] = instance.operation_name
+        data['workCenterCode'] = instance.work_center_code
+        data['workCenterName'] = instance.work_center_name
+        data['machineName'] = instance.machine_name
+        data['plannedSetupMinutes'] = instance.planned_setup_minutes
+        data['plannedProcessingMinutes'] = instance.planned_processing_minutes
+        data['totalPlannedMinutes'] = instance.total_planned_minutes
+        data['assignedOperator'] = instance.assigned_operator
+        data['qcRequired'] = instance.qc_required
+        return data
 
 
 class WorkOrderSerializer(serializers.ModelSerializer):
@@ -35,11 +103,48 @@ class WorkOrderSerializer(serializers.ModelSerializer):
         model = WorkOrder
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['workOrderNumber'] = instance.work_order_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['projectId'] = instance.project_id
+        data['customerId'] = instance.customer_id
+        data['customerName'] = instance.customer_name
+        data['salesOrderNumber'] = instance.sales_order_number
+        data['designRevision'] = instance.design_revision
+        data['bomRevision'] = instance.bom_revision
+        data['productName'] = instance.product_name
+        data['productionQuantity'] = float(instance.production_quantity or 1)
+        data['plannedStartDate'] = str(instance.planned_start_date) if instance.planned_start_date else ''
+        data['plannedEndDate'] = str(instance.planned_end_date) if instance.planned_end_date else ''
+        data['actualStartDate'] = str(instance.actual_start_date) if instance.actual_start_date else ''
+        data['actualEndDate'] = str(instance.actual_end_date) if instance.actual_end_date else ''
+        data['productionManager'] = instance.production_manager
+        return data
+
 
 class ProductionOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionOrder
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['productionOrderNumber'] = instance.production_order_number
+        data['workOrderId'] = instance.work_order_id
+        data['workOrderNumber'] = instance.work_order_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['productName'] = instance.product_name
+        data['bomRevision'] = instance.bom_revision
+        data['designRevision'] = instance.design_revision
+        data['plannedStartDate'] = str(instance.planned_start_date) if instance.planned_start_date else ''
+        data['plannedEndDate'] = str(instance.planned_end_date) if instance.planned_end_date else ''
+        data['actualStartDate'] = str(instance.actual_start_date) if instance.actual_start_date else ''
+        data['actualEndDate'] = str(instance.actual_end_date) if instance.actual_end_date else ''
+        data['productionManager'] = instance.production_manager
+        return data
 
 
 class ProductionScheduleItemSerializer(serializers.ModelSerializer):
@@ -47,11 +152,54 @@ class ProductionScheduleItemSerializer(serializers.ModelSerializer):
         model = ProductionScheduleItem
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['scheduleNumber'] = instance.schedule_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['operationName'] = instance.operation_name
+        data['workCenterCode'] = instance.work_center_code
+        data['workCenterName'] = instance.work_center_name
+        data['machineName'] = instance.machine_name
+        data['assignedOperator'] = instance.assigned_operator
+        data['plannedStart'] = str(instance.planned_start) if instance.planned_start else ''
+        data['plannedEnd'] = str(instance.planned_end) if instance.planned_end else ''
+        data['actualStart'] = str(instance.actual_start) if instance.actual_start else ''
+        data['actualEnd'] = str(instance.actual_end) if instance.actual_end else ''
+        data['delayHours'] = float(instance.delay_hours or 0)
+        return data
+
 
 class ProductionEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionEntry
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['productionEntryNumber'] = instance.production_entry_number
+        data['entryDate'] = str(instance.entry_date)
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productionOrderNumber'] = instance.production_order_number
+        data['operationName'] = instance.operation_name
+        data['workCenterName'] = instance.work_center_name
+        data['machineName'] = instance.machine_name
+        data['operatorName'] = instance.operator_name
+        data['startTime'] = instance.start_time
+        data['endTime'] = instance.end_time
+        data['plannedQuantity'] = float(instance.planned_quantity or 0)
+        data['producedQuantity'] = float(instance.produced_quantity or 0)
+        data['rejectedQuantity'] = float(instance.rejected_quantity or 0)
+        data['reworkQuantity'] = float(instance.rework_quantity or 0)
+        data['scrapQuantity'] = float(instance.scrap_quantity or 0)
+        data['goodQuantity'] = float(instance.good_quantity or 0)
+        data['downtimeMinutes'] = instance.downtime_minutes
+        data['downtimeReason'] = instance.downtime_reason
+        data['createdBy'] = instance.created_by
+        return data
 
 
 class WIPRecordSerializer(serializers.ModelSerializer):
@@ -59,11 +207,40 @@ class WIPRecordSerializer(serializers.ModelSerializer):
         model = WIPRecord
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productionOrderNumber'] = instance.production_order_number
+        data['currentOperationName'] = instance.current_operation_name
+        data['completedOperationsCount'] = instance.completed_operations_count
+        data['totalOperationsCount'] = instance.total_operations_count
+        data['wipQuantity'] = float(instance.wip_quantity or 0)
+        data['responsibleDepartment'] = instance.responsible_department
+        data['startDate'] = str(instance.start_date) if instance.start_date else ''
+        data['expectedCompletionDate'] = str(instance.expected_completion_date) if instance.expected_completion_date else ''
+        data['delayDays'] = instance.delay_days
+        return data
+
 
 class ProductionHoldSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionHold
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['holdNumber'] = instance.hold_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['operationName'] = instance.operation_name
+        data['startDate'] = str(instance.start_date) if instance.start_date else ''
+        data['expectedResumeDate'] = str(instance.expected_resume_date) if instance.expected_resume_date else ''
+        data['approvedBy'] = instance.approved_by
+        data['resumeDate'] = str(instance.resume_date) if instance.resume_date else ''
+        return data
 
 
 class ReworkOrderSerializer(serializers.ModelSerializer):
@@ -71,14 +248,66 @@ class ReworkOrderSerializer(serializers.ModelSerializer):
         model = ReworkOrder
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['reworkNumber'] = instance.rework_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productionEntryNumber'] = instance.production_entry_number
+        data['operationName'] = instance.operation_name
+        data['itemCode'] = instance.item_code
+        data['itemName'] = instance.item_name
+        data['quantity'] = float(instance.quantity or 0)
+        data['responsibleDepartment'] = instance.responsible_department
+        data['reworkInstructions'] = instance.rework_instructions
+        data['assignedOperator'] = instance.assigned_operator
+        data['startDate'] = str(instance.start_date) if instance.start_date else ''
+        data['completionDate'] = str(instance.completion_date) if instance.completion_date else ''
+        return data
+
 
 class ProductionScrapSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionScrap
         fields = '__all__'
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['scrapNumber'] = instance.scrap_number
+        data['entryDate'] = str(instance.entry_date)
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productionOrderNumber'] = instance.production_order_number
+        data['operationName'] = instance.operation_name
+        data['materialCode'] = instance.material_code
+        data['materialName'] = instance.material_name
+        data['quantity'] = float(instance.quantity or 0)
+        data['scrapType'] = instance.scrap_type
+        data['operatorName'] = instance.operator_name
+        data['estimatedValue'] = float(instance.estimated_value or 0)
+        return data
+
 
 class FinishedGoodsItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = FinishedGoodsItem
         fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['finishedGoodsNumber'] = instance.finished_goods_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productionOrderNumber'] = instance.production_order_number
+        data['productName'] = instance.product_name
+        data['serialNumber'] = instance.serial_number
+        data['batchNumber'] = instance.batch_number
+        data['warehouseId'] = instance.warehouse_id
+        data['warehouseName'] = instance.warehouse_name
+        data['locationBin'] = instance.location_bin
+        data['completionDate'] = str(instance.completion_date) if instance.completion_date else ''
+        data['qcStatus'] = instance.qc_status
+        return data

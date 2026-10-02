@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from django.db.models import Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
@@ -61,6 +62,34 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['operation_name', 'work_center_name']
     filterset_fields = ['status', 'department']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        count = RoutingOperation.objects.count() + 1
+        op_num = data.get('operation_number') or data.get('operationNumber') or count * 10
+        op_id = data.get('id') or f"OP-{op_num}"
+        
+        data['id'] = op_id
+        data['operation_number'] = int(op_num)
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', 'Routing Operation')
+        data['sequence'] = int(data.get('sequence') or data.get('sequence_number') or count)
+        data['work_center_code'] = data.get('work_center_code') or data.get('workCenterCode', '')
+        data['work_center_name'] = data.get('work_center_name') or data.get('workCenterName', '')
+        data['machine_name'] = data.get('machine_name') or data.get('machineName', '')
+        data['department'] = data.get('department', 'Production')
+        data['planned_setup_minutes'] = int(data.get('planned_setup_minutes') or data.get('plannedSetupMinutes') or 0)
+        data['planned_processing_minutes'] = int(data.get('planned_processing_minutes') or data.get('plannedProcessingMinutes') or 0)
+        data['total_planned_minutes'] = int(data.get('total_planned_minutes') or data.get('totalPlannedMinutes') or (data['planned_setup_minutes'] + data['planned_processing_minutes']))
+        data['assigned_operator'] = data.get('assigned_operator') or data.get('assignedOperator', '')
+        data['qc_required'] = bool(data.get('qc_required') if 'qc_required' in data else data.get('qcRequired', True))
+        data['instructions'] = data.get('instructions', '')
+        data['status'] = data.get('status', 'Ready')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class WorkOrderViewSet(viewsets.ModelViewSet):
@@ -173,63 +202,244 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
 
 
 class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
-    queryset = ProductionScheduleItem.objects.all()
+    queryset = ProductionScheduleItem.objects.all().order_by('-id')
     serializer_class = ProductionScheduleItemSerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['schedule_number', 'job_number', 'operation_name']
+    search_fields = ['schedule_number', 'job_number', 'work_order_number', 'operation_name']
     filterset_fields = ['status', 'work_center_code']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        sch_num = data.get('schedule_number') or data.get('scheduleNumber') or f"SCH-{datetime.now().year}-{ProductionScheduleItem.objects.count() + 1:04d}"
+        
+        data['id'] = data.get('id') or sch_num
+        data['schedule_number'] = sch_num
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', '')
+        data['work_center_code'] = data.get('work_center_code') or data.get('workCenterCode', '')
+        data['work_center_name'] = data.get('work_center_name') or data.get('workCenterName', '')
+        data['machine_name'] = data.get('machine_name') or data.get('machineName', '')
+        data['assigned_operator'] = data.get('assigned_operator') or data.get('assignedOperator', '')
+        
+        # Datetime normalization
+        for field in ['planned_start', 'plannedStart', 'planned_end', 'plannedEnd', 'actual_start', 'actualStart', 'actual_end', 'actualEnd']:
+            if field in data and not data[field]:
+                data[field] = None
+
+        if 'planned_start' not in data and 'plannedStart' in data:
+            data['planned_start'] = data['plannedStart'] or None
+        if 'planned_end' not in data and 'plannedEnd' in data:
+            data['planned_end'] = data['plannedEnd'] or None
+
+        data['delay_hours'] = data.get('delay_hours') or data.get('delayHours', 0)
+        data['status'] = data.get('status', 'Scheduled')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProductionEntryViewSet(viewsets.ModelViewSet):
-    queryset = ProductionEntry.objects.all()
+    queryset = ProductionEntry.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionEntrySerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['production_entry_number', 'job_number', 'work_order_number', 'operation_name']
+    search_fields = ['production_entry_number', 'job_number', 'work_order_number', 'operation_name', 'operator_name']
     filterset_fields = ['job_id', 'entry_date']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        entry_num = data.get('production_entry_number') or data.get('productionEntryNumber') or f"PENTRY-{datetime.now().year}-{ProductionEntry.objects.count() + 1:04d}"
+        
+        data['id'] = data.get('id') or entry_num
+        data['production_entry_number'] = entry_num
+        data['entry_date'] = data.get('entry_date') or data.get('entryDate') or datetime.now().strftime('%Y-%m-%d')
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['production_order_number'] = data.get('production_order_number') or data.get('productionOrderNumber', '')
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', '')
+        data['work_center_name'] = data.get('work_center_name') or data.get('workCenterName', '')
+        data['machine_name'] = data.get('machine_name') or data.get('machineName', '')
+        data['operator_name'] = data.get('operator_name') or data.get('operatorName', '')
+        data['start_time'] = data.get('start_time') or data.get('startTime', '08:00 AM')
+        data['end_time'] = data.get('end_time') or data.get('endTime', '05:00 PM')
+        
+        data['planned_quantity'] = data.get('planned_quantity') or data.get('plannedQuantity', 0)
+        data['produced_quantity'] = data.get('produced_quantity') or data.get('producedQuantity', 0)
+        data['rejected_quantity'] = data.get('rejected_quantity') or data.get('rejectedQuantity', 0)
+        data['rework_quantity'] = data.get('rework_quantity') or data.get('reworkQuantity', 0)
+        data['scrap_quantity'] = data.get('scrap_quantity') or data.get('scrapQuantity', 0)
+        
+        produced = float(data['produced_quantity'])
+        rejected = float(data['rejected_quantity'])
+        scrap = float(data['scrap_quantity'])
+        data['good_quantity'] = data.get('good_quantity') or data.get('goodQuantity') or max(0, produced - rejected - scrap)
+        
+        data['downtime_minutes'] = data.get('downtime_minutes') or data.get('downtimeMinutes', 0)
+        data['downtime_reason'] = data.get('downtime_reason') or data.get('downtimeReason', '')
+        data['remarks'] = data.get('remarks', '')
+        data['created_by'] = data.get('created_by') or data.get('createdBy', data['operator_name'])
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class WIPRecordViewSet(viewsets.ModelViewSet):
-    queryset = WIPRecord.objects.all()
+    queryset = WIPRecord.objects.all().order_by('-start_date', '-id')
     serializer_class = WIPRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['job_number', 'work_order_number', 'current_operation_name']
     filterset_fields = ['status', 'location']
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data['id'] = data.get('id') or f"WIP-{datetime.now().year}-{WIPRecord.objects.count() + 1:04d}"
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['production_order_number'] = data.get('production_order_number') or data.get('productionOrderNumber', '')
+        data['current_operation_name'] = data.get('current_operation_name') or data.get('currentOperationName', '')
+        data['completed_operations_count'] = data.get('completed_operations_count') or data.get('completedOperationsCount', 0)
+        data['total_operations_count'] = data.get('total_operations_count') or data.get('totalOperationsCount', 0)
+        data['wip_quantity'] = data.get('wip_quantity') or data.get('wipQuantity', 0)
+        data['responsible_department'] = data.get('responsible_department') or data.get('responsibleDepartment', '')
+        data['start_date'] = data.get('start_date') or data.get('startDate') or datetime.now().strftime('%Y-%m-%d')
+        data['expected_completion_date'] = data.get('expected_completion_date') or data.get('expectedCompletionDate') or None
+        data['delay_days'] = data.get('delay_days') or data.get('delayDays', 0)
+        data['status'] = data.get('status', 'In Progress')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class ProductionHoldViewSet(viewsets.ModelViewSet):
-    queryset = ProductionHold.objects.all()
+    queryset = ProductionHold.objects.all().order_by('-start_date', '-id')
     serializer_class = ProductionHoldSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['hold_number', 'job_number', 'reason']
     filterset_fields = ['status']
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        hold_num = data.get('hold_number') or data.get('holdNumber') or f"HLD-{datetime.now().year}-{ProductionHold.objects.count() + 1:03d}"
+        data['id'] = data.get('id') or hold_num
+        data['hold_number'] = hold_num
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', '')
+        data['reason'] = data.get('reason') or 'Material Shortage'
+        data['description'] = data.get('description', '')
+        data['start_date'] = data.get('start_date') or data.get('startDate') or datetime.now().strftime('%Y-%m-%d')
+        
+        exp_resume = data.get('expected_resume_date') or data.get('expectedResumeDate')
+        data['expected_resume_date'] = exp_resume if exp_resume else None
+        
+        data['approved_by'] = data.get('approved_by') or data.get('approvedBy', '')
+        
+        resume_d = data.get('resume_date') or data.get('resumeDate')
+        data['resume_date'] = resume_d if resume_d else None
+        
+        data['status'] = data.get('status', 'Active Hold')
+        data['remarks'] = data.get('remarks', '')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], url_path='resume')
     def resume_hold(self, request, pk=None):
-        hold = self.get_object()
+        hold = ProductionHold.objects.filter(Q(id=pk) | Q(hold_number=pk)).first()
+        if not hold:
+            return Response({'error': 'Hold record not found'}, status=status.HTTP_404_NOT_FOUND)
         hold.status = 'Resumed'
         hold.resume_date = timezone.now().date()
         hold.save()
         return Response({'message': f'Production Hold {hold.hold_number} resumed', 'status': hold.status})
 
 
+
 class ReworkOrderViewSet(viewsets.ModelViewSet):
-    queryset = ReworkOrder.objects.all()
+    queryset = ReworkOrder.objects.all().order_by('-start_date', '-id')
     serializer_class = ReworkOrderSerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['rework_number', 'job_number', 'item_name']
+    search_fields = ['rework_number', 'job_number', 'item_name', 'work_order_number']
     filterset_fields = ['status']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        rwk_num = data.get('rework_number') or data.get('reworkNumber') or f"RWK-{datetime.now().year}-{ReworkOrder.objects.count() + 1:03d}"
+        
+        data['id'] = data.get('id') or rwk_num
+        data['rework_number'] = rwk_num
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['production_entry_number'] = data.get('production_entry_number') or data.get('productionEntryNumber', '')
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', '')
+        data['item_code'] = data.get('item_code') or data.get('itemCode', 'ITEM-001')
+        data['item_name'] = data.get('item_name') or data.get('itemName', 'Component Assembly')
+        data['quantity'] = data.get('quantity') or 1
+        data['uom'] = data.get('uom', 'Set')
+        data['reason'] = data.get('reason', 'Welding Defect')
+        data['responsible_department'] = data.get('responsible_department') or data.get('responsibleDepartment', 'Production')
+        data['rework_instructions'] = data.get('rework_instructions') or data.get('reworkInstructions', '')
+        data['assigned_operator'] = data.get('assigned_operator') or data.get('assignedOperator', '')
+        data['start_date'] = data.get('start_date') or data.get('startDate') or datetime.now().strftime('%Y-%m-%d')
+        data['completion_date'] = data.get('completion_date') or data.get('completionDate') or None
+        data['status'] = data.get('status', 'Open')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProductionScrapViewSet(viewsets.ModelViewSet):
-    queryset = ProductionScrap.objects.all()
+    queryset = ProductionScrap.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionScrapSerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['scrap_number', 'job_number', 'material_name']
+    search_fields = ['scrap_number', 'job_number', 'material_name', 'work_order_number']
     filterset_fields = ['scrap_type']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        scrap_num = data.get('scrap_number') or data.get('scrapNumber') or f"PSCRAP-{datetime.now().year}-{ProductionScrap.objects.count() + 1:03d}"
+        
+        data['id'] = data.get('id') or scrap_num
+        data['scrap_number'] = scrap_num
+        data['entry_date'] = data.get('entry_date') or data.get('entryDate') or datetime.now().strftime('%Y-%m-%d')
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['production_order_number'] = data.get('production_order_number') or data.get('productionOrderNumber', '')
+        data['operation_name'] = data.get('operation_name') or data.get('operationName', '')
+        data['material_code'] = data.get('material_code') or data.get('materialCode', 'SCRAP-001')
+        data['material_name'] = data.get('material_name') or data.get('materialName', 'Metal Offcut Scrap')
+        data['quantity'] = data.get('quantity') or 0
+        data['uom'] = data.get('uom', 'Kg')
+        data['reason'] = data.get('reason', '')
+        data['scrap_type'] = data.get('scrap_type') or data.get('scrapType', 'Cutting Scrap')
+        data['operator_name'] = data.get('operator_name') or data.get('operatorName', '')
+        data['estimated_value'] = data.get('estimated_value') or data.get('estimatedValue', 0)
+        data['remarks'] = data.get('remarks', '')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
-    queryset = FinishedGoodsItem.objects.all()
+    queryset = FinishedGoodsItem.objects.all().order_by('-completion_date', '-id')
     serializer_class = FinishedGoodsItemSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['finished_goods_number', 'job_number', 'product_name']

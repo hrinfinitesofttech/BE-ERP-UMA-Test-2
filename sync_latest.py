@@ -10,17 +10,23 @@ REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
 
 TARGET_FILES = [
+    'apps/production/models.py',
+    'apps/production/serializers.py',
+    'apps/production/views.py',
     'apps/hr/serializers.py',
     'apps/hr/views.py',
     'apps/hr/models.py',
+    'apps/crm/serializers.py',
+    'apps/crm/views.py',
     'apps/designer/models.py',
     'apps/designer/serializers.py',
     'apps/designer/views.py',
-    'apps/designer/migrations/0005_designjob_approval_notes_designjob_approved_by_and_more.py',
     'apps/purchase/serializers.py',
     'apps/purchase/views.py',
     'apps/projects/serializers.py',
     'apps/projects/views.py',
+    'apps/store/serializers.py',
+    'apps/store/views.py',
 ]
 
 def upload_file(session, rel_path, headers):
@@ -101,10 +107,13 @@ def main():
         '/api/auth/me/',
         '/api/departments/',
         '/api/designations/',
-        '/api/employee-transfers/',
-        '/api/employee-onboardings/',
+        '/api/routing-operations/',
+        '/api/production-holds/',
+        '/api/production-schedules/',
+        '/api/production-entries/',
+        '/api/rework-orders/',
+        '/api/production-scraps/',
         '/api/designer/jobs/',
-        '/api/designer/tasks/',
     ]
     all_ok = True
     for ep in endpoints:
