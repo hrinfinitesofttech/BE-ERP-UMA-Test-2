@@ -104,3 +104,42 @@ class ProductionMaintenanceHRTests(TestCase):
         leave.refresh_from_db()
         self.assertEqual(leave.status, 'Approved')
         self.assertEqual(leave.approved_by, 'HR Lead')
+
+    def test_dispatch_order_lifecycle(self):
+        # 1. Create a dispatch order
+        payload = {
+            'jobId': 'JOB-2026-001',
+            'jobNumber': 'JOB-2026-001',
+            'workOrderNumber': 'WO-2026-001-A',
+            'customerName': 'Reliance Industries Limited (Jamnagar)',
+            'productName': 'SS 316L Chemical Reactor Vessel 10KL',
+            'quantity': 1.0,
+            'uom': 'Unit',
+            'vehicleNumber': 'GJ-01-XX-9900',
+            'transporterName': 'Mahavir Heavy Logistics',
+            'lrNumber': 'LR-2026-8899',
+            'driverName': 'Ramesh Bhai',
+            'driverMobile': '9825112233',
+            'eWayBillNumber': 'EWB-24-99887766',
+            'status': 'Ready for Dispatch'
+        }
+        res = self.client.post('/api/dispatch-orders/', payload, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        disp_id = res.data['id']
+        self.assertIn('dispatchNumber', res.data)
+        self.assertEqual(res.data['customerName'], 'Reliance Industries Limited (Jamnagar)')
+
+        # 2. Mark Dispatched & In Transit
+        res_transit = self.client.post(f'/api/dispatch-orders/{disp_id}/mark-dispatched/')
+        self.assertEqual(res_transit.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_transit.data['status'], 'In Transit')
+
+        # 3. Mark Delivered to Site
+        res_deliv = self.client.post(f'/api/dispatch-orders/{disp_id}/mark-delivered/')
+        self.assertEqual(res_deliv.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_deliv.data['status'], 'Delivered to Site')
+
+        # 4. List dispatch orders
+        res_list = self.client.get('/api/dispatch-orders/')
+        self.assertEqual(res_list.status_code, status.HTTP_200_OK)
+

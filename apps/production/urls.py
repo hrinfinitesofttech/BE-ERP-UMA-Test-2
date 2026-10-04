@@ -5,7 +5,7 @@ from .views import (
     RoutingOperationViewSet, WorkOrderViewSet, ProductionOrderViewSet,
     ProductionScheduleItemViewSet, ProductionEntryViewSet, WIPRecordViewSet,
     ProductionHoldViewSet, ReworkOrderViewSet, ProductionScrapViewSet,
-    FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet
+    FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet, DispatchOrderViewSet
 )
 
 router = DefaultRouter()
@@ -24,6 +24,8 @@ router.register('production-holds', ProductionHoldViewSet, basename='production-
 router.register('rework-orders', ReworkOrderViewSet, basename='rework-order')
 router.register('production-scraps', ProductionScrapViewSet, basename='production-scrap')
 router.register('finished-goods', FinishedGoodsItemViewSet, basename='finished-good')
+router.register('dispatch-orders', DispatchOrderViewSet, basename='dispatch-order')
+router.register('dispatch', DispatchOrderViewSet, basename='dispatch')
 
 urlpatterns = [
     path('', include(router.urls)),

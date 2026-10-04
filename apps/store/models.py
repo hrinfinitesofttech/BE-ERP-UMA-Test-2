@@ -7,6 +7,10 @@ class ItemCategory(models.Model):
     code = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True, default='')
 
+    class Meta:
+        verbose_name = 'Item Category'
+        verbose_name_plural = 'Item Categories'
+
     def __str__(self):
         return f"{self.code} - {self.name}"
 
@@ -217,6 +221,10 @@ class StockLedgerEntry(models.Model):
     performed_by = models.CharField(max_length=150)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Stock Ledger Entry'
+        verbose_name_plural = 'Stock Ledger Entries'
+
     def __str__(self):
         return f"{self.date} [{self.transaction_type}] {self.item_code} bal: {self.closing_quantity}"
 
@@ -234,6 +242,10 @@ class ScrapEntry(models.Model):
     disposal_method = models.CharField(max_length=100, default='Recycling')
     estimated_value = models.FloatField(default=0)
     status = models.CharField(max_length=30, default='Identified')
+
+    class Meta:
+        verbose_name = 'Scrap Entry'
+        verbose_name_plural = 'Scrap Entries'
 
     def __str__(self):
         return f"{self.scrap_number} - {self.item_code} ({self.quantity} {self.uom})"

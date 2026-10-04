@@ -116,6 +116,10 @@ class Enquiry(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Enquiry'
+        verbose_name_plural = 'Enquiries'
+
     def __str__(self):
         return f"{self.enquiry_no} - {self.customer_name}"
 
@@ -137,6 +141,10 @@ class Opportunity(models.Model):
     quotation_id = models.CharField(max_length=64, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Opportunity'
+        verbose_name_plural = 'Opportunities'
 
     def __str__(self):
         return f"{self.opportunity_no} - {self.customer_name}"
@@ -259,6 +267,10 @@ class CustomerPO(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Customer PO'
+        verbose_name_plural = 'Customer POs'
+
     def __str__(self):
         return f"{self.po_number} ({self.customer_name})"
 
@@ -302,6 +314,10 @@ class Activity(models.Model):
     performed_at = models.CharField(max_length=60)
     type = models.CharField(max_length=30, default='note')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Activity'
+        verbose_name_plural = 'Activities'
 
     def __str__(self):
         return f"{self.title} on {self.entity_type}:{self.entity_id}"

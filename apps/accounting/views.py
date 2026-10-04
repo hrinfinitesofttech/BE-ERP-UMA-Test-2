@@ -56,6 +56,38 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
     search_fields = ['invoice_number', 'customer_name', 'job_number', 'sales_order_number']
     filterset_fields = ['status', 'payment_status', 'customer_id']
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            data['id'] = data.get('invoice_number') or data.get('invoiceNumber') or f"INV-2026-{SalesInvoice.objects.count() + 1:04d}"
+        if 'invoice_number' not in data:
+            data['invoice_number'] = data.get('invoiceNumber') or data.get('id')
+        if 'invoice_date' not in data:
+            data['invoice_date'] = data.get('invoiceDate') or timezone.now().strftime('%Y-%m-%d')
+        if 'due_date' not in data:
+            data['due_date'] = data.get('dueDate') or data['invoice_date']
+        if 'customer_id' not in data:
+            data['customer_id'] = data.get('customerId') or 'CUST-001'
+        if 'customer_name' not in data:
+            data['customer_name'] = data.get('customerName') or 'Customer'
+        if 'taxable_amount' not in data:
+            data['taxable_amount'] = data.get('taxableAmount') or data.get('subTotal') or data.get('sub_total') or 0.0
+        if 'cgst_amount' not in data:
+            data['cgst_amount'] = data.get('cgstAmount') or 0.0
+        if 'sgst_amount' not in data:
+            data['sgst_amount'] = data.get('sgstAmount') or 0.0
+        if 'igst_amount' not in data:
+            data['igst_amount'] = data.get('igstAmount') or 0.0
+        if 'grand_total' not in data:
+            data['grand_total'] = data.get('grandTotal') or data.get('total') or 0.0
+        if 'items' not in data:
+            data['items'] = []
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], url_path='record-payment')
     def record_payment(self, request, pk=None):
         inv = self.get_object()

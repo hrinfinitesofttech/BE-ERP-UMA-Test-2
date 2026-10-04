@@ -179,6 +179,10 @@ class JournalEntry(models.Model):
     status = models.CharField(max_length=64, default='Posted')
     created_by = models.CharField(max_length=128, blank=True)
 
+    class Meta:
+        verbose_name = 'Journal Entry'
+        verbose_name_plural = 'Journal Entries'
+
     def __str__(self):
         return f"{self.journal_number} ({self.voucher_type})"
 
@@ -199,6 +203,10 @@ class JobCostingSummary(models.Model):
     total_actual_cost = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
     profit = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
     margin_percent = models.DecimalField(max_digits=6, decimal_places=2, default=0.0)
+
+    class Meta:
+        verbose_name = 'Job Costing Summary'
+        verbose_name_plural = 'Job Costing Summaries'
 
     def __str__(self):
         return f"Costing: {self.job_number} - Margin: {self.margin_percent}%"
@@ -317,6 +325,8 @@ class ExpenseEntry(models.Model):
 
     class Meta:
         ordering = ['-expense_date', '-created_at']
+        verbose_name = 'Expense Entry'
+        verbose_name_plural = 'Expense Entries'
 
     def __str__(self):
         return f"{self.expense_number} - {self.category} (₹{self.grand_total})"

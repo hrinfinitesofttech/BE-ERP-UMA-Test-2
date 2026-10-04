@@ -1,4 +1,6 @@
 from django.db import models
+from django.utils import timezone
+
 
 
 class ManufacturingJob(models.Model):
@@ -201,6 +203,10 @@ class ProductionEntry(models.Model):
             self.good_quantity = max(0, self.produced_quantity - self.rejected_quantity - self.scrap_quantity)
         super().save(*args, **kwargs)
 
+    class Meta:
+        verbose_name = 'Production Entry'
+        verbose_name_plural = 'Production Entries'
+
     def __str__(self):
         return f"{self.production_entry_number} ({self.operation_name})"
 
@@ -222,6 +228,10 @@ class WIPRecord(models.Model):
     expected_completion_date = models.DateField(null=True, blank=True)
     delay_days = models.IntegerField(default=0)
     status = models.CharField(max_length=64, default='In Progress')
+
+    class Meta:
+        verbose_name = 'WIP Record'
+        verbose_name_plural = 'WIP Records'
 
     def __str__(self):
         return f"WIP: {self.job_number} - {self.current_operation_name}"
@@ -347,3 +357,47 @@ class ProductionMaterialRequest(models.Model):
 
     def __str__(self):
         return f"{self.request_number} ({self.job_number or self.work_order_number})"
+
+
+class DispatchOrder(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    dispatch_number = models.CharField(max_length=64, unique=True)
+    dispatch_date = models.DateField(default=timezone.now)
+    job_id = models.CharField(max_length=64, blank=True)
+    job_number = models.CharField(max_length=64, blank=True)
+    work_order_number = models.CharField(max_length=64, blank=True)
+    finished_goods_number = models.CharField(max_length=64, blank=True)
+    customer_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255)
+    customer_address = models.TextField(blank=True)
+    destination_city = models.CharField(max_length=128, blank=True)
+    product_name = models.CharField(max_length=255)
+    specification = models.TextField(blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=2, default=1)
+    uom = models.CharField(max_length=32, default='Nos')
+    serial_number = models.CharField(max_length=128, blank=True)
+    batch_number = models.CharField(max_length=128, blank=True)
+    weight_mt = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    transporter_name = models.CharField(max_length=255, blank=True)
+    vehicle_number = models.CharField(max_length=64, blank=True)
+    lr_number = models.CharField(max_length=64, blank=True)
+    driver_name = models.CharField(max_length=128, blank=True)
+    driver_mobile = models.CharField(max_length=32, blank=True)
+    e_way_bill_number = models.CharField(max_length=64, blank=True)
+    invoice_number = models.CharField(max_length=64, blank=True)
+    packaging_type = models.CharField(max_length=128, default='Wooden Saddle & Tarpaulin')
+    dispatch_type = models.CharField(max_length=64, default='Road Freight (Trailer)')
+    qc_clearance_by = models.CharField(max_length=128, blank=True, default='Quality Manager')
+    dispatched_by = models.CharField(max_length=128, blank=True, default='Dispatch Officer')
+    status = models.CharField(max_length=64, default='Ready for Dispatch')
+    remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Dispatch Order & Delivery Challan'
+        verbose_name_plural = 'Dispatch Orders & Delivery Challans'
+
+    def __str__(self):
+        return f"{self.dispatch_number} - {self.customer_name} ({self.status})"
+

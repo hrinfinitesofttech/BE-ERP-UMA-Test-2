@@ -1,5 +1,27 @@
 from django.contrib import admin
-from .models import Designation, EmployeeDocument, ShiftMaster, AttendanceRecord, LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization, OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure, PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense
+from .models import (
+    Designation,
+    EmployeeDocument,
+    ShiftMaster,
+    AttendanceRecord,
+    LeaveRequest,
+    WFHRequest,
+    MissedPunchRequest,
+    AttendanceRegularization,
+    OvertimeRecord,
+    EarlyCheckoutRequest,
+    SalaryComponent,
+    SalaryStructure,
+    PayrollRecord,
+    EmployeeAdvanceLoan,
+    ReimbursementExpense,
+    EmployeeOnboarding,
+    EmployeeTransfer,
+    EmployeePromotion,
+    EmployeeExit,
+    Holiday,
+    EmployeeAppraisal,
+)
 
 @admin.register(Designation)
 class DesignationAdmin(admin.ModelAdmin):
@@ -90,3 +112,39 @@ class ReimbursementExpenseAdmin(admin.ModelAdmin):
     list_display = ('id', 'reimbursement_no', 'employee_id', 'employee_name', 'department', 'expense_date')
     search_fields = ('id', 'reimbursement_no', 'employee_id', 'employee_name')
     list_filter = ('expense_date', 'category', 'status')
+
+@admin.register(EmployeeOnboarding)
+class EmployeeOnboardingAdmin(admin.ModelAdmin):
+    list_display = ('id', 'candidate_name', 'department', 'designation', 'joining_date', 'offered_ctc', 'status')
+    search_fields = ('id', 'candidate_name', 'email', 'mobile')
+    list_filter = ('department', 'status', 'joining_date')
+
+@admin.register(EmployeeTransfer)
+class EmployeeTransferAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee_name', 'from_department', 'to_department', 'effective_date', 'status')
+    search_fields = ('id', 'employee_name', 'from_department', 'to_department')
+    list_filter = ('status', 'effective_date')
+
+@admin.register(EmployeePromotion)
+class EmployeePromotionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee_name', 'old_designation', 'new_designation', 'increment_percentage', 'effective_date', 'status')
+    search_fields = ('id', 'employee_name', 'new_designation')
+    list_filter = ('status', 'effective_date')
+
+@admin.register(EmployeeExit)
+class EmployeeExitAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee_name', 'department', 'designation', 'resignation_date', 'last_working_date', 'status')
+    search_fields = ('id', 'employee_name', 'department')
+    list_filter = ('status', 'resignation_date')
+
+@admin.register(Holiday)
+class HolidayAdmin(admin.ModelAdmin):
+    list_display = ('id', 'holiday_name', 'holiday_date', 'holiday_type', 'financial_year', 'is_optional')
+    search_fields = ('id', 'holiday_name', 'financial_year')
+    list_filter = ('holiday_type', 'financial_year', 'is_optional')
+
+@admin.register(EmployeeAppraisal)
+class EmployeeAppraisalAdmin(admin.ModelAdmin):
+    list_display = ('id', 'appraisal_number', 'employee_name', 'department', 'cycle_period', 'final_score', 'promotion_recommended', 'status')
+    search_fields = ('id', 'appraisal_number', 'employee_name', 'department')
+    list_filter = ('cycle_period', 'status', 'promotion_recommended')

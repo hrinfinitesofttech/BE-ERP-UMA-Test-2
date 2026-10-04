@@ -9,14 +9,14 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest
+    ProductionMaterialRequest, DispatchOrder
 )
 from .serializers import (
     ManufacturingJobSerializer, ProductionPlanSerializer, WorkCenterSerializer,
     RoutingOperationSerializer, WorkOrderSerializer, ProductionOrderSerializer,
     ProductionScheduleItemSerializer, ProductionEntrySerializer, WIPRecordSerializer,
     ProductionHoldSerializer, ReworkOrderSerializer, ProductionScrapSerializer,
-    FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer
+    FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer, DispatchOrderSerializer
 )
 
 
@@ -489,3 +489,70 @@ class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class DispatchOrderViewSet(viewsets.ModelViewSet):
+    queryset = DispatchOrder.objects.all().order_by('-created_at')
+    serializer_class = DispatchOrderSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['dispatch_number', 'job_number', 'work_order_number', 'customer_name', 'product_name', 'vehicle_number', 'lr_number']
+    filterset_fields = ['status', 'customer_id', 'job_id']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        disp_num = (
+            data.get('dispatch_number')
+            or data.get('dispatchNumber')
+            or f"DISP-{datetime.now().year}-{DispatchOrder.objects.count() + 1:04d}"
+        )
+        data['id'] = data.get('id') or disp_num
+        data['dispatch_number'] = disp_num
+        data['dispatch_date'] = data.get('dispatch_date') or data.get('dispatchDate') or datetime.now().strftime('%Y-%m-%d')
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
+        data['finished_goods_number'] = data.get('finished_goods_number') or data.get('finishedGoodsNumber', '')
+        data['customer_id'] = data.get('customer_id') or data.get('customerId', '')
+        data['customer_name'] = data.get('customer_name') or data.get('customerName', 'Customer')
+        data['customer_address'] = data.get('customer_address') or data.get('customerAddress', '')
+        data['destination_city'] = data.get('destination_city') or data.get('destinationCity', '')
+        data['product_name'] = data.get('product_name') or data.get('productName', 'Heavy Process Equipment')
+        data['specification'] = data.get('specification', '')
+        data['quantity'] = float(data.get('quantity', 1))
+        data['uom'] = data.get('uom', 'Nos')
+        data['serial_number'] = data.get('serial_number') or data.get('serialNumber', '')
+        data['batch_number'] = data.get('batch_number') or data.get('batchNumber', '')
+        data['weight_mt'] = float(data.get('weight_mt') or data.get('weightMT', 0))
+        data['transporter_name'] = data.get('transporter_name') or data.get('transporterName', '')
+        data['vehicle_number'] = data.get('vehicle_number') or data.get('vehicleNumber', '')
+        data['lr_number'] = data.get('lr_number') or data.get('lrNumber', '')
+        data['driver_name'] = data.get('driver_name') or data.get('driverName', '')
+        data['driver_mobile'] = data.get('driver_mobile') or data.get('driverMobile', '')
+        data['e_way_bill_number'] = data.get('e_way_bill_number') or data.get('eWayBillNumber', '')
+        data['invoice_number'] = data.get('invoice_number') or data.get('invoiceNumber', '')
+        data['packaging_type'] = data.get('packaging_type') or data.get('packagingType', 'Wooden Saddle & Tarpaulin')
+        data['dispatch_type'] = data.get('dispatch_type') or data.get('dispatchType', 'Road Freight (Trailer)')
+        data['qc_clearance_by'] = data.get('qc_clearance_by') or data.get('qcClearanceBy', 'Quality Manager')
+        data['dispatched_by'] = data.get('dispatched_by') or data.get('dispatchedBy', 'Dispatch Officer')
+        data['status'] = data.get('status', 'Ready for Dispatch')
+        data['remarks'] = data.get('remarks', '')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='mark-dispatched')
+    def mark_dispatched(self, request, pk=None):
+        dispatch = self.get_object()
+        dispatch.status = 'In Transit'
+        dispatch.save()
+        return Response(DispatchOrderSerializer(dispatch).data)
+
+    @action(detail=True, methods=['post'], url_path='mark-delivered')
+    def mark_delivered(self, request, pk=None):
+        dispatch = self.get_object()
+        dispatch.status = 'Delivered to Site'
+        dispatch.save()
+        return Response(DispatchOrderSerializer(dispatch).data)
+

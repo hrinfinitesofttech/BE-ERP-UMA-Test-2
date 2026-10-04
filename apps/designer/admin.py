@@ -8,6 +8,7 @@ from .models import (
     DesignRevisionLog,
     TechnicalDocumentItem,
     DesignTask,
+    AssemblyDrawing,
 )
 
 @admin.register(DesignTask)
@@ -56,4 +57,10 @@ class TechnicalDocumentItemAdmin(admin.ModelAdmin):
     list_display = ('id', 'design_job_id', 'doc_number', 'title', 'category', 'file_url')
     search_fields = ('id', 'design_job_id', 'doc_number', 'title')
     list_filter = ('category',)
+
+@admin.register(AssemblyDrawing)
+class AssemblyDrawingAdmin(admin.ModelAdmin):
+    list_display = ('id', 'assembly_number', 'assembly_title', 'revision_number', 'file_format', 'file_size', 'drawn_by', 'approved_by')
+    search_fields = ('id', 'assembly_number', 'assembly_title', 'sub_assembly_code', 'job_number')
+    list_filter = ('file_format', 'revision_number', 'created_at')
 

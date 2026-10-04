@@ -1,0 +1,432 @@
+/* ==========================================================================
+   UMA TECHNO FAB - Manufacturing ERP Design System (Django Admin Theme)
+   Aesthetic Match: Warm Elegant Cream, Mocha & Terracotta Palette
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --uma-brand-brown: #381d0c;
+  --uma-brand-accent: #6d3814;
+  --uma-brand-amber: #b45309;
+  --uma-brand-light-amber: #fef3c7;
+  --uma-subtext: #8c532b;
+  --uma-bg-page: #f7f4ee;
+  --uma-bg-sidebar: #faf7f2;
+  --uma-bg-card: #ffffff;
+  --uma-border: #ede4db;
+  --uma-border-light: #f3ece4;
+  --uma-hover-bg: #f2e6d8;
+  --uma-active-bg: #eddccb;
+  --uma-text-main: #2b1709;
+  --uma-text-muted: #7c6759;
+  --uma-radius-sm: 8px;
+  --uma-radius-md: 12px;
+  --uma-radius-lg: 16px;
+  --uma-shadow-sm: 0 1px 3px rgba(56, 29, 12, 0.04), 0 1px 2px rgba(56, 29, 12, 0.03);
+  --uma-shadow-md: 0 4px 14px rgba(56, 29, 12, 0.06), 0 2px 6px rgba(56, 29, 12, 0.04);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background-color: var(--uma-bg-page) !important;
+  color: var(--uma-text-main) !important;
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   1. BRAND HEADER & LOGO AREA (Matching Image 1)
+   ========================================================================== */
+.brand-link {
+  background: var(--uma-bg-sidebar) !important;
+  border-bottom: 1px solid var(--uma-border) !important;
+  padding: 1.15rem 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  transition: all 0.2s ease;
+}
+
+.brand-link::before {
+  content: "⚙";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: linear-gradient(135deg, #6d3814 0%, #381d0c 100%);
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(109, 56, 20, 0.3);
+  flex-shrink: 0;
+}
+
+.brand-link .brand-text {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 800 !important;
+  font-size: 1.05rem !important;
+  color: var(--uma-brand-brown) !important;
+  letter-spacing: 0.02em !important;
+  line-height: 1.15 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.brand-link .brand-text::after {
+  content: "Manufacturing ERP";
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--uma-subtext);
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   2. SIDEBAR NAVIGATION (Matching Image 1 Warm Aesthetic)
+   ========================================================================== */
+.main-sidebar,
+.sidebar {
+  background-color: var(--uma-bg-sidebar) !important;
+  border-right: 1px solid var(--uma-border) !important;
+  box-shadow: 2px 0 12px rgba(56, 29, 12, 0.03) !important;
+}
+
+.nav-sidebar {
+  padding: 0.75rem 0.5rem 5rem !important;
+}
+
+/* Nav Headers / Categories */
+.nav-header {
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1.2px !important;
+  color: var(--uma-subtext) !important;
+  padding: 1.1rem 0.75rem 0.35rem !important;
+}
+
+/* Navigation Links */
+.nav-sidebar .nav-item {
+  margin-bottom: 3px;
+}
+
+.nav-sidebar .nav-link {
+  color: var(--uma-brand-brown) !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  padding: 0.6rem 0.85rem !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease-in-out !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.nav-sidebar .nav-link i {
+  color: var(--uma-brand-accent) !important;
+  font-size: 1.05rem !important;
+  width: 26px !important;
+  margin-right: 8px !important;
+  transition: transform 0.2s ease, color 0.2s ease !important;
+}
+
+.nav-sidebar .nav-link:hover {
+  background-color: var(--uma-hover-bg) !important;
+  color: var(--uma-brand-brown) !important;
+  transform: translateX(2px);
+}
+
+.nav-sidebar .nav-link:hover i {
+  color: var(--uma-brand-brown) !important;
+  transform: scale(1.1);
+}
+
+.nav-sidebar .nav-link.active {
+  background-color: var(--uma-active-bg) !important;
+  color: var(--uma-brand-brown) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(109, 56, 20, 0.08) !important;
+}
+
+.nav-sidebar .nav-link.active i {
+  color: var(--uma-brand-brown) !important;
+}
+
+/* Treeview submenu items */
+.nav-treeview {
+  padding-left: 1.25rem !important;
+}
+
+.nav-treeview .nav-link {
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  padding: 0.45rem 0.75rem !important;
+}
+
+/* Sidebar Footer Badge (Quality | Innovation | Partnership) */
+.main-sidebar::after {
+  content: "Quality • Innovation • Partnership";
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  width: 226px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border: 1px solid var(--uma-border);
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--uma-brand-accent);
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(56, 29, 12, 0.05);
+  pointer-events: none;
+  z-index: 1000;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   3. TOP NAVIGATION BAR
+   ========================================================================== */
+.main-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--uma-border) !important;
+  box-shadow: 0 1px 4px rgba(56, 29, 12, 0.03) !important;
+}
+
+.main-header .nav-link {
+  color: var(--uma-brand-brown) !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+}
+
+.main-header .nav-link:hover {
+  color: var(--uma-brand-amber) !important;
+}
+
+/* Single Top Search Input */
+.main-header .form-control-navbar {
+  background-color: var(--uma-bg-page) !important;
+  border: 1px solid var(--uma-border) !important;
+  border-radius: 20px !important;
+  padding: 0.4rem 1rem !important;
+  font-size: 0.85rem !important;
+  color: var(--uma-text-main) !important;
+  max-width: 280px;
+  transition: all 0.2s ease;
+}
+
+.main-header .form-control-navbar:focus {
+  background-color: #ffffff !important;
+  border-color: var(--uma-brand-accent) !important;
+  box-shadow: 0 0 0 3px rgba(109, 56, 20, 0.12) !important;
+}
+
+.main-header .btn-navbar {
+  border-radius: 20px !important;
+  color: var(--uma-brand-accent) !important;
+}
+
+/* User Dropdown */
+.user-menu .nav-link {
+  font-weight: 700 !important;
+  color: var(--uma-brand-brown) !important;
+}
+
+/* ==========================================================================
+   4. CONTENT DASHBOARD & CARDS
+   ========================================================================== */
+.content-wrapper {
+  background-color: var(--uma-bg-page) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.content-header h1 {
+  font-weight: 800 !important;
+  font-size: 1.6rem !important;
+  color: var(--uma-brand-brown) !important;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  background-color: var(--uma-bg-card) !important;
+  border: 1px solid var(--uma-border) !important;
+  border-radius: var(--uma-radius-md) !important;
+  box-shadow: var(--uma-shadow-sm) !important;
+  margin-bottom: 1.5rem;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.card:hover {
+  box-shadow: var(--uma-shadow-md) !important;
+}
+
+.card-header {
+  background-color: transparent !important;
+  border-bottom: 1px solid var(--uma-border-light) !important;
+  padding: 1rem 1.25rem !important;
+}
+
+.card-header .card-title,
+.card-header h3 {
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  color: var(--uma-brand-brown) !important;
+}
+
+/* ==========================================================================
+   5. ACTION BUTTONS (Clean Modern Style)
+   ========================================================================== */
+.btn {
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 0.82rem !important;
+  padding: 0.4rem 0.85rem !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Add Button */
+.btn-success,
+a.addlink,
+.btn-add {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25) !important;
+}
+
+.btn-success:hover,
+a.addlink:hover,
+.btn-add:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%) !important;
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+/* Change / Edit Button */
+.btn-info,
+a.changelink,
+.btn-change {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25) !important;
+}
+
+.btn-info:hover,
+a.changelink:hover,
+.btn-change:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
+  box-shadow: 0 4px 8px rgba(2, 132, 199, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+/* Primary Button */
+.btn-primary {
+  background: linear-gradient(135deg, #6d3814 0%, #381d0c 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(109, 56, 20, 0.3) !important;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #582f0e 0%, #2b1709 100%) !important;
+  box-shadow: 0 4px 10px rgba(109, 56, 20, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   6. DATA TABLES & LISTS
+   ========================================================================== */
+.table {
+  color: var(--uma-text-main) !important;
+}
+
+.table thead th {
+  background: var(--uma-bg-page) !important;
+  color: var(--uma-brand-brown) !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 2px solid var(--uma-border) !important;
+  padding: 0.85rem 1rem !important;
+}
+
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #faf6f0 !important;
+}
+
+.table td {
+  vertical-align: middle !important;
+  padding: 0.8rem 1rem !important;
+  border-top: 1px solid var(--uma-border-light) !important;
+  font-size: 0.88rem;
+}
+
+/* ==========================================================================
+   7. BADGES & PILLS
+   ========================================================================== */
+.badge {
+  padding: 0.35em 0.75em !important;
+  font-weight: 600 !important;
+  font-size: 0.76rem !important;
+  border-radius: 9999px !important;
+}
+
+.badge-success {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+}
+
+.badge-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.badge-danger {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+
+.badge-info {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+
+.badge-secondary {
+  background-color: #f3ece4 !important;
+  color: var(--uma-brand-brown) !important;
+}
+
+/* ==========================================================================
+   8. FORMS & INPUTS
+   ========================================================================== */
+.form-control, select, input[type="text"], input[type="password"], input[type="email"], textarea {
+  border-radius: var(--uma-radius-sm) !important;
+  border: 1px solid var(--uma-border) !important;
+  padding: 0.5rem 0.8rem !important;
+  font-size: 0.88rem !important;
+  background-color: #ffffff !important;
+  color: var(--uma-text-main) !important;
+}
+
+.form-control:focus, select:focus, input:focus, textarea:focus {
+  border-color: var(--uma-brand-accent) !important;
+  box-shadow: 0 0 0 3px rgba(109, 56, 20, 0.12) !important;
+  outline: none !important;
+}
+
+/* Breadcrumbs */
+.breadcrumb-item a {
+  color: var(--uma-brand-accent) !important;
+  font-weight: 600;
+}
+
+.breadcrumb-item.active {
+  color: var(--uma-text-muted) !important;
+}

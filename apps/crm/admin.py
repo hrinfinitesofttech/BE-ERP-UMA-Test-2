@@ -3,9 +3,10 @@ from .models import Lead, Customer, Contact, Enquiry, Opportunity, FollowUp, Sit
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
-    list_display = ('id', 'lead_no', 'company_name', 'industry', 'website', 'gstin')
-    search_fields = ('id', 'lead_no', 'company_name', 'pincode')
-    list_filter = ('machine_type', 'status', 'created_at', 'updated_at')
+    list_display = ('lead_no', 'company_name', 'contact_person', 'product_name', 'mobile', 'status', 'created_date')
+    search_fields = ('id', 'lead_no', 'company_name', 'contact_person', 'product_name', 'mobile')
+    list_filter = ('status', 'priority', 'source', 'machine_type')
+    list_per_page = 25
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):

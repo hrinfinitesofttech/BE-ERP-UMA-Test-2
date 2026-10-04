@@ -38,9 +38,23 @@ from .serializers import (
 
 
 class LeadViewSet(viewsets.ModelViewSet):
-    queryset = Lead.objects.all().order_by('-id')
     serializer_class = LeadSerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        queryset = Lead.objects.all().order_by('-id')
+        search = self.request.query_params.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(company_name__icontains=search) |
+                Q(lead_no__icontains=search) |
+                Q(contact_person__icontains=search) |
+                Q(product_name__icontains=search)
+            )
+        status_param = self.request.query_params.get('status', '').strip()
+        if status_param:
+            queryset = queryset.filter(status__iexact=status_param)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -69,11 +83,10 @@ class LeadViewSet(viewsets.ModelViewSet):
 
         # 2. Check if lead with this exact ID or lead_no already exists in database
         target_id = data.get('id') or data.get('lead_no')
-        if target_id:
+        if target_id and not request.data.get('allow_existing'):
             existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
             if existing:
-                serializer = self.get_serializer(existing)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response({'error': f"Lead with number '{target_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 3. Auto-assign lead number only if not provided
         if not data.get('id') and not data.get('lead_no'):

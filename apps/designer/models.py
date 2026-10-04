@@ -86,6 +86,10 @@ class Drawing2D(models.Model):
     file_url = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = '2D Drawing'
+        verbose_name_plural = '2D Drawings'
+
     def __str__(self):
         return f"{self.drawing_number} - {self.title}"
 
@@ -103,6 +107,10 @@ class Design3DModel(models.Model):
     modeled_by = models.CharField(max_length=150)
     file_url = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = '3D Design Model'
+        verbose_name_plural = '3D Design Models'
 
     def __str__(self):
         return f"{self.model_number} - {self.model_name}"
@@ -126,6 +134,10 @@ class BOMHeader(models.Model):
     revisions = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Bill of Materials (BOM)'
+        verbose_name_plural = 'Bills of Materials (BOM)'
 
     def __str__(self):
         return f"{self.bom_number} ({self.status})"

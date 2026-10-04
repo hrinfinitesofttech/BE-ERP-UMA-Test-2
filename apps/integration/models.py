@@ -68,6 +68,10 @@ class Job360Overview(models.Model):
     created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Job 360 Overview'
+        verbose_name_plural = 'Job 360 Overviews'
+
     def __str__(self):
         return f"Job 360: {self.job_number} - {self.customer_name}"
 
@@ -84,6 +88,10 @@ class ExecutiveDashboardKPI(models.Model):
     period = models.CharField(max_length=50, default='Monthly')
     meta_data = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Executive Dashboard KPI'
+        verbose_name_plural = 'Executive Dashboard KPIs'
 
     def __str__(self):
         return f"{self.kpi_name}: {self.current_value} / {self.target_value} ({self.period})"
@@ -104,6 +112,10 @@ class Customer360Summary(models.Model):
     summary_data = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Customer 360 Summary'
+        verbose_name_plural = 'Customer 360 Summaries'
+
     def __str__(self):
         return f"Customer 360: {self.customer_name}"
 
@@ -121,6 +133,10 @@ class Supplier360Summary(models.Model):
     outstanding_payable = models.FloatField(default=0)
     summary_data = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Supplier 360 Summary'
+        verbose_name_plural = 'Supplier 360 Summaries'
 
     def __str__(self):
         return f"Supplier 360: {self.supplier_name}"
@@ -141,6 +157,10 @@ class ItemMaterial360Summary(models.Model):
     primary_suppliers = models.JSONField(default=list, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Material 360 Summary'
+        verbose_name_plural = 'Material 360 Summaries'
+
     def __str__(self):
         return f"Item 360: {self.item_code} - {self.item_name}"
 
@@ -158,6 +178,10 @@ class Employee360Summary(models.Model):
     performance_rating = models.FloatField(default=4.5)
     summary_data = models.JSONField(default=dict, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Employee 360 Summary'
+        verbose_name_plural = 'Employee 360 Summaries'
 
     def __str__(self):
         return f"Employee 360: {self.employee_name} ({self.employee_id})"
@@ -179,6 +203,8 @@ class GlobalActivityLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Global Activity Log'
+        verbose_name_plural = 'Global Activity Logs'
 
     def __str__(self):
         return f"[{self.module}] {self.action} by {self.user_name} ({self.date})"
@@ -196,6 +222,10 @@ class ERPReportCenterItem(models.Model):
     last_generated_at = models.CharField(max_length=50, blank=True, default='')
     generated_by = models.CharField(max_length=150, default='Super Admin')
     created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Report Center Item'
+        verbose_name_plural = 'Report Center Items'
 
     def __str__(self):
         return f"{self.report_code}: {self.title}"
@@ -219,6 +249,10 @@ class JobProfitabilityRecord(models.Model):
     status = models.CharField(max_length=50, default='in_progress')
     created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Job Profitability Record'
+        verbose_name_plural = 'Job Profitability Records'
 
     def __str__(self):
         return f"Profitability: {self.job_number} (Margin: {self.profit_margin_percent}%)"

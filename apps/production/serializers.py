@@ -3,7 +3,7 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest
+    ProductionMaterialRequest, DispatchOrder
 )
 
 
@@ -343,3 +343,44 @@ class ProductionMaterialRequestSerializer(serializers.ModelSerializer):
         data['status'] = instance.status
         data['remarks'] = instance.remarks
         return data
+
+
+class DispatchOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DispatchOrder
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['dispatchNumber'] = instance.dispatch_number
+        data['dispatchDate'] = str(instance.dispatch_date) if instance.dispatch_date else ''
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['finishedGoodsNumber'] = instance.finished_goods_number
+        data['customerId'] = instance.customer_id
+        data['customerName'] = instance.customer_name
+        data['customerAddress'] = instance.customer_address
+        data['destinationCity'] = instance.destination_city
+        data['productName'] = instance.product_name
+        data['specification'] = instance.specification
+        data['quantity'] = float(instance.quantity or 1)
+        data['uom'] = instance.uom
+        data['serialNumber'] = instance.serial_number
+        data['batchNumber'] = instance.batch_number
+        data['weightMT'] = float(instance.weight_mt or 0)
+        data['transporterName'] = instance.transporter_name
+        data['vehicleNumber'] = instance.vehicle_number
+        data['lrNumber'] = instance.lr_number
+        data['driverName'] = instance.driver_name
+        data['driverMobile'] = instance.driver_mobile
+        data['eWayBillNumber'] = instance.e_way_bill_number
+        data['invoiceNumber'] = instance.invoice_number
+        data['packagingType'] = instance.packaging_type
+        data['dispatchType'] = instance.dispatch_type
+        data['qcClearanceBy'] = instance.qc_clearance_by
+        data['dispatchedBy'] = instance.dispatched_by
+        data['status'] = instance.status
+        data['remarks'] = instance.remarks
+        return data
+

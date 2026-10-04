@@ -96,6 +96,7 @@ from apps.production.views import (
     ProductionScrapViewSet,
     FinishedGoodsItemViewSet,
     ProductionMaterialRequestViewSet,
+    DispatchOrderViewSet,
 )
 from apps.maintenance.views import (
     InternalAssetViewSet,
@@ -244,6 +245,8 @@ api_router.register(r'rework-orders', ReworkOrderViewSet, basename='rework-order
 api_router.register(r'production-scraps', ProductionScrapViewSet, basename='production-scrap')
 api_router.register(r'finished-goods', FinishedGoodsItemViewSet, basename='finished-good')
 api_router.register(r'production-material-requests', ProductionMaterialRequestViewSet, basename='production-material-request')
+api_router.register(r'dispatch-orders', DispatchOrderViewSet, basename='dispatch-order')
+api_router.register(r'dispatch', DispatchOrderViewSet, basename='dispatch')
 
 # Maintenance & Plant Service
 api_router.register(r'internal-assets', InternalAssetViewSet, basename='internal-asset')

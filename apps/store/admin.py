@@ -1,5 +1,21 @@
 from django.contrib import admin
-from .models import ItemCategory, UOMMaster, ItemMaster, Warehouse, WarehouseLocation, GoodsReceiptNote, QCInspection, StockBalance, StockReservation, MaterialIssue, MaterialReturn, StockLedgerEntry, ScrapEntry
+from .models import (
+    ItemCategory,
+    UOMMaster,
+    ItemMaster,
+    Warehouse,
+    WarehouseLocation,
+    GoodsReceiptNote,
+    QCInspection,
+    StockBalance,
+    StockReservation,
+    MaterialIssue,
+    MaterialReturn,
+    StockLedgerEntry,
+    ScrapEntry,
+    StockTransfer,
+    StockAdjustment,
+)
 
 @admin.register(ItemCategory)
 class ItemCategoryAdmin(admin.ModelAdmin):
@@ -75,3 +91,15 @@ class ScrapEntryAdmin(admin.ModelAdmin):
     list_display = ('id', 'scrap_number', 'date', 'source', 'source_reference', 'item_id')
     search_fields = ('id', 'scrap_number', 'source_reference', 'item_id')
     list_filter = ('status',)
+
+@admin.register(StockTransfer)
+class StockTransferAdmin(admin.ModelAdmin):
+    list_display = ('id', 'transfer_number', 'transfer_date', 'from_warehouse_name', 'to_warehouse_name', 'requested_by', 'status')
+    search_fields = ('id', 'transfer_number', 'from_warehouse_name', 'to_warehouse_name')
+    list_filter = ('status', 'created_at')
+
+@admin.register(StockAdjustment)
+class StockAdjustmentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'adjustment_number', 'adjustment_date', 'item_code', 'item_name', 'difference_quantity', 'adjustment_value', 'status')
+    search_fields = ('id', 'adjustment_number', 'item_code', 'item_name')
+    list_filter = ('status', 'reason', 'created_at')
