@@ -320,16 +320,40 @@ class BOMHeaderSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
+        items = ret.get('items') or []
+        normalized_items = []
+        total_cost = 0.0
+        for itm in items:
+            if isinstance(itm, dict):
+                rate = float(itm.get('estimatedRate') or itm.get('estimated_rate') or itm.get('rate') or itm.get('unitPrice') or itm.get('unit_price') or itm.get('est_rate') or itm.get('estRate') or 0.0)
+                qty = float(itm.get('quantity') or itm.get('qty') or 1.0)
+                total_amt = float(itm.get('totalEstimatedAmount') or itm.get('total_estimated_amount') or itm.get('total_amount') or itm.get('totalAmount') or (qty * rate))
+                total_cost += total_amt
+                normalized_items.append({
+                    **itm,
+                    'estimatedRate': rate,
+                    'estimated_rate': rate,
+                    'rate': rate,
+                    'totalEstimatedAmount': total_amt,
+                    'total_amount': total_amt,
+                    'total_estimated_amount': total_amt,
+                })
+            else:
+                normalized_items.append(itm)
+        
+        calc_total_cost = float(ret.get('total_estimated_cost') or total_cost)
         return {
             **ret,
+            'items': normalized_items,
             'bomNumber': ret.get('bom_number', ''),
             'designJobId': ret.get('design_job_id', ''),
             'projectId': ret.get('project_id', ''),
             'jobNumber': ret.get('job_number', ''),
             'activeRevision': ret.get('active_revision', 'REV-00'),
-            'totalItems': ret.get('total_items', 0),
+            'totalItems': ret.get('total_items', len(normalized_items)),
             'totalWeightKg': ret.get('total_weight_kg', 0),
-            'totalEstimatedCost': ret.get('total_estimated_cost', 0),
+            'totalEstimatedCost': calc_total_cost,
+            'estimatedTotalCost': calc_total_cost,
             'preparedBy': ret.get('prepared_by', 'Dharmesh Joshi'),
             'approvedBy': ret.get('approved_by', ''),
             'releaseDate': ret.get('release_date', ''),
