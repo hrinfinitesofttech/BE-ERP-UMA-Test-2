@@ -14,7 +14,6 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
-    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,6 +41,12 @@ INSTALLED_APPS = [
     'apps.accounting',
     'apps.integration',
 ]
+
+try:
+    import jazzmin
+    INSTALLED_APPS.insert(0, 'jazzmin')
+except ImportError:
+    pass
 
 AUTH_USER_MODEL = 'authentication.User'
 
