@@ -323,20 +323,53 @@ class BOMHeaderSerializer(serializers.ModelSerializer):
         items = ret.get('items') or []
         normalized_items = []
         total_cost = 0.0
-        for itm in items:
+        for idx, itm in enumerate(items):
             if isinstance(itm, dict):
-                rate = float(itm.get('estimatedRate') or itm.get('estimated_rate') or itm.get('rate') or itm.get('unitPrice') or itm.get('unit_price') or itm.get('est_rate') or itm.get('estRate') or 0.0)
+                rate = float(
+                    itm.get('estimatedRate') or itm.get('estimated_rate') or
+                    itm.get('rate') or itm.get('unitPrice') or itm.get('unit_price') or
+                    itm.get('unitCost') or itm.get('unit_cost') or itm.get('est_rate') or
+                    itm.get('estRate') or itm.get('costPerUnit') or 0.0
+                )
                 qty = float(itm.get('quantity') or itm.get('qty') or 1.0)
-                total_amt = float(itm.get('totalEstimatedAmount') or itm.get('total_estimated_amount') or itm.get('total_amount') or itm.get('totalAmount') or (qty * rate))
+                total_amt = float(
+                    itm.get('totalEstimatedAmount') or itm.get('total_estimated_amount') or
+                    itm.get('total_amount') or itm.get('totalAmount') or
+                    itm.get('extendedCost') or itm.get('extended_cost') or (qty * rate)
+                )
                 total_cost += total_amt
+                item_name = itm.get('itemName') or itm.get('item_name') or itm.get('partName') or itm.get('materialName') or itm.get('material') or f"Component {idx+1}"
+                part_num = itm.get('partNumber') or itm.get('part_number') or itm.get('itemCode') or itm.get('item_code') or f"MAT-{idx+1:03d}"
+
                 normalized_items.append({
                     **itm,
+                    'itemNo': itm.get('itemNo') or idx + 1,
+                    'itemNumber': itm.get('itemNumber') or f"ITM-{idx+1:03d}",
+                    'partNumber': part_num,
+                    'part_number': part_num,
+                    'itemName': item_name,
+                    'item_name': item_name,
+                    'partName': item_name,
+                    'description': itm.get('description') or itm.get('specification') or '',
+                    'specification': itm.get('specification') or itm.get('description') or '',
+                    'material': itm.get('material') or item_name,
+                    'item_type': itm.get('item_type') or itm.get('itemType') or 'RAW_MATERIAL',
+                    'itemType': itm.get('itemType') or itm.get('item_type') or 'RAW_MATERIAL',
+                    'procurement': itm.get('procurement') or ('FABRICATE' if itm.get('procurementType') == 'In-House' else 'PURCHASE'),
+                    'procurementType': itm.get('procurementType') or ('In-House' if itm.get('procurement') == 'FABRICATE' else 'Purchase'),
+                    'quantity': qty,
+                    'qty': qty,
+                    'unit': itm.get('unit') or 'PCS',
                     'estimatedRate': rate,
                     'estimated_rate': rate,
                     'rate': rate,
+                    'unitCost': rate,
+                    'unit_price': rate,
                     'totalEstimatedAmount': total_amt,
                     'total_amount': total_amt,
                     'total_estimated_amount': total_amt,
+                    'totalAmount': total_amt,
+                    'extendedCost': total_amt,
                 })
             else:
                 normalized_items.append(itm)

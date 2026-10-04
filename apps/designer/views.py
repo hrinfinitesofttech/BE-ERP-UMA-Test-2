@@ -593,27 +593,62 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
         items = data.get('items', [])
         if isinstance(items, list):
             data['total_items'] = len(items)
-            # Ensure standard item structure
             formatted_items = []
+            calc_total_cost = 0.0
             for idx, it in enumerate(items):
                 if isinstance(it, dict):
+                    qty = float(it.get('quantity') or it.get('qty') or 1.0)
+                    rate = float(
+                        it.get('estimatedRate') or it.get('estimated_rate') or
+                        it.get('rate') or it.get('unitPrice') or it.get('unit_price') or
+                        it.get('unitCost') or it.get('unit_cost') or it.get('est_rate') or
+                        it.get('estRate') or it.get('costPerUnit') or 0.0
+                    )
+                    amt = float(
+                        it.get('totalEstimatedAmount') or it.get('total_estimated_amount') or
+                        it.get('total_amount') or it.get('totalAmount') or
+                        it.get('extendedCost') or it.get('extended_cost') or (qty * rate)
+                    )
+                    calc_total_cost += amt
+                    item_name = it.get('itemName') or it.get('item_name') or it.get('partName') or it.get('materialName') or it.get('material') or f"Component {idx+1}"
+                    part_num = it.get('partNumber') or it.get('part_number') or it.get('itemCode') or it.get('item_code') or f"MAT-{idx+1:03d}"
+
                     formatted_item = {
+                        **it,
                         'id': it.get('id') or f"ITM-{idx+1:03d}",
+                        'itemNo': it.get('itemNo') or idx + 1,
                         'itemNumber': it.get('itemNumber') or f"ITM-{idx+1:03d}",
-                        'material': it.get('material') or it.get('partNumber') or it.get('materialName') or f"MAT-{idx+1}",
-                        'partNumber': it.get('partNumber') or str(it.get('material', f"MAT-{idx+1}")),
-                        'partName': it.get('partName') or it.get('materialName') or f"Component {idx+1}",
+                        'partNumber': part_num,
+                        'part_number': part_num,
+                        'itemName': item_name,
+                        'item_name': item_name,
+                        'partName': item_name,
+                        'description': it.get('description') or it.get('specification') or f"{it.get('item_type', 'Material')} requirement",
+                        'specification': it.get('specification') or it.get('description') or '',
+                        'material': it.get('material') or item_name,
                         'item_type': it.get('item_type') or it.get('itemType') or 'RAW_MATERIAL',
                         'itemType': it.get('itemType') or it.get('item_type') or 'RAW_MATERIAL',
-                        'procurement': it.get('procurement') or 'PURCHASE',
-                        'quantity': float(it.get('quantity', 1)),
+                        'procurement': it.get('procurement') or ('FABRICATE' if it.get('procurementType') == 'In-House' else 'PURCHASE'),
+                        'procurementType': it.get('procurementType') or ('In-House' if it.get('procurement') == 'FABRICATE' else 'Purchase'),
+                        'quantity': qty,
+                        'qty': qty,
                         'unit': it.get('unit') or 'PCS',
-                        'unitCost': float(it.get('unitCost', it.get('unit_cost', 0))),
-                        'extendedCost': float(it.get('extendedCost', it.get('extended_cost', 0))),
+                        'estimatedRate': rate,
+                        'estimated_rate': rate,
+                        'rate': rate,
+                        'unitCost': rate,
+                        'unit_price': rate,
+                        'totalEstimatedAmount': amt,
+                        'total_estimated_amount': amt,
+                        'total_amount': amt,
+                        'totalAmount': amt,
+                        'extendedCost': amt,
                         'materialGrade': it.get('materialGrade', it.get('material_grade', '')),
                     }
                     formatted_items.append(formatted_item)
             data['items'] = formatted_items
+            if not data.get('total_estimated_cost') and not data.get('totalEstimatedCost'):
+                data['total_estimated_cost'] = calc_total_cost
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -623,12 +658,61 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='add-item')
     def add_item(self, request, pk=None):
         bom = self.get_object()
-        item = request.data
+        item = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         items = list(bom.items or [])
-        items.append(item)
+        idx = len(items)
+        qty = float(item.get('quantity') or item.get('qty') or 1.0)
+        rate = float(
+            item.get('estimatedRate') or item.get('estimated_rate') or
+            item.get('rate') or item.get('unitPrice') or item.get('unit_price') or
+            item.get('unitCost') or item.get('unit_cost') or item.get('est_rate') or
+            item.get('estRate') or item.get('costPerUnit') or 0.0
+        )
+        amt = float(
+            item.get('totalEstimatedAmount') or item.get('total_estimated_amount') or
+            item.get('total_amount') or item.get('totalAmount') or
+            item.get('extendedCost') or item.get('extended_cost') or (qty * rate)
+        )
+        item_name = item.get('itemName') or item.get('item_name') or item.get('partName') or item.get('materialName') or item.get('material') or f"Component {idx+1}"
+        part_num = item.get('partNumber') or item.get('part_number') or item.get('itemCode') or item.get('item_code') or f"MAT-{idx+1:03d}"
+
+        formatted_item = {
+            **item,
+            'id': item.get('id') or f"ITM-{idx+1:03d}",
+            'itemNo': item.get('itemNo') or idx + 1,
+            'itemNumber': item.get('itemNumber') or f"ITM-{idx+1:03d}",
+            'partNumber': part_num,
+            'part_number': part_num,
+            'itemName': item_name,
+            'item_name': item_name,
+            'partName': item_name,
+            'description': item.get('description') or item.get('specification') or '',
+            'specification': item.get('specification') or item.get('description') or '',
+            'material': item.get('material') or item_name,
+            'item_type': item.get('item_type') or item.get('itemType') or 'RAW_MATERIAL',
+            'itemType': item.get('itemType') or item.get('item_type') or 'RAW_MATERIAL',
+            'procurement': item.get('procurement') or ('FABRICATE' if item.get('procurementType') == 'In-House' else 'PURCHASE'),
+            'procurementType': item.get('procurementType') or ('In-House' if item.get('procurement') == 'FABRICATE' else 'Purchase'),
+            'quantity': qty,
+            'qty': qty,
+            'unit': item.get('unit') or 'PCS',
+            'estimatedRate': rate,
+            'estimated_rate': rate,
+            'rate': rate,
+            'unitCost': rate,
+            'unit_price': rate,
+            'totalEstimatedAmount': amt,
+            'total_estimated_amount': amt,
+            'total_amount': amt,
+            'totalAmount': amt,
+            'extendedCost': amt,
+        }
+        items.append(formatted_item)
         bom.items = items
         bom.total_items = len(items)
-        bom.save(update_fields=['items', 'total_items'])
+        new_total_cost = sum(float(i.get('totalEstimatedAmount') or i.get('total_amount') or 0.0) for i in items)
+        bom.total_estimated_cost = new_total_cost
+        bom.save(update_fields=['items', 'total_items', 'total_estimated_cost'])
         return Response(BOMHeaderSerializer(bom).data)
 
 

@@ -10,8 +10,8 @@ DOMAIN = 'umaERP.pythonanywhere.com'
 LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 
-EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea'}
-EXCLUDE_EXTS = {'.pyc', '.log', '.sqlite3'}
+EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea', 'staticfiles', 'static', 'node_modules', '.next'}
+EXCLUDE_EXTS = {'.pyc', '.log', '.sqlite3', '.map', '.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico'}
 EXCLUDE_FILES = {'db.sqlite3', 'db.sqlite3-journal'}
 
 def upload_with_retry(session, url, content, headers, max_retries=5):
