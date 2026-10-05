@@ -1,3 +1,4 @@
+from datetime import datetime
 from rest_framework import serializers
 from .models import (
     Supplier,
@@ -309,29 +310,97 @@ class QuotationComparisonSerializer(serializers.ModelSerializer):
 class PurchaseOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseOrder
-        fields = [
-            'id',
-            'po_number',
-            'revision_number',
-            'date',
-            'supplier_id',
-            'supplier_name',
-            'contact_person',
-            'supplier_gstin',
-            'supplier_address',
-            'project_id',
-            'job_code',
-            'delivery_date',
-            'payment_terms',
-            'items',
-            'sub_total',
-            'discount_amount',
-            'tax_amount',
-            'grand_total',
-            'status',
-            'prepared_by',
-            'approved_by',
-        ]
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'poNumber': 'po_number',
+            'revisionNumber': 'revision_number',
+            'poDate': 'date',
+            'supplierId': 'supplier_id',
+            'supplierName': 'supplier_name',
+            'contactPerson': 'contact_person',
+            'supplierGstin': 'supplier_gstin',
+            'supplierAddress': 'supplier_address',
+            'projectId': 'project_id',
+            'jobId': 'job_code',
+            'jobCode': 'job_code',
+            'jobNumber': 'job_code',
+            'deliveryDate': 'delivery_date',
+            'expectedDeliveryDate': 'delivery_date',
+            'paymentTerms': 'payment_terms',
+            'subTotal': 'sub_total',
+            'subtotal': 'sub_total',
+            'discountAmount': 'discount_amount',
+            'taxAmount': 'tax_amount',
+            'taxTotal': 'tax_amount',
+            'grandTotal': 'grand_total',
+            'totalAmount': 'grand_total',
+            'preparedBy': 'prepared_by',
+            'createdBy': 'prepared_by',
+            'approvedBy': 'approved_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+
+        if not data.get('date'):
+            data['date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('delivery_date'):
+            data['delivery_date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('prepared_by'):
+            data['prepared_by'] = 'Admin User'
+        if not data.get('supplier_id'):
+            data['supplier_id'] = 'SUP-001'
+        if not data.get('supplier_name'):
+            data['supplier_name'] = 'Supplier'
+        if not data.get('revision_number'):
+            data['revision_number'] = 'Rev-00'
+        elif isinstance(data.get('revision_number'), int):
+            data['revision_number'] = f"Rev-{data['revision_number']:02d}"
+
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        items = ret.get('items') or []
+        return {
+            'id': ret.get('id'),
+            'poNumber': ret.get('po_number', ''),
+            'revisionNumber': ret.get('revision_number', 'Rev-00'),
+            'date': ret.get('date', ''),
+            'poDate': ret.get('date', ''),
+            'supplierId': ret.get('supplier_id', ''),
+            'supplierName': ret.get('supplier_name', ''),
+            'contactPerson': ret.get('contact_person', ''),
+            'supplierGstin': ret.get('supplier_gstin', '24AAAAA0000A1Z5'),
+            'supplierAddress': ret.get('supplier_address', ''),
+            'projectId': ret.get('project_id', 'PRJ-2026-0001'),
+            'jobId': ret.get('job_code', 'JOB-2026-001'),
+            'jobCode': ret.get('job_code', 'JOB-2026-001'),
+            'deliveryDate': ret.get('delivery_date', ''),
+            'expectedDeliveryDate': ret.get('delivery_date', ''),
+            'paymentTerms': ret.get('payment_terms', '30 Days Credit after GRN'),
+            'deliveryTerms': 'FOR Destination (Uma Techno Fab GIDC Works)',
+            'dispatchMode': 'By Road Truck',
+            'currency': 'INR',
+            'items': items,
+            'subTotal': ret.get('sub_total', 0),
+            'discountAmount': ret.get('discount_amount', 0),
+            'taxAmount': ret.get('tax_amount', 0),
+            'taxTotal': ret.get('tax_amount', 0),
+            'freightCharges': 0,
+            'grandTotal': ret.get('grand_total', 0),
+            'status': ret.get('status', 'Submitted'),
+            'approvalTier': 'Tier 1 - Executive',
+            'specialInstructions': 'Test certificates (MTC) required along with material delivery.',
+            'preparedBy': ret.get('prepared_by', 'Admin User'),
+            'createdBy': ret.get('prepared_by', 'Admin User'),
+            'approvedBy': ret.get('approved_by'),
+            'createdAt': ret.get('created_at', ''),
+            'updatedAt': ret.get('updated_at', ''),
+        }
 
 
 class PurchaseReturnSerializer(serializers.ModelSerializer):

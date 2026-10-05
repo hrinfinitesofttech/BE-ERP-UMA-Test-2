@@ -203,7 +203,7 @@ class QuotationComparisonViewSet(viewsets.ModelViewSet):
 
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseOrder.objects.all().order_by('-date')
+    queryset = PurchaseOrder.objects.all().order_by('-created_at')
     serializer_class = PurchaseOrderSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -215,20 +215,40 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         return obj
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        if not data.get('id') or not data.get('po_number') and not data.get('poNumber'):
-            code = f"PO-2026-{PurchaseOrder.objects.count() + 1:04d}"
-            data['id'] = code
-            data['po_number'] = code
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        po_num = data.get('poNumber') or data.get('po_number') or data.get('id') or f"PO-2026-{PurchaseOrder.objects.count() + 1:04d}"
+        po_id = data.get('id') or po_num
+        data['id'] = po_id
+        data['po_number'] = po_num
+
+        existing = PurchaseOrder.objects.filter(Q(id=po_id) | Q(po_number=po_num)).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
     @action(detail=True, methods=['post', 'patch'], url_path='approve')
     def approve_po(self, request, pk=None):
         po = self.get_object()
-        po.status = 'approved'
+        po.status = 'Approved'
         po.approved_by = request.data.get('approvedBy') or request.data.get('approved_by', 'Rajesh Patel')
         po.save(update_fields=['status', 'approved_by'])
         return Response(PurchaseOrderSerializer(po).data)
@@ -236,7 +256,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'patch'], url_path='reject')
     def reject_po(self, request, pk=None):
         po = self.get_object()
-        po.status = 'rejected'
+        po.status = 'Rejected'
         po.save(update_fields=['status'])
         return Response(PurchaseOrderSerializer(po).data)
 
