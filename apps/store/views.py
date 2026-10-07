@@ -227,21 +227,23 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
                 pass
 
             # Record in perpetual stock ledger
-            StockLedgerEntry.objects.create(
+            StockLedgerEntry.objects.update_or_create(
                 id=f"ledg-{grn.grn_number.lower()}-{item_code.lower()}",
-                date=grn.date,
-                transaction_type='GRN',
-                reference_number=grn.grn_number,
-                item_id=itm.get('itemId', item_code),
-                item_code=item_code,
-                item_name=clean_name,
-                warehouse_id=grn.warehouse_id,
-                inward_quantity=qty,
-                outward_quantity=0,
-                closing_quantity=bal.quantity,
-                unit_rate=rate,
-                total_amount=qty * rate,
-                performed_by=grn.received_by,
+                defaults={
+                    'date': grn.date,
+                    'transaction_type': 'GRN',
+                    'reference_number': grn.grn_number,
+                    'item_id': itm.get('itemId', item_code),
+                    'item_code': item_code,
+                    'item_name': clean_name,
+                    'warehouse_id': grn.warehouse_id,
+                    'inward_quantity': qty,
+                    'outward_quantity': 0,
+                    'closing_quantity': bal.quantity,
+                    'unit_rate': rate,
+                    'total_amount': qty * rate,
+                    'performed_by': grn.received_by,
+                }
             )
 
         return Response(GoodsReceiptNoteSerializer(grn).data, status=status.HTTP_201_CREATED)

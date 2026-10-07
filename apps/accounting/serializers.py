@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from rest_framework import serializers
 from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
@@ -36,6 +37,46 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         model = SalesInvoice
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'invoiceNumber': 'invoice_number',
+            'invoiceDate': 'invoice_date',
+            'dueDate': 'due_date',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'customerGstin': 'customer_gstin',
+            'placeOfSupply': 'place_of_supply',
+            'salesOrderId': 'sales_order_id',
+            'salesOrderNumber': 'sales_order_number',
+            'customerPoNumber': 'customer_po_number',
+            'projectId': 'project_id',
+            'jobNumber': 'job_number',
+            'paymentTerms': 'payment_terms',
+            'taxableAmount': 'taxable_amount',
+            'cgstAmount': 'cgst_amount',
+            'sgstAmount': 'sgst_amount',
+            'igstAmount': 'igst_amount',
+            'roundOff': 'round_off',
+            'grandTotal': 'grand_total',
+            'paidAmount': 'paid_amount',
+            'outstandingAmount': 'outstanding_amount',
+            'paymentStatus': 'payment_status',
+            'createdBy': 'created_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('invoice_number'):
+            data['invoice_number'] = data.get('id') or f"SINV-{int(datetime.now().timestamp())}"
+        if not data.get('invoice_date'):
+            data['invoice_date'] = data.get('date') or datetime.now().date().isoformat()
+        if not data.get('due_date'):
+            data['due_date'] = (datetime.now().date() + timedelta(days=30)).isoformat()
+        if not data.get('grand_total') and data.get('totalAmount'):
+            data['grand_total'] = data.get('totalAmount')
+        return super().to_internal_value(data)
+
 
 class PurchaseInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,11 +89,59 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
         model = CustomerReceipt
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'receiptNumber': 'receipt_number',
+            'receiptDate': 'receipt_date',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'salesInvoiceNumber': 'sales_invoice_number',
+            'paymentMode': 'payment_mode',
+            'bankName': 'bank_name',
+            'referenceNumber': 'reference_number',
+            'createdBy': 'created_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('receipt_number'):
+            data['receipt_number'] = data.get('id') or f"RCT-{int(datetime.now().timestamp())}"
+        if not data.get('receipt_date'):
+            data['receipt_date'] = data.get('date') or datetime.now().date().isoformat()
+        if 'amount' not in data:
+            data['amount'] = data.get('amountPaid') or data.get('amountReceived') or data.get('paidAmount') or 0
+        return super().to_internal_value(data)
+
 
 class SupplierPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SupplierPayment
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'paymentNumber': 'payment_number',
+            'paymentDate': 'payment_date',
+            'supplierId': 'supplier_id',
+            'supplierName': 'supplier_name',
+            'purchaseInvoiceNumber': 'purchase_invoice_number',
+            'paymentMode': 'payment_mode',
+            'bankName': 'bank_name',
+            'referenceNumber': 'reference_number',
+            'createdBy': 'created_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('payment_number'):
+            data['payment_number'] = data.get('id') or f"PAY-{int(datetime.now().timestamp())}"
+        if not data.get('payment_date'):
+            data['payment_date'] = data.get('date') or datetime.now().date().isoformat()
+        if 'amount' not in data:
+            data['amount'] = data.get('amountPaid') or data.get('amount') or 0
+        return super().to_internal_value(data)
 
 
 class JournalEntrySerializer(serializers.ModelSerializer):

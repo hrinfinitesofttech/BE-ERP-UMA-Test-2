@@ -1,3 +1,4 @@
+from datetime import datetime
 from rest_framework import serializers
 from .models import (
     InternalAsset, CustomerMachine, ServiceRequest, PreventiveMaintenancePlan,
@@ -17,6 +18,39 @@ class CustomerMachineSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerMachine
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'customerMachineId': 'customer_machine_id',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'projectId': 'project_id',
+            'projectName': 'project_name',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'salesOrderId': 'sales_order_id',
+            'customerPo': 'customer_po',
+            'dispatchNumber': 'dispatch_number',
+            'installationNumber': 'installation_number',
+            'machineName': 'machine_name',
+            'machineModel': 'machine_model',
+            'serialNumber': 'serial_number',
+            'manufacturingDate': 'manufacturing_date',
+            'installationDate': 'installation_date',
+            'commissioningDate': 'commissioning_date',
+            'warrantyStart': 'warranty_start',
+            'warrantyEnd': 'warranty_end',
+            'machineLocation': 'machine_location',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('customer_machine_id'):
+            data['customer_machine_id'] = data.get('id') or f"CM-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['customer_machine_id']
+        return super().to_internal_value(data)
 
 
 class ServiceRequestSerializer(serializers.ModelSerializer):

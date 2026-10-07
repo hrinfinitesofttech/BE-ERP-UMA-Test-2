@@ -59,6 +59,60 @@ class LeadSerializer(serializers.ModelSerializer):
             'attachments',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'leadNo': 'lead_no',
+            'companyName': 'company_name',
+            'contactPerson': 'contact_person',
+            'altMobile': 'alt_mobile',
+            'productName': 'product_name',
+            'machineType': 'machine_type',
+            'requirementDescription': 'requirement_description',
+            'expectedDelivery': 'expected_delivery',
+            'assignedSalesPersonId': 'assigned_sales_person_id',
+            'assignedSalesPersonName': 'assigned_sales_person_name',
+            'nextFollowUpDate': 'next_follow_up_date',
+            'createdDate': 'created_date',
+            'convertedCustomerId': 'converted_customer_id',
+            'convertedEnquiryId': 'converted_enquiry_id',
+            'convertedOpportunityId': 'converted_opportunity_id',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        inst = getattr(self, 'instance', None)
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if not data.get('lead_no'):
+                data['lead_no'] = data.get('id') or f"LEAD-{int(datetime.now().timestamp())}"
+            if not data.get('id'):
+                data['id'] = data['lead_no']
+            if not data.get('created_date'):
+                data['created_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['leadNo'] = instance.lead_no
+        rep['companyName'] = instance.company_name
+        rep['contactPerson'] = instance.contact_person
+        rep['altMobile'] = instance.alt_mobile
+        rep['productName'] = instance.product_name
+        rep['machineType'] = instance.machine_type
+        rep['requirementDescription'] = instance.requirement_description
+        rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''
+        rep['assignedSalesPersonId'] = instance.assigned_sales_person_id
+        rep['assignedSalesPersonName'] = instance.assigned_sales_person_name
+        rep['nextFollowUpDate'] = str(instance.next_follow_up_date) if instance.next_follow_up_date else ''
+        rep['createdDate'] = str(instance.created_date) if instance.created_date else ''
+        rep['convertedCustomerId'] = instance.converted_customer_id
+        rep['convertedEnquiryId'] = instance.converted_enquiry_id
+        rep['convertedOpportunityId'] = instance.converted_opportunity_id
+        return rep
+
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:
@@ -111,6 +165,54 @@ class CustomerSerializer(serializers.ModelSerializer):
             'contacts',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'customerCode': 'customer_code',
+            'customerType': 'customer_type',
+            'companyName': 'company_name',
+            'contactPerson': 'contact_person',
+            'billingAddress': 'billing_address',
+            'shippingAddress': 'shipping_address',
+            'paymentTerms': 'payment_terms',
+            'creditLimit': 'credit_limit',
+            'assignedSalesPerson': 'assigned_sales_person',
+            'createdDate': 'created_date',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        inst = getattr(self, 'instance', None)
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if not data.get('customer_code'):
+                data['customer_code'] = data.get('id') or f"CUST-{int(datetime.now().timestamp())}"
+            if not data.get('id'):
+                data['id'] = data['customer_code']
+            if not data.get('created_date'):
+                data['created_date'] = datetime.now().date().isoformat()
+            if not data.get('customer_type'):
+                data['customer_type'] = 'company'
+            if not data.get('contact_person'):
+                data['contact_person'] = data.get('company_name', 'Customer Representative')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['customerCode'] = instance.customer_code
+        rep['customerType'] = instance.customer_type
+        rep['companyName'] = instance.company_name
+        rep['contactPerson'] = instance.contact_person
+        rep['billingAddress'] = instance.billing_address
+        rep['shippingAddress'] = instance.shipping_address
+        rep['paymentTerms'] = instance.payment_terms
+        rep['creditLimit'] = float(instance.credit_limit or 0)
+        rep['assignedSalesPerson'] = instance.assigned_sales_person
+        rep['createdDate'] = str(instance.created_date) if instance.created_date else ''
+        return rep
+
 
 class EnquirySerializer(serializers.ModelSerializer):
     class Meta:
@@ -132,6 +234,50 @@ class EnquirySerializer(serializers.ModelSerializer):
             'status',
             'quotation_id',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'enquiryNo': 'enquiry_no',
+            'leadId': 'lead_id',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'enquiryDate': 'enquiry_date',
+            'machineProduct': 'machine_product',
+            'expectedDelivery': 'expected_delivery',
+            'assignedPersonId': 'assigned_person_id',
+            'assignedPersonName': 'assigned_person_name',
+            'quotationId': 'quotation_id',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        inst = getattr(self, 'instance', None)
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if not data.get('enquiry_no'):
+                data['enquiry_no'] = data.get('id') or f"ENQ-{int(datetime.now().timestamp())}"
+            if not data.get('id'):
+                data['id'] = data['enquiry_no']
+            if not data.get('enquiry_date'):
+                data['enquiry_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['enquiryNo'] = instance.enquiry_no
+        rep['leadId'] = instance.lead_id
+        rep['customerId'] = instance.customer_id
+        rep['customerName'] = instance.customer_name
+        rep['enquiryDate'] = str(instance.enquiry_date) if instance.enquiry_date else ''
+        rep['machineProduct'] = instance.machine_product
+        rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''
+        rep['assignedPersonId'] = instance.assigned_person_id
+        rep['assignedPersonName'] = instance.assigned_person_name
+        rep['quotationId'] = instance.quotation_id
+        return rep
 
 
 class OpportunitySerializer(serializers.ModelSerializer):

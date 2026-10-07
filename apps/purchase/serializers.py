@@ -47,6 +47,12 @@ class MaterialRequirementSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if not data.get('item_name'):
+            data['item_name'] = data.get('itemName') or data.get('material_name') or data.get('materialName') or data.get('name') or 'Required Material'
+        if not data.get('unit_of_measure'):
+            data['unit_of_measure'] = data.get('unit') or 'NOS'
+        if 'required_quantity' not in data:
+            data['required_quantity'] = float(data.get('quantity') or data.get('qty') or 1)
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
