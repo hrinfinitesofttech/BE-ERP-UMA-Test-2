@@ -14,6 +14,7 @@ from .models import (
     ProductionScrap,
     FinishedGoodsItem,
     ProductionMaterialRequest,
+    DispatchOrder,
 )
 
 @admin.register(ManufacturingJob)
@@ -100,3 +101,9 @@ class ProductionMaterialRequestAdmin(admin.ModelAdmin):
     list_display = ('id', 'request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to', 'warehouse_name', 'total_value', 'status')
     search_fields = ('id', 'request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to')
     list_filter = ('status', 'production_stage', 'created_at')
+
+@admin.register(DispatchOrder)
+class DispatchOrderAdmin(admin.ModelAdmin):
+    list_display = ('id', 'dispatch_number', 'dispatch_date', 'job_number', 'customer_name', 'product_name', 'quantity', 'vehicle_number', 'status')
+    search_fields = ('id', 'dispatch_number', 'job_number', 'customer_name', 'product_name', 'vehicle_number', 'invoice_number')
+    list_filter = ('status', 'dispatch_date', 'dispatch_type', 'created_at')

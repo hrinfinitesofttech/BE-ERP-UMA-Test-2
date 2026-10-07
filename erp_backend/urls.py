@@ -322,14 +322,17 @@ urlpatterns = [
     path('api/company/', CompanySettingView.as_view(), name='api-company'),
     path('api/job-360/<str:job_number>/', Job360APIView.as_view(), name='api-job-360-detail'),
     path('api/job-360/', Job360APIView.as_view(), name='api-job-360-query'),
+
+    # Modular Namespaced URLs (mounted before the root convenience router so
+    # that prefixes like api/projects/* are not swallowed by its <pk> routes)
+    path('api/projects/', include('apps.projects.urls')),
+
     path('api/', include(api_router.urls)),
 
-    # Modular Namespaced URLs
     path('api/auth/', include('apps.authentication.urls')),
     path('api/org/', include('apps.organization.urls')),
     path('api/core/', include('apps.core.urls')),
     path('api/crm/', include('apps.crm.urls')),
-    path('api/projects/', include('apps.projects.urls')),
     path('api/designer/', include('apps.designer.urls')),
     path('api/purchase/', include('apps.purchase.urls')),
     path('api/store/', include('apps.store.urls')),

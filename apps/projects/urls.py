@@ -9,7 +9,10 @@ from .views import (
     ProjectDocumentViewSet,
 )
 
+# The root convenience router already serves /api/projects/ as the project list,
+# so this router must not register its own API-root view at the same path.
 router = DefaultRouter()
+router.include_root_view = False
 router.register(r'jobs', ProjectJobMasterViewSet, basename='project-job')
 router.register(r'planning-stages', ProjectPlanningStageViewSet, basename='planning-stage')
 router.register(r'tasks', ProjectTaskViewSet, basename='task')
