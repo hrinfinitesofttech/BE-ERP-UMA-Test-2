@@ -1,3 +1,4 @@
+from datetime import datetime, date
 from rest_framework import serializers
 from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
@@ -104,6 +105,35 @@ class WorkOrderSerializer(serializers.ModelSerializer):
         model = WorkOrder
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'workOrderNumber': 'work_order_number',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'projectId': 'project_id',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'salesOrderNumber': 'sales_order_number',
+            'designRevision': 'design_revision',
+            'bomRevision': 'bom_revision',
+            'productName': 'product_name',
+            'productionQuantity': 'production_quantity',
+            'plannedStartDate': 'planned_start_date',
+            'plannedEndDate': 'planned_end_date',
+            'actualStartDate': 'actual_start_date',
+            'actualEndDate': 'actual_end_date',
+            'productionManager': 'production_manager',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('work_order_number'):
+            data['work_order_number'] = data.get('id') or f"WO-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['work_order_number']
+        return super().to_internal_value(data)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['workOrderNumber'] = instance.work_order_number
@@ -176,6 +206,42 @@ class ProductionEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductionEntry
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'productionEntryNumber': 'production_entry_number',
+            'entryDate': 'entry_date',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'workOrderNumber': 'work_order_number',
+            'productionOrderNumber': 'production_order_number',
+            'operationName': 'operation_name',
+            'workCenterName': 'work_center_name',
+            'machineName': 'machine_name',
+            'operatorName': 'operator_name',
+            'startTime': 'start_time',
+            'endTime': 'end_time',
+            'plannedQuantity': 'planned_quantity',
+            'producedQuantity': 'produced_quantity',
+            'rejectedQuantity': 'rejected_quantity',
+            'reworkQuantity': 'rework_quantity',
+            'scrapQuantity': 'scrap_quantity',
+            'goodQuantity': 'good_quantity',
+            'downtimeMinutes': 'downtime_minutes',
+            'downtimeReason': 'downtime_reason',
+            'createdBy': 'created_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('production_entry_number'):
+            data['production_entry_number'] = data.get('id') or f"PENTRY-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['production_entry_number']
+        if not data.get('entry_date'):
+            data['entry_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -296,6 +362,34 @@ class FinishedGoodsItemSerializer(serializers.ModelSerializer):
         model = FinishedGoodsItem
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'finishedGoodsNumber': 'finished_goods_number',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'workOrderNumber': 'work_order_number',
+            'productionOrderNumber': 'production_order_number',
+            'productName': 'product_name',
+            'serialNumber': 'serial_number',
+            'batchNumber': 'batch_number',
+            'warehouseId': 'warehouse_id',
+            'warehouseName': 'warehouse_name',
+            'locationBin': 'location_bin',
+            'completionDate': 'completion_date',
+            'qcStatus': 'qc_status',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('finished_goods_number'):
+            data['finished_goods_number'] = data.get('id') or f"FG-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['finished_goods_number']
+        if not data.get('completion_date'):
+            data['completion_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['finishedGoodsNumber'] = instance.finished_goods_number
@@ -349,6 +443,44 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = DispatchOrder
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'dispatchNumber': 'dispatch_number',
+            'dispatchDate': 'dispatch_date',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'workOrderNumber': 'work_order_number',
+            'finishedGoodsNumber': 'finished_goods_number',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'customerAddress': 'customer_address',
+            'destinationCity': 'destination_city',
+            'productName': 'product_name',
+            'serialNumber': 'serial_number',
+            'batchNumber': 'batch_number',
+            'weightMT': 'weight_mt',
+            'transporterName': 'transporter_name',
+            'vehicleNumber': 'vehicle_number',
+            'lrNumber': 'lr_number',
+            'driverName': 'driver_name',
+            'driverMobile': 'driver_mobile',
+            'eWayBillNumber': 'e_way_bill_number',
+            'invoiceNumber': 'invoice_number',
+            'packagingType': 'packaging_type',
+            'dispatchType': 'dispatch_type',
+            'qcClearanceBy': 'qc_clearance_by',
+            'dispatchedBy': 'dispatched_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('dispatch_number'):
+            data['dispatch_number'] = data.get('id') or f"DISP-{int(datetime.now().timestamp())}"
+        if not data.get('dispatch_date'):
+            data['dispatch_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

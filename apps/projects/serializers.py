@@ -405,22 +405,26 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
         from datetime import datetime
+        inst = getattr(self, 'instance', None)
 
         if 'projectNumber' in data and 'project_number' not in data:
             data['project_number'] = data.pop('projectNumber')
         if 'jobNumber' in data and 'job_number' not in data:
             data['job_number'] = data.pop('jobNumber')
-        if 'id' not in data:
-            data['id'] = data.get('project_number') or data.get('projectNumber') or ''
-        if not data.get('project_number') and data.get('id'):
-            data['project_number'] = data['id']
+
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if 'id' not in data:
+                data['id'] = data.get('project_number') or ''
+            if not data.get('project_number') and data.get('id'):
+                data['project_number'] = data['id']
 
         if 'customerId' in data and 'customer_id' not in data:
             data['customer_id'] = data.pop('customerId')
         if 'customerName' in data and 'customer_name' not in data:
             data['customer_name'] = data.pop('customerName')
-        data['customer_id'] = data.get('customer_id') or 'CUST-001'
-        data['customer_name'] = data.get('customer_name') or 'Customer'
 
         if 'salesOrderId' in data and 'sales_order_id' not in data:
             data['sales_order_id'] = data.pop('salesOrderId')
@@ -431,25 +435,22 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
 
         if 'productName' in data and 'product_name' not in data:
             data['product_name'] = data.pop('productName')
-        data['product_name'] = data.get('product_name') or 'Custom Manufacturing Equipment'
         if 'productCode' in data and 'product_code' not in data:
             data['product_code'] = data.pop('productCode')
+
         if 'orderValue' in data and 'order_value' not in data:
             try:
                 data['order_value'] = float(data.pop('orderValue') or 0)
             except (ValueError, TypeError):
                 data['order_value'] = 0.0
 
-        now_date = datetime.now().strftime('%Y-%m-%d')
         if 'startDate' in data and 'start_date' not in data:
             data['start_date'] = data.pop('startDate')
-        data['start_date'] = data.get('start_date') or now_date
 
         if 'targetDeliveryDate' in data and 'target_delivery_date' not in data:
             data['target_delivery_date'] = data.pop('targetDeliveryDate')
         elif 'deliveryDate' in data and 'target_delivery_date' not in data:
             data['target_delivery_date'] = data.pop('deliveryDate')
-        data['target_delivery_date'] = data.get('target_delivery_date') or now_date
 
         if 'actualDeliveryDate' in data and 'actual_delivery_date' not in data:
             data['actual_delivery_date'] = data.pop('actualDeliveryDate')
@@ -458,7 +459,6 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
             data['current_status'] = data.pop('currentStatus')
         elif 'status' in data and 'current_status' not in data:
             data['current_status'] = data.pop('status')
-        data['current_status'] = data.get('current_status') or 'planning'
 
         if 'progressPercent' in data and 'progress_percent' not in data:
             try:
@@ -472,7 +472,16 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
             data['project_manager_name'] = data.pop('projectManagerName')
         elif 'projectManager' in data and 'project_manager_name' not in data:
             data['project_manager_name'] = data.pop('projectManager')
-        data['project_manager_name'] = data.get('project_manager_name') or 'Bhavin Shah'
+
+        if not inst:
+            now_date = datetime.now().strftime('%Y-%m-%d')
+            data['customer_id'] = data.get('customer_id') or 'CUST-001'
+            data['customer_name'] = data.get('customer_name') or 'Customer'
+            data['product_name'] = data.get('product_name') or 'Custom Manufacturing Equipment'
+            data['start_date'] = data.get('start_date') or now_date
+            data['target_delivery_date'] = data.get('target_delivery_date') or now_date
+            data['current_status'] = data.get('current_status') or 'planning'
+            data['project_manager_name'] = data.get('project_manager_name') or 'Bhavin Shah'
 
         lr = data.get('linked_records') or {}
         if not isinstance(lr, dict):
@@ -481,7 +490,8 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
             lr['is_planning_saved'] = bool(data.pop('isPlanningSaved'))
         elif 'is_planning_saved' in data:
             lr['is_planning_saved'] = bool(data.pop('is_planning_saved'))
-        data['linked_records'] = lr
+        if lr:
+            data['linked_records'] = lr
 
         return super().to_internal_value(data)
 
