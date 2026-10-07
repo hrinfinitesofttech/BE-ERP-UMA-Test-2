@@ -1,4 +1,5 @@
 from datetime import datetime
+from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -138,7 +139,7 @@ class WarehouseLocationViewSet(viewsets.ModelViewSet):
 
 
 class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
-    queryset = GoodsReceiptNote.objects.all().order_by('-date')
+    queryset = GoodsReceiptNote.objects.all().order_by('-created_at', '-id')
     serializer_class = GoodsReceiptNoteSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -182,19 +183,23 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         grn = serializer.save()
 
-        # Update Stock Balance and Ledger for accepted items
-        for itm in grn.items:
-            item_code = itm.get('itemCode') or itm.get('item_code')
-            qty = float(itm.get('acceptedQty') or itm.get('receivedQty') or itm.get('quantity', 0))
-            rate = float(itm.get('unitRate') or itm.get('rate', 0))
+        # Update Stock Balance, Item Master, and Ledger for accepted items
+        for itm in (grn.items or []):
+            item_code = str(itm.get('itemCode') or itm.get('item_code') or itm.get('partNumber') or 'ITM-01')
+            raw_name = str(itm.get('itemName') or itm.get('item_name') or itm.get('description') or item_code)
+            clean_name = raw_name.split(' (')[0].strip()
+            qty = float(itm.get('acceptedQuantity') or itm.get('acceptedQty') or itm.get('receivedQuantity') or itm.get('receivedQty') or itm.get('quantity') or 0.0)
+            rate = float(itm.get('unitPrice') or itm.get('unitRate') or itm.get('rate') or 0.0)
 
             bal = StockBalance.objects.filter(item_code=item_code, warehouse_id=grn.warehouse_id).first()
+            if not bal:
+                bal = StockBalance.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
             if not bal:
                 bal = StockBalance(
                     id=f"stk-{item_code.lower()}",
                     item_id=itm.get('itemId', item_code),
                     item_code=item_code,
-                    item_name=itm.get('itemName', item_code),
+                    item_name=clean_name,
                     warehouse_id=grn.warehouse_id,
                     quantity=0,
                     available_quantity=0,
@@ -205,6 +210,22 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
             bal.total_value = bal.quantity * (bal.unit_rate or rate)
             bal.save()
 
+            # Ensure ItemMaster is also created or updated with current stock
+            try:
+                item_master = ItemMaster.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
+                if not item_master:
+                    ItemMaster.objects.create(
+                        id=f"itm-{item_code.lower()}",
+                        item_code=item_code,
+                        item_name=clean_name,
+                        category=itm.get('category', 'Fasteners, Flanges & Hardware'),
+                        uom=itm.get('uom', 'PCS'),
+                        unit_cost=rate,
+                        status='Active'
+                    )
+            except Exception:
+                pass
+
             # Record in perpetual stock ledger
             StockLedgerEntry.objects.create(
                 id=f"ledg-{grn.grn_number.lower()}-{item_code.lower()}",
@@ -213,7 +234,7 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
                 reference_number=grn.grn_number,
                 item_id=itm.get('itemId', item_code),
                 item_code=item_code,
-                item_name=itm.get('itemName', item_code),
+                item_name=clean_name,
                 warehouse_id=grn.warehouse_id,
                 inward_quantity=qty,
                 outward_quantity=0,
@@ -227,7 +248,7 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
 
 
 class QCInspectionViewSet(viewsets.ModelViewSet):
-    queryset = QCInspection.objects.all().order_by('-inspection_date')
+    queryset = QCInspection.objects.all().order_by('-created_at', '-id')
     serializer_class = QCInspectionSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -319,7 +340,7 @@ class StockReservationViewSet(viewsets.ModelViewSet):
 
 
 class MaterialIssueViewSet(viewsets.ModelViewSet):
-    queryset = MaterialIssue.objects.all().order_by('-issue_date')
+    queryset = MaterialIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialIssueSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -398,6 +419,8 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
             if not bal and item_code_clean:
                 bal = StockBalance.objects.filter(item_code__icontains=item_code_clean).first() or \
                       StockBalance.objects.filter(id__icontains=item_code_clean).first()
+            if not bal and itm.get('itemName'):
+                bal = StockBalance.objects.filter(item_name__icontains=str(itm.get('itemName')).strip()).first()
             if bal:
                 bal.quantity = max(0.0, float(bal.quantity) - qty)
                 if getattr(bal, 'reserved_quantity', 0) > 0:
@@ -406,31 +429,55 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
                 bal.total_value = float(bal.quantity) * float(bal.unit_rate or rate)
                 bal.save()
 
-                ledg_id = f"ledg-{str(issue.issue_number).lower()}-{item_code_clean.lower()}"
-                StockLedgerEntry.objects.update_or_create(
-                    id=ledg_id,
-                    defaults={
-                        'date': issue.issue_date,
-                        'transaction_type': 'Material Issue',
-                        'reference_number': issue.issue_number,
-                        'item_id': bal.item_id,
-                        'item_code': bal.item_code or item_code_clean,
-                        'item_name': bal.item_name,
-                        'warehouse_id': issue.warehouse_id,
-                        'inward_quantity': 0,
-                        'outward_quantity': qty,
-                        'closing_quantity': bal.quantity,
-                        'unit_rate': bal.unit_rate or rate,
-                        'total_amount': qty * (bal.unit_rate or rate),
-                        'performed_by': issue.issued_to,
-                    }
-                )
+                ledg_id = f"ledg-{str(issue.issue_number).lower()}-{item_code_clean.lower()}-{int(datetime.now().timestamp())}"
+                try:
+                    StockLedgerEntry.objects.update_or_create(
+                        id=ledg_id,
+                        defaults={
+                            'date': issue.issue_date,
+                            'transaction_type': 'Material Issue',
+                            'reference_number': issue.issue_number,
+                            'item_id': bal.item_id or bal.id,
+                            'item_code': bal.item_code or item_code_clean,
+                            'item_name': bal.item_name,
+                            'warehouse_id': issue.warehouse_id,
+                            'inward_quantity': 0,
+                            'outward_quantity': qty,
+                            'closing_quantity': bal.quantity,
+                            'unit_rate': bal.unit_rate or rate,
+                            'total_amount': qty * (bal.unit_rate or rate),
+                            'performed_by': issue.issued_to,
+                        }
+                    )
+                except Exception:
+                    pass
+
+        if issue.job_number:
+            try:
+                from apps.projects.models import ProjectJobMaster, ProjectPlanningStage
+                pjm = ProjectJobMaster.objects.filter(job_number=issue.job_number).first() or \
+                      ProjectJobMaster.objects.filter(id=issue.job_number).first()
+                if pjm:
+                    pjm.current_status = 'in_progress'
+                    pjm.stage = 'Shop Assembly & Fabrication'
+                    if (pjm.progress_percent or 0) < 50:
+                        pjm.progress_percent = 50
+                    pjm.save()
+
+                stages = ProjectPlanningStage.objects.filter(project_id=issue.project_id)
+                for st in stages:
+                    if any(w in st.name.lower() for w in ['material', 'procurement', 'store', 'inward']):
+                        st.status = 'completed'
+                        st.progress = 100
+                        st.save()
+            except Exception:
+                pass
 
         return Response(MaterialIssueSerializer(issue).data, status=status.HTTP_201_CREATED)
 
 
 class MaterialReturnViewSet(viewsets.ModelViewSet):
-    queryset = MaterialReturn.objects.all().order_by('-return_date')
+    queryset = MaterialReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialReturnSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -527,7 +574,7 @@ class StockLedgerEntryViewSet(viewsets.ModelViewSet):
 
 
 class ScrapEntryViewSet(viewsets.ModelViewSet):
-    queryset = ScrapEntry.objects.all().order_by('-date')
+    queryset = ScrapEntry.objects.all().order_by('-date', '-id')
     serializer_class = ScrapEntrySerializer
     permission_classes = [permissions.AllowAny]
 

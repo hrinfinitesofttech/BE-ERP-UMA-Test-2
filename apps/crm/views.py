@@ -42,7 +42,7 @@ class LeadViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        queryset = Lead.objects.all().order_by('-id')
+        queryset = Lead.objects.all().order_by('-created_at', '-id')
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(
@@ -214,6 +214,26 @@ class LeadViewSet(viewsets.ModelViewSet):
             'opportunity': OpportunitySerializer(opportunity).data,
         })
 
+    @action(detail=False, methods=['get'], url_path='hub-summary')
+    def hub_summary(self, request):
+        total_leads = Lead.objects.count()
+        new_leads = Lead.objects.filter(status='new').count()
+        won_leads = Lead.objects.filter(status='won').count()
+        total_enquiries = Enquiry.objects.count()
+        active_enquiries = Enquiry.objects.exclude(status__in=['closed', 'cancelled']).count()
+        total_customers = Customer.objects.count()
+        total_pipeline = Lead.objects.aggregate(total=models.Sum('budget'))['total'] or 0
+        return Response({
+            'total_leads': total_leads,
+            'new_leads': new_leads,
+            'won_leads': won_leads,
+            'total_enquiries': total_enquiries,
+            'active_enquiries': active_enquiries,
+            'total_customers': total_customers,
+            'total_pipeline': total_pipeline,
+        })
+
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-created_at')
@@ -241,7 +261,7 @@ class ContactViewSet(viewsets.ModelViewSet):
 
 
 class EnquiryViewSet(viewsets.ModelViewSet):
-    queryset = Enquiry.objects.all().order_by('-id')
+    queryset = Enquiry.objects.all().order_by('-created_at', '-id')
     serializer_class = EnquirySerializer
     permission_classes = [permissions.AllowAny]
 
@@ -261,7 +281,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
 
 
 class OpportunityViewSet(viewsets.ModelViewSet):
-    queryset = Opportunity.objects.all().order_by('-id')
+    queryset = Opportunity.objects.all().order_by('-created_at', '-id')
     serializer_class = OpportunitySerializer
     permission_classes = [permissions.AllowAny]
 
@@ -279,7 +299,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
 
 
 class FollowUpViewSet(viewsets.ModelViewSet):
-    queryset = FollowUp.objects.all().order_by('-date')
+    queryset = FollowUp.objects.all().order_by('-created_at', '-id')
     serializer_class = FollowUpSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -322,7 +342,7 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 
 
 class SiteVisitViewSet(viewsets.ModelViewSet):
-    queryset = SiteVisit.objects.all().order_by('-visit_date')
+    queryset = SiteVisit.objects.all().order_by('-created_at', '-id')
     serializer_class = SiteVisitSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -369,7 +389,7 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
 
 
 class ExhibitionViewSet(viewsets.ModelViewSet):
-    queryset = Exhibition.objects.all().order_by('-start_date')
+    queryset = Exhibition.objects.all().order_by('-created_at', '-id')
     serializer_class = ExhibitionSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -409,7 +429,7 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
 
 
 class QuotationViewSet(viewsets.ModelViewSet):
-    queryset = Quotation.objects.all().order_by('-id')
+    queryset = Quotation.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -495,7 +515,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
 
 class CustomerPOViewSet(viewsets.ModelViewSet):
-    queryset = CustomerPO.objects.all().order_by('-po_date')
+    queryset = CustomerPO.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerPOSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -598,12 +618,49 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
 
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
-    queryset = SalesOrder.objects.all().order_by('-id')
     serializer_class = SalesOrderSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_queryset(self):
+        try:
+            # Clean up and merge any stray DOC- sales orders into real SO-2026- records
+            doc_orders = list(SalesOrder.objects.filter(id__startswith='DOC-'))
+            for doc_so in doc_orders:
+                c_name = doc_so.customer_name
+                po_ref = doc_so.customer_po_number
+                matching_so = None
+                if c_name and po_ref:
+                    matching_so = SalesOrder.objects.filter(
+                        customer_name=c_name,
+                        customer_po_number=po_ref
+                    ).exclude(id=doc_so.id).first()
+                if matching_so:
+                    changed = False
+                    if doc_so.project_id and not matching_so.project_id:
+                        matching_so.project_id = doc_so.project_id
+                        changed = True
+                    if doc_so.status == 'project_created' and matching_so.status != 'project_created':
+                        matching_so.status = 'project_created'
+                        changed = True
+                    if changed:
+                        matching_so.save()
+                    doc_so.delete()
+        except Exception:
+            pass
+        return SalesOrder.objects.all().order_by('-created_at', '-id')
+
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
+        cust_name = data.get('customer_name') or data.get('customerName')
+        po_num = data.get('customer_po_number') or data.get('customerPoNumber')
+        if cust_name and po_num:
+            existing = SalesOrder.objects.filter(customer_name=cust_name, customer_po_number=po_num).first()
+            if existing:
+                serializer = self.get_serializer(existing, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
         so_num = data.get('sales_order_number') or data.get('salesOrderNumber') or data.get('id')
         if not so_num or SalesOrder.objects.filter(id=so_num).exists():
             import re

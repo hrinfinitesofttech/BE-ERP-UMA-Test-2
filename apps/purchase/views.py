@@ -59,7 +59,7 @@ from django.http import Http404
 
 
 class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseRequisition.objects.all().order_by('-request_date')
+    queryset = PurchaseRequisition.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseRequisitionSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -163,7 +163,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
 
 class RequestForQuotationViewSet(viewsets.ModelViewSet):
-    queryset = RequestForQuotation.objects.all().order_by('-rfq_date')
+    queryset = RequestForQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = RequestForQuotationSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -180,7 +180,7 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
 
 
 class SupplierQuotationViewSet(viewsets.ModelViewSet):
-    queryset = SupplierQuotation.objects.all().order_by('-date')
+    queryset = SupplierQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierQuotationSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -197,13 +197,13 @@ class SupplierQuotationViewSet(viewsets.ModelViewSet):
 
 
 class QuotationComparisonViewSet(viewsets.ModelViewSet):
-    queryset = QuotationComparison.objects.all().order_by('-comparison_date')
+    queryset = QuotationComparison.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationComparisonSerializer
     permission_classes = [permissions.AllowAny]
 
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseOrder.objects.all().order_by('-created_at')
+    queryset = PurchaseOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseOrderSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -262,6 +262,6 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
 
 
 class PurchaseReturnViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseReturn.objects.all().order_by('-date')
+    queryset = PurchaseReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseReturnSerializer
     permission_classes = [permissions.AllowAny]

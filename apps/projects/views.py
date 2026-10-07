@@ -63,8 +63,8 @@ def auto_generate_16_stages(project_id):
                 'department': s['dept'],
                 'assigned_employee_name': s['emp'],
                 'assignees': [{'name': s['emp'], 'department': s['dept']}],
-                'status': 'completed' if s['num'] in [1, 2] else ('in_progress' if s['num'] == 3 else 'pending'),
-                'progress': 100 if s['num'] in [1, 2] else (35 if s['num'] == 3 else 0),
+                'status': 'pending',
+                'progress': 0,
                 'description': s['desc'],
                 'planned_duration_days': 7,
             }
@@ -74,7 +74,7 @@ def auto_generate_16_stages(project_id):
 
 
 class ProjectJobMasterViewSet(viewsets.ModelViewSet):
-    queryset = ProjectJobMaster.objects.all().order_by('-created_at')
+    queryset = ProjectJobMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectJobMasterSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -132,20 +132,90 @@ class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         proj_id = data.get('project_id') or data.get('projectId') or 'PRJ-DEFAULT'
         data['project_id'] = proj_id
-        stage_num = data.get('stage_number') or data.get('stageNumber') or (ProjectPlanningStage.objects.filter(project_id=proj_id).count() + 1)
+        stage_num = int(data.get('stage_number') or data.get('stageNumber') or 1)
         data['stage_number'] = stage_num
 
-        stage_id = data.get('id')
-        if not stage_id or ProjectPlanningStage.objects.filter(id=stage_id).exists():
-            stage_id = f"STG-{proj_id}-{stage_num:02d}"
-            while ProjectPlanningStage.objects.filter(id=stage_id).exists():
-                stage_id = f"STG-{proj_id}-{stage_num:02d}-{uuid.uuid4().hex[:4]}"
-        data['id'] = stage_id
+        stage_id = data.get('id') or f"stg-{proj_id.lower()}-{stage_num:02d}"
+        
+        # Check if record already exists by ID or by (project_id, stage_number) to prevent duplicates
+        existing = ProjectPlanningStage.objects.filter(id=stage_id).first()
+        if not existing:
+            existing = ProjectPlanningStage.objects.filter(project_id=proj_id, stage_number=stage_num).first()
+            
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
+        data['id'] = stage_id
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def destroy(self, request, *args, **kwargs):
+        pk = kwargs.get('pk', '')
+        # Delete case-insensitively
+        deleted_count, _ = ProjectPlanningStage.objects.filter(id__iexact=pk).delete()
+        if deleted_count > 0:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'], url_path='clear-and-reset')
+    def clear_and_reset(self, request):
+        project_id = request.data.get('projectId') or request.data.get('project_id')
+        if not project_id:
+            return Response({'error': 'projectId is required'}, status=status.HTTP_400_BAD_REQUEST)
+        ProjectPlanningStage.objects.filter(project_id__iexact=project_id).delete()
+        stages = auto_generate_16_stages(project_id)
+        return Response({
+            'success': True,
+            'message': f'Reset 16 stages for {project_id}',
+            'stages': ProjectPlanningStageSerializer(stages, many=True).data
+        })
+
+    @action(detail=False, methods=['post'], url_path='save-project-stages')
+    def save_project_stages(self, request):
+        project_id = request.data.get('projectId') or request.data.get('project_id')
+        if not project_id:
+            return Response({'error': 'projectId is required'}, status=status.HTTP_400_BAD_REQUEST)
+        stages_data = request.data.get('stages', [])
+        # Delete existing stages for this project
+        ProjectPlanningStage.objects.filter(project_id__iexact=project_id).delete()
+        created_stages = []
+        for s in stages_data:
+            s_data = s.copy() if hasattr(s, 'copy') else dict(s)
+            s_data['project_id'] = project_id
+            stage_num = int(s_data.get('stage_number') or s_data.get('stageNumber') or 1)
+            s_data['stage_number'] = stage_num
+            s_id = s_data.get('id') or f"stg-{project_id.lower()}-{stage_num:02d}"
+            s_data['id'] = s_id
+            serializer = self.get_serializer(data=s_data)
+            if serializer.is_valid():
+                obj = serializer.save()
+                created_stages.append(obj)
+            else:
+                obj = ProjectPlanningStage.objects.create(
+                    id=s_id,
+                    project_id=project_id,
+                    stage_number=stage_num,
+                    name=s_data.get('name') or s_data.get('stageName') or f'Stage {stage_num}',
+                    department=s_data.get('department') or s_data.get('responsibleDepartment') or 'production',
+                    assigned_employee_name=s_data.get('assigned_employee_name') or s_data.get('responsibleEmployee') or '',
+                    assignees=s_data.get('assignees') or s_data.get('assignedEmployees') or [],
+                    status=s_data.get('status') or 'pending',
+                    progress=int(s_data.get('progress') or s_data.get('progressPercent') or 0),
+                    start_date=s_data.get('start_date') or s_data.get('plannedStart') or '',
+                    end_date=s_data.get('end_date') or s_data.get('plannedEnd') or '',
+                    description=s_data.get('description') or s_data.get('remarks') or '',
+                )
+                created_stages.append(obj)
+        return Response({
+            'success': True,
+            'message': f'Saved {len(created_stages)} stages for {project_id}',
+            'stages': ProjectPlanningStageSerializer(created_stages, many=True).data
+        })
 
     @action(detail=True, methods=['post'], url_path='complete')
     def mark_completed(self, request, pk=None):
@@ -194,7 +264,7 @@ class ProjectMilestoneViewSet(viewsets.ModelViewSet):
 
 
 class ProjectTaskViewSet(viewsets.ModelViewSet):
-    queryset = ProjectTask.objects.all().order_by('-due_date')
+    queryset = ProjectTask.objects.all().order_by('-id')
     serializer_class = ProjectTaskSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -222,7 +292,7 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
 
 
 class ProjectDocumentViewSet(viewsets.ModelViewSet):
-    queryset = ProjectDocument.objects.all().order_by('-created_at')
+    queryset = ProjectDocument.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectDocumentSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -263,19 +333,19 @@ class DepartmentAssignmentViewSet(viewsets.ModelViewSet):
 
 
 class ProjectIssueViewSet(viewsets.ModelViewSet):
-    queryset = ProjectIssue.objects.all().order_by('-created_date')
+    queryset = ProjectIssue.objects.all().order_by('-created_date', '-id')
     serializer_class = ProjectIssueSerializer
     permission_classes = [permissions.AllowAny]
 
 
 class ProjectDelayViewSet(viewsets.ModelViewSet):
-    queryset = ProjectDelay.objects.all().order_by('-date')
+    queryset = ProjectDelay.objects.all().order_by('-date', '-id')
     serializer_class = ProjectDelaySerializer
     permission_classes = [permissions.AllowAny]
 
 
 class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
-    queryset = CustomerChangeRequest.objects.all().order_by('-created_at')
+    queryset = CustomerChangeRequest.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerChangeRequestSerializer
     permission_classes = [permissions.AllowAny]
 

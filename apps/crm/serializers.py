@@ -332,8 +332,12 @@ class CustomerPOSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         inst = getattr(self, 'instance', None)
         ret = {}
-        ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber') or (inst.id if inst else None)
-        ret['po_number'] = data.get('po_number') or data.get('poNumber') or (inst.po_number if inst else ret.get('id') or 'PO/GEN')
+        if inst:
+            ret['id'] = inst.id
+            ret['po_number'] = inst.po_number
+        else:
+            ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber') or None
+            ret['po_number'] = data.get('po_number') or data.get('poNumber') or ret.get('id') or 'PO/GEN'
         ret['internal_cpo_no'] = data.get('internal_cpo_no') or data.get('internalCpoNo') or (inst.internal_cpo_no if inst else '')
         ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
         ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
@@ -413,8 +417,12 @@ class SalesOrderSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         inst = getattr(self, 'instance', None)
         ret = {}
-        ret['id'] = data.get('id') or data.get('salesOrderNumber') or data.get('sales_order_number') or (inst.id if inst else None)
-        ret['sales_order_number'] = data.get('sales_order_number') or data.get('salesOrderNumber') or ret.get('id') or (inst.sales_order_number if inst else 'SO-GEN')
+        if inst:
+            ret['id'] = inst.id
+            ret['sales_order_number'] = inst.sales_order_number
+        else:
+            ret['id'] = data.get('id') or data.get('salesOrderNumber') or data.get('sales_order_number') or None
+            ret['sales_order_number'] = data.get('sales_order_number') or data.get('salesOrderNumber') or ret.get('id') or 'SO-GEN'
         ret['customer_po_id'] = data.get('customer_po_id') or data.get('customerPoId') or (inst.customer_po_id if inst else None)
         ret['customer_po_number'] = data.get('customer_po_number') or data.get('customerPoNumber') or (inst.customer_po_number if inst else '')
         ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or (inst.quotation_id if inst else None)

@@ -382,18 +382,33 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Django REST Framework Settings
-REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
+try:
+    import djangorestframework_camel_case  # noqa: F401
+    DEFAULT_RENDERER_CLASSES = (
         'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
         'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',
         'rest_framework.renderers.JSONRenderer',
-    ),
-    'DEFAULT_PARSER_CLASSES': (
+    )
+    DEFAULT_PARSER_CLASSES = (
         'djangorestframework_camel_case.parser.CamelCaseFormParser',
         'djangorestframework_camel_case.parser.CamelCaseMultiPartParser',
         'djangorestframework_camel_case.parser.CamelCaseJSONParser',
         'rest_framework.parsers.JSONParser',
-    ),
+    )
+except ImportError:
+    DEFAULT_RENDERER_CLASSES = (
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    )
+    DEFAULT_PARSER_CLASSES = (
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+    )
+
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': DEFAULT_RENDERER_CLASSES,
+    'DEFAULT_PARSER_CLASSES': DEFAULT_PARSER_CLASSES,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',

@@ -103,26 +103,26 @@ class WarehouseLocationSerializer(serializers.ModelSerializer):
 class GoodsReceiptNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = GoodsReceiptNote
-        fields = [
-            'id',
-            'grn_number',
-            'date',
-            'po_id',
-            'po_number',
-            'supplier_id',
-            'supplier_name',
-            'challan_number',
-            'challan_date',
-            'invoice_number',
-            'invoice_date',
-            'vehicle_number',
-            'received_by',
-            'warehouse_id',
-            'items',
-            'status',
-            'qc_status',
-            'notes',
-        ]
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['grnNumber'] = instance.grn_number
+        data['grnDate'] = str(instance.date) if instance.date else ''
+        data['receiptDate'] = str(instance.date) if instance.date else ''
+        data['poId'] = instance.po_id
+        data['poNumber'] = instance.po_number
+        data['supplierId'] = instance.supplier_id
+        data['supplierName'] = instance.supplier_name
+        data['deliveryChallanNumber'] = instance.challan_number
+        data['challanNumber'] = instance.challan_number
+        data['invoiceNumber'] = instance.invoice_number
+        data['vehicleNumber'] = instance.vehicle_number
+        data['receivedBy'] = instance.received_by
+        data['warehouseId'] = instance.warehouse_id
+        data['remarks'] = instance.notes
+        data['items'] = instance.items or []
+        return data
 
 
 class QCInspectionSerializer(serializers.ModelSerializer):

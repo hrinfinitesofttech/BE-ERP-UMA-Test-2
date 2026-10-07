@@ -21,7 +21,7 @@ from .serializers import (
 
 
 class ManufacturingJobViewSet(viewsets.ModelViewSet):
-    queryset = ManufacturingJob.objects.all()
+    queryset = ManufacturingJob.objects.all().order_by('-created_at', '-id')
     serializer_class = ManufacturingJobSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['job_number', 'product_name', 'customer_name', 'project_number']
@@ -42,7 +42,7 @@ class ManufacturingJobViewSet(viewsets.ModelViewSet):
 
 
 class ProductionPlanViewSet(viewsets.ModelViewSet):
-    queryset = ProductionPlan.objects.all()
+    queryset = ProductionPlan.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionPlanSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['plan_number', 'job_number', 'product_name']
@@ -94,7 +94,7 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
 
 
 class WorkOrderViewSet(viewsets.ModelViewSet):
-    queryset = WorkOrder.objects.all().order_by('-created_at')
+    queryset = WorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = WorkOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['work_order_number', 'job_number', 'customer_name', 'product_name']
@@ -167,7 +167,7 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 
 
 class ProductionOrderViewSet(viewsets.ModelViewSet):
-    queryset = ProductionOrder.objects.all().order_by('-created_at')
+    queryset = ProductionOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['production_order_number', 'job_number', 'work_order_number']
@@ -440,7 +440,7 @@ class ProductionScrapViewSet(viewsets.ModelViewSet):
 
 
 class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
-    queryset = FinishedGoodsItem.objects.all().order_by('-completion_date', '-id')
+    queryset = FinishedGoodsItem.objects.all().order_by('-created_at', '-id')
     serializer_class = FinishedGoodsItemSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['finished_goods_number', 'job_number', 'product_name']
@@ -492,7 +492,7 @@ class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
 
 
 class DispatchOrderViewSet(viewsets.ModelViewSet):
-    queryset = DispatchOrder.objects.all().order_by('-created_at')
+    queryset = DispatchOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = DispatchOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['dispatch_number', 'job_number', 'work_order_number', 'customer_name', 'product_name', 'vehicle_number', 'lr_number']
