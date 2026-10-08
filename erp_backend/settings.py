@@ -13,6 +13,14 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://erpuma.pythonanywhere.com',
+    'https://*.pythonanywhere.com',
+    'https://*.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -379,15 +387,6 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-]
-
-# CSRF Trusted Origins (Required for PythonAnywhere and Vercel frontend)
-CSRF_TRUSTED_ORIGINS = [
-    'https://*.pythonanywhere.com',
-    'https://erpuma.pythonanywhere.com',
-    'https://*.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
 ]
 
 # Django REST Framework Settings
