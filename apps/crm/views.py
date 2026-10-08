@@ -62,6 +62,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         # 1. Map camelCase fields to snake_case
         field_mappings = {
             'leadNo': 'lead_no',
+            'leadNumber': 'lead_no',
             'companyName': 'company_name',
             'contactPerson': 'contact_person',
             'altMobile': 'alt_mobile',
@@ -94,7 +95,7 @@ class LeadViewSet(viewsets.ModelViewSet):
             if num_setting:
                 code = num_setting.generate_next_number(increment=True)
             else:
-                code = f"LEAD-2026-{Lead.objects.count() + 101:04d}"
+                code = f"LEAD-{datetime.now().strftime('%Y%m%d%H%M%S')}-{Lead.objects.count() + 1:03d}"
             data['id'] = code
             data['lead_no'] = code
         elif not data.get('id'):
