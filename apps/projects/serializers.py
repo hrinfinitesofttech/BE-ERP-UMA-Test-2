@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.core.base_serializers import UniversalModelSerializerMixin
 from .models import (
     ProjectJobMaster,
     ProjectPlanningStage,
@@ -366,7 +367,7 @@ class ProjectCostSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectJobMasterSerializer(serializers.ModelSerializer):
+class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     planning_stages = ProjectPlanningStageSerializer(many=True, read_only=True)
     milestones = ProjectMilestoneSerializer(many=True, read_only=True)
 
@@ -420,6 +421,9 @@ class ProjectJobMasterSerializer(serializers.ModelSerializer):
                 data['id'] = data.get('project_number') or ''
             if not data.get('project_number') and data.get('id'):
                 data['project_number'] = data['id']
+            if not data.get('job_number'):
+                p_code = data.get('project_number') or data.get('id') or f"PRJ-{int(datetime.now().timestamp())}"
+                data['job_number'] = p_code.replace('PRJ-', 'JOB-') if 'PRJ-' in p_code else f"JOB-{p_code}"
 
         if 'customerId' in data and 'customer_id' not in data:
             data['customer_id'] = data.pop('customerId')

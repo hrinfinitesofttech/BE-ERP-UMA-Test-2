@@ -308,6 +308,9 @@ class BOMHeaderSerializer(serializers.ModelSerializer):
             data['id'] = data['bom_number']
         if 'jobNumber' in data and 'job_number' not in data:
             data['job_number'] = data.pop('jobNumber')
+        if not data.get('job_number'):
+            p_id = data.get('project_id') or ''
+            data['job_number'] = p_id.replace('PRJ-', 'JOB-') if 'PRJ-' in p_id else 'JOB-001'
         if 'activeRevision' in data and 'active_revision' not in data:
             data['active_revision'] = data.pop('activeRevision')
         if 'totalItems' in data and 'total_items' not in data:

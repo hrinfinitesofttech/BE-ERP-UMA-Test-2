@@ -80,22 +80,30 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') and not data.get('project_number') and not data.get('projectNumber'):
+        p_code = data.get('project_number') or data.get('projectNumber') or data.get('id')
+        j_code = data.get('job_number') or data.get('jobNumber')
+
+        if not p_code:
             num_setting = NumberingSetting.objects.filter(doc_type='project').first()
             if num_setting:
                 p_code = num_setting.generate_next_number(increment=True)
+                while ProjectJobMaster.objects.filter(id=p_code).exists():
+                    p_code = num_setting.generate_next_number(increment=True)
             else:
                 next_num = ProjectJobMaster.objects.count() + 1
                 p_code = f"PRJ-2026-{next_num:04d}"
                 while ProjectJobMaster.objects.filter(id=p_code).exists():
                     next_num += 1
                     p_code = f"PRJ-2026-{next_num:04d}"
-            j_code = p_code.replace('PRJ-', 'JOB-')
-            data['id'] = p_code
-            data['project_number'] = p_code
-            data['job_number'] = j_code
-        elif not data.get('id'):
-            data['id'] = data.get('project_number') or data.get('projectNumber')
+
+        if not j_code:
+            j_code = p_code.replace('PRJ-', 'JOB-') if 'PRJ-' in p_code else f"JOB-{p_code}"
+
+        data['id'] = data.get('id') or p_code
+        data['project_number'] = p_code
+        data['job_number'] = j_code
+        data['projectNumber'] = p_code
+        data['jobNumber'] = j_code
         if not data.get('target_delivery_date') and not data.get('targetDeliveryDate'):
             data['target_delivery_date'] = data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d')
         if not data.get('start_date') and not data.get('startDate'):
