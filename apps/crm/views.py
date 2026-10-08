@@ -63,6 +63,7 @@ class LeadViewSet(viewsets.ModelViewSet):
         field_mappings = {
             'leadNo': 'lead_no',
             'leadNumber': 'lead_no',
+            'lead_number': 'lead_no',
             'companyName': 'company_name',
             'contactPerson': 'contact_person',
             'altMobile': 'alt_mobile',
@@ -82,26 +83,32 @@ class LeadViewSet(viewsets.ModelViewSet):
             if camel in data and snake not in data:
                 data[snake] = data[camel]
 
+        lead_val = data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id')
+        if lead_val:
+            data['lead_no'] = lead_val
+            if not data.get('id'):
+                data['id'] = lead_val
+        else:
+            num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
+            if num_setting:
+                code = num_setting.generate_next_number(increment=True)
+                while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                    code = num_setting.generate_next_number(increment=True)
+            else:
+                num = Lead.objects.count() + 1
+                code = f"LEAD-2026-{num:04d}"
+                while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                    num += 1
+                    code = f"LEAD-2026-{num:04d}"
+            data['id'] = code
+            data['lead_no'] = code
+
         # 2. Check if lead with this exact ID or lead_no already exists in database
-        target_id = data.get('id') or data.get('lead_no')
+        target_id = data.get('id')
         if target_id and not request.data.get('allow_existing'):
             existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
             if existing:
                 return Response({'error': f"Lead with number '{target_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 3. Auto-assign lead number only if not provided
-        if not data.get('id') and not data.get('lead_no'):
-            num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
-            if num_setting:
-                code = num_setting.generate_next_number(increment=True)
-            else:
-                code = f"LEAD-{datetime.now().strftime('%Y%m%d%H%M%S')}-{Lead.objects.count() + 1:03d}"
-            data['id'] = code
-            data['lead_no'] = code
-        elif not data.get('id'):
-            data['id'] = data.get('lead_no')
-        elif not data.get('lead_no'):
-            data['lead_no'] = data.get('id')
 
         if not data.get('created_date'):
             data['created_date'] = datetime.now().strftime('%Y-%m-%d')
@@ -243,10 +250,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id'):
-            data['id'] = f"CUST-2026-{Customer.objects.count() + 1:04d}"
-        if not data.get('customer_code') and not data.get('customerCode'):
-            data['customer_code'] = f"CUST-{Customer.objects.count() + 1:03d}"
+        cust_code = data.get('customer_code') or data.get('customerCode') or data.get('id')
+        if not cust_code:
+            cnt = Customer.objects.count() + 1
+            cust_code = f"CUST-2026-{cnt:04d}"
+            while Customer.objects.filter(id=cust_code).exists() or Customer.objects.filter(customer_code=cust_code).exists():
+                cnt += 1
+                cust_code = f"CUST-2026-{cnt:04d}"
+        data['id'] = data.get('id') or cust_code
+        data['customer_code'] = data.get('customer_code') or cust_code
         if not data.get('created_date') and not data.get('createdDate'):
             data['created_date'] = datetime.now().strftime('%Y-%m-%d')
         serializer = self.get_serializer(data=data)
