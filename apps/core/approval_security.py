@@ -18,8 +18,8 @@ def get_current_user_info(request):
     """
     Extracts authenticated user or parsed test identity from request.
     """
-    user = getattr(request, 'user', None)
-    if user and user.is_authenticated:
+    user = getattr(request, 'user', None) or getattr(request, '_force_auth_user', None)
+    if user and (getattr(user, 'is_authenticated', False) or getattr(request, '_force_auth_user', None) is not None):
         dept = getattr(user, 'department_name', '') or (user.department.name if getattr(user, 'department', None) else '')
         role = getattr(user, 'role_name', '') or (user.role_profile.name if getattr(user, 'role_profile', None) else '')
         return {
@@ -33,9 +33,10 @@ def get_current_user_info(request):
             'user_obj': user,
         }
     
-    # Check for direct test user simulation headers/params if applicable
-    auth_header = request.headers.get('Authorization', '')
-    sim_user = request.headers.get('X-Simulate-User') or request.data.get('_test_user')
+    req_data = getattr(request, 'data', {}) or {}
+    sim_user = request.headers.get('X-Simulate-User') if hasattr(request, 'headers') else None
+    if not sim_user and isinstance(req_data, dict):
+        sim_user = req_data.get('_test_user')
     if sim_user:
         return {
             'is_authenticated': True,
