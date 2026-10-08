@@ -256,8 +256,11 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             'enquiryNo': 'enquiry_no',
             'enquiryNumber': 'enquiry_no',
             'leadId': 'lead_id',
+            'lead': 'lead_id',
             'customerId': 'customer_id',
+            'customer': 'customer_id',
             'customerName': 'customer_name',
+            'companyName': 'customer_name',
             'enquiryDate': 'enquiry_date',
             'machineProduct': 'machine_product',
             'expectedDelivery': 'expected_delivery',
@@ -268,8 +271,18 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if data.get('customer_id') and not data.get('customer_name'):
+            try:
+                from .models import Customer
+                c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
+                if c:
+                    data['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('company_name') or 'Valued Customer'
         if not data.get('requirement'):
-            data['requirement'] = data.get('subject') or data.get('notes') or 'Customer Requirement'
+            data['requirement'] = data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
         if not data.get('machine_product'):
             items = data.get('items', [])
             item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
@@ -418,12 +431,22 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         ret['current_revision'] = data.get('current_revision') or data.get('currentRevision') or (inst.current_revision if inst else 'Rev-00')
         ret['date'] = data.get('date') or (inst.date if inst else datetime.now().strftime('%Y-%m-%d'))
         ret['valid_until'] = data.get('valid_until') or data.get('validUntil') or (inst.valid_until if inst else '')
-        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or data.get('customer') or (inst.customer_id if inst else '')
         ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
+        if ret.get('customer_id') and not ret.get('customer_name'):
+            try:
+                from .models import Customer
+                c = Customer.objects.filter(id=ret['customer_id']).first() or Customer.objects.filter(customer_code=ret['customer_id']).first()
+                if c:
+                    ret['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not ret.get('customer_name'):
+            ret['customer_name'] = data.get('company_name') or data.get('companyName') or 'Valued Customer'
         ret['contact_person'] = data.get('contact_person') or data.get('contactPerson') or (inst.contact_person if inst else '')
         ret['contact_mobile'] = data.get('contact_mobile') or data.get('contactMobile') or (inst.contact_mobile if inst else '')
         ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or (inst.contact_email if inst else '')
-        ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or (inst.enquiry_id if inst else None)
+        ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or data.get('enquiry') or (inst.enquiry_id if inst else None)
         ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or (inst.opportunity_id if inst else None)
         ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or (inst.sales_person_id if inst else '')
         ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or (inst.sales_person_name if inst else '')
@@ -533,15 +556,25 @@ class CustomerPOSerializer(serializers.ModelSerializer):
             ret['id'] = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo') or data.get('po_number') or data.get('poNumber') or None
             ret['po_number'] = data.get('po_number') or data.get('poNumber') or ret.get('id') or 'PO/GEN'
         ret['internal_cpo_no'] = data.get('internal_cpo_no') or data.get('internalCpoNo') or (inst.internal_cpo_no if inst else '')
-        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or data.get('customer') or (inst.customer_id if inst else '')
         ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
-        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or (inst.quotation_id if inst else None)
+        if ret.get('customer_id') and not ret.get('customer_name'):
+            try:
+                from .models import Customer
+                c = Customer.objects.filter(id=ret['customer_id']).first() or Customer.objects.filter(customer_code=ret['customer_id']).first()
+                if c:
+                    ret['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not ret.get('customer_name'):
+            ret['customer_name'] = data.get('company_name') or data.get('companyName') or 'Valued Customer'
+        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or data.get('quotation') or (inst.quotation_id if inst else None)
         ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or (inst.quotation_number if inst else '')
         ret['po_date'] = data.get('po_date') or data.get('poDate') or (inst.po_date if inst else datetime.now().strftime('%Y-%m-%d'))
         ret['received_date'] = data.get('received_date') or data.get('receivedDate') or (inst.received_date if inst else ret['po_date'])
         ret['delivery_date'] = data.get('delivery_date') or data.get('deliveryDate') or (inst.delivery_date if inst else '')
         
-        po_val = data.get('po_value') if 'po_value' in data else (data.get('poValue') if 'poValue' in data else (data.get('poAmount') if 'poAmount' in data else (data.get('po_amount') if 'po_amount' in data else None)))
+        po_val = data.get('po_value') if 'po_value' in data else (data.get('poValue') if 'poValue' in data else (data.get('orderValue') if 'orderValue' in data else (data.get('order_value') if 'order_value' in data else (data.get('poAmount') if 'poAmount' in data else (data.get('po_amount') if 'po_amount' in data else None)))))
         if po_val is not None:
             ret['po_value'] = float(po_val)
         elif inst:
@@ -618,12 +651,22 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         else:
             ret['id'] = data.get('id') or data.get('salesOrderNumber') or data.get('sales_order_number') or None
             ret['sales_order_number'] = data.get('sales_order_number') or data.get('salesOrderNumber') or ret.get('id') or 'SO-GEN'
-        ret['customer_po_id'] = data.get('customer_po_id') or data.get('customerPoId') or (inst.customer_po_id if inst else None)
+        ret['customer_po_id'] = data.get('customer_po_id') or data.get('customerPoId') or data.get('customerPo') or data.get('customer_po') or (inst.customer_po_id if inst else None)
         ret['customer_po_number'] = data.get('customer_po_number') or data.get('customerPoNumber') or (inst.customer_po_number if inst else '')
-        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or (inst.quotation_id if inst else None)
+        ret['quotation_id'] = data.get('quotation_id') or data.get('quotationId') or data.get('quotation') or (inst.quotation_id if inst else None)
         ret['quotation_number'] = data.get('quotation_number') or data.get('quotationNumber') or (inst.quotation_number if inst else '')
-        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or (inst.customer_id if inst else '')
+        ret['customer_id'] = data.get('customer_id') or data.get('customerId') or data.get('customer') or (inst.customer_id if inst else '')
         ret['customer_name'] = data.get('customer_name') or data.get('customerName') or (inst.customer_name if inst else '')
+        if ret.get('customer_id') and not ret.get('customer_name'):
+            try:
+                from .models import Customer
+                c = Customer.objects.filter(id=ret['customer_id']).first() or Customer.objects.filter(customer_code=ret['customer_id']).first()
+                if c:
+                    ret['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not ret.get('customer_name'):
+            ret['customer_name'] = data.get('company_name') or data.get('companyName') or 'Valued Customer'
         ret['order_date'] = data.get('order_date') or data.get('orderDate') or (inst.order_date if inst else datetime.now().strftime('%Y-%m-%d'))
         ret['target_delivery_date'] = data.get('target_delivery_date') or data.get('targetDeliveryDate') or data.get('deliveryDate') or data.get('delivery_date') or (inst.target_delivery_date if inst else '')
         
@@ -634,7 +677,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         else:
             ret['items'] = []
             
-        tot_val = data.get('total_amount') if 'total_amount' in data else (data.get('totalAmount') if 'totalAmount' in data else (data.get('orderValue') if 'orderValue' in data else None))
+        tot_val = data.get('total_amount') if 'total_amount' in data else (data.get('totalAmount') if 'totalAmount' in data else (data.get('subtotal') if 'subtotal' in data else (data.get('orderValue') if 'orderValue' in data else None)))
         if tot_val is not None:
             ret['total_amount'] = float(tot_val)
         elif inst:

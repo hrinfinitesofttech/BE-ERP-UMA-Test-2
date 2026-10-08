@@ -300,6 +300,12 @@ class BOMHeaderSerializer(serializers.ModelSerializer):
             data['design_job_id'] = data.pop('designJobId')
         if 'projectId' in data and 'project_id' not in data:
             data['project_id'] = data.pop('projectId')
+        if 'project' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('project')
+        if not data.get('bom_number'):
+            data['bom_number'] = data.get('id') or f"BOM-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['bom_number']
         if 'jobNumber' in data and 'job_number' not in data:
             data['job_number'] = data.pop('jobNumber')
         if 'activeRevision' in data and 'active_revision' not in data:
@@ -444,10 +450,18 @@ class TechnicalDocumentItemSerializer(serializers.ModelSerializer):
             data['design_job_id'] = data.pop('designJobId')
         if 'projectId' in data and 'project_id' not in data:
             data['project_id'] = data.pop('projectId')
+        if 'project' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('project')
         if 'jobNumber' in data and 'job_number' not in data:
             data['job_number'] = data.pop('jobNumber')
         if 'docNumber' in data and 'doc_number' not in data:
             data['doc_number'] = data.pop('docNumber')
+        if 'documentNumber' in data and 'doc_number' not in data:
+            data['doc_number'] = data.pop('documentNumber')
+        if not data.get('doc_number'):
+            data['doc_number'] = data.get('id') or f"DOC-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['doc_number']
         if 'documentName' in data and 'document_name' not in data:
             data['document_name'] = data.pop('documentName')
             if 'title' not in data or not data['title']:

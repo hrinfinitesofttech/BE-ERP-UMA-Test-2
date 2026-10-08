@@ -67,8 +67,24 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if 'customer' in data and 'customer_id' not in data:
+            data['customer_id'] = data.pop('customer')
+        if 'salesOrder' in data and 'sales_order_id' not in data:
+            data['sales_order_id'] = data.pop('salesOrder')
+        if not data.get('customer_name') and data.get('customer_id'):
+            try:
+                from apps.crm.models import Customer
+                c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
+                if c:
+                    data['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('customerName') or data.get('company_name') or 'Valued Customer'
         if not data.get('invoice_number'):
             data['invoice_number'] = data.get('id') or f"SINV-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['invoice_number']
         if not data.get('invoice_date'):
             data['invoice_date'] = data.get('date') or datetime.now().date().isoformat()
         if not data.get('due_date'):
@@ -105,8 +121,24 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if 'customer' in data and 'customer_id' not in data:
+            data['customer_id'] = data.pop('customer')
+        if 'invoice' in data and 'sales_invoice_number' not in data:
+            data['sales_invoice_number'] = data.pop('invoice')
+        if not data.get('customer_name') and data.get('customer_id'):
+            try:
+                from apps.crm.models import Customer
+                c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
+                if c:
+                    data['customer_name'] = c.company_name
+            except Exception:
+                pass
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('customerName') or data.get('company_name') or 'Valued Customer'
         if not data.get('receipt_number'):
             data['receipt_number'] = data.get('id') or f"RCT-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['receipt_number']
         if not data.get('receipt_date'):
             data['receipt_date'] = data.get('date') or datetime.now().date().isoformat()
         if 'amount' not in data:

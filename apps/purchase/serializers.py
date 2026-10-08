@@ -97,10 +97,20 @@ class PurchaseRequisitionSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'indentNumber' in data and 'pr_number' not in data:
+            data['pr_number'] = data.pop('indentNumber')
+        if 'indent_number' in data and 'pr_number' not in data:
+            data['pr_number'] = data.pop('indent_number')
         if 'prNumber' in data and 'pr_number' not in data:
             data['pr_number'] = data.pop('prNumber')
+        if not data.get('pr_number'):
+            data['pr_number'] = data.get('id') or f"IND-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['pr_number']
         if 'projectId' in data and 'project_id' not in data:
             data['project_id'] = data.pop('projectId')
+        if 'project' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('project')
         if 'jobId' in data and 'job_code' not in data:
             data['job_code'] = data.pop('jobId')
         elif 'jobNumber' in data and 'job_code' not in data:
@@ -378,6 +388,31 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
 
+        if 'supplier' in data and 'supplier_id' not in data:
+            data['supplier_id'] = data.pop('supplier')
+        if 'indent' in data and 'indent_id' not in data:
+            data['indent_id'] = data.pop('indent')
+
+        if data.get('supplier_id'):
+            try:
+                from .models import Supplier
+                s = Supplier.objects.filter(id=data['supplier_id']).first() or Supplier.objects.filter(vendor_code=data['supplier_id']).first()
+                if s:
+                    if not data.get('supplier_name') or data.get('supplier_name') == 'Supplier':
+                        data['supplier_name'] = s.name
+                    if not data.get('contact_person'):
+                        data['contact_person'] = s.contact_person
+                    if not data.get('supplier_gstin'):
+                        data['supplier_gstin'] = s.gstin
+                    if not data.get('supplier_address'):
+                        data['supplier_address'] = s.address
+            except Exception:
+                pass
+
+        if not data.get('po_number'):
+            data['po_number'] = data.get('id') or f"PO-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['po_number']
         if not data.get('date'):
             data['date'] = datetime.now().strftime('%Y-%m-%d')
         if not data.get('delivery_date'):

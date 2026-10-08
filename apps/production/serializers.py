@@ -16,6 +16,14 @@ class ManufacturingJobSerializer(UniversalModelSerializerMixin, serializers.Mode
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'salesOrder' in data and not data.get('sales_order_id'):
+            data['sales_order_id'] = data.pop('salesOrder')
+        if 'salesOrderId' in data and not data.get('sales_order_id'):
+            data['sales_order_id'] = data.pop('salesOrderId')
+        if 'project' in data and not data.get('project_id'):
+            data['project_id'] = data.pop('project')
+        if 'projectId' in data and not data.get('project_id'):
+            data['project_id'] = data.pop('projectId')
         if not data.get('job_number'):
             data['job_number'] = data.get('jobNumber') or data.get('jobCardNumber') or data.get('id') or f"JOB-{int(datetime.now().timestamp())}"
         if not data.get('product_name'):
@@ -25,7 +33,7 @@ class ManufacturingJobSerializer(UniversalModelSerializerMixin, serializers.Mode
         if not data.get('planned_start_date') and not data.get('plannedStartDate'):
             data['planned_start_date'] = data.get('startDate') or datetime.now().date().isoformat()
         if not data.get('planned_completion_date') and not data.get('plannedCompletionDate'):
-            data['planned_completion_date'] = data.get('completionDate')
+            data['planned_completion_date'] = data.get('plannedEndDate') or data.get('completionDate')
         if not data.get('id'):
             data['id'] = data.get('job_number')
         return super().to_internal_value(data)
@@ -498,6 +506,12 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
             data['dispatch_number'] = data.get('id') or f"DISP-{int(datetime.now().timestamp())}"
         if not data.get('dispatch_date'):
             data['dispatch_date'] = datetime.now().date().isoformat()
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('customerName') or data.get('company_name') or 'Valued Customer'
+        if not data.get('product_name'):
+            data['product_name'] = data.get('productName') or 'Industrial Process Equipment'
+        if not data.get('id'):
+            data['id'] = data['dispatch_number']
         return super().to_internal_value(data)
 
     def to_representation(self, instance):

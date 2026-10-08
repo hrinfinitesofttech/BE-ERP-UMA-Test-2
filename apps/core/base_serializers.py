@@ -131,6 +131,57 @@ class UniversalModelSerializerMixin:
             if 'inspection_date' in model_fields and not data.get('inspection_date'):
                 data['inspection_date'] = data.get('inspectionDate') or datetime.now().date().isoformat()
 
+            # Common FK shorthand mappings
+            fk_mappings = {
+                'customer': 'customer_id',
+                'customerId': 'customer_id',
+                'lead': 'lead_id',
+                'leadId': 'lead_id',
+                'enquiry': 'enquiry_id',
+                'enquiryId': 'enquiry_id',
+                'quotation': 'quotation_id',
+                'quotationId': 'quotation_id',
+                'project': 'project_id',
+                'projectId': 'project_id',
+                'salesOrder': 'sales_order_id',
+                'salesOrderId': 'sales_order_id',
+                'sales_order': 'sales_order_id',
+                'purchaseOrder': 'purchase_order_id',
+                'purchaseOrderId': 'purchase_order_id',
+                'purchase_order': 'purchase_order_id',
+                'supplier': 'supplier_id',
+                'supplierId': 'supplier_id',
+                'vendor': 'vendor_id',
+                'vendorId': 'vendor_id',
+                'indent': 'indent_id',
+                'indentId': 'indent_id',
+                'grn': 'grn_id',
+                'grnId': 'grn_id',
+                'invoice': 'invoice_id',
+                'invoiceId': 'invoice_id',
+            }
+            for src_key, target_key in fk_mappings.items():
+                if src_key in data and target_key in model_fields and target_key not in data:
+                    data[target_key] = data[src_key]
+                # Also support vice versa if model has FK relation without _id
+                rel_key = target_key.replace('_id', '')
+                if target_key in data and rel_key in model_fields and rel_key not in data:
+                    data[rel_key] = data[target_key]
+
+            # If model has customer_name and customer_id is provided, auto-lookup
+            if 'customer_name' in model_fields and not data.get('customer_name'):
+                cid = data.get('customer_id') or data.get('customerId') or data.get('customer')
+                if cid:
+                    try:
+                        from apps.crm.models import Customer
+                        c = Customer.objects.filter(id=cid).first() or Customer.objects.filter(customer_code=cid).first()
+                        if c:
+                            data['customer_name'] = c.company_name
+                    except Exception:
+                        pass
+                if not data.get('customer_name'):
+                    data['customer_name'] = data.get('companyName') or data.get('company_name') or 'Valued Customer'
+
             # For QCInspection items
             if 'items' in model_fields and not data.get('items'):
                 if data.get('item_code') or data.get('itemCode'):
