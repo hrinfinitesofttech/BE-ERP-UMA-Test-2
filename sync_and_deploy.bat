@@ -12,16 +12,16 @@ if "%MSG%"=="" (
 
 echo.
 echo [1/3] Adding and committing changes to Git...
-git add .
+git add -A
 git commit -m "%MSG%"
 
 echo.
-echo [2/3] Pushing code to GitHub (https://github.com/infinitesofttech/BE-ERP-UMA)...
+echo [2/3] Pushing code to GitHub (https://github.com/hrinfinitesofttech/BE-ERP-UMA-Test-2)...
 git push origin main
 
 echo.
-echo [3/3] Deploying code to PythonAnywhere (umaERP.pythonanywhere.com)...
-python deploy_pythonanywhere.py
+echo [3/3] Synchronizing & Deploying to PythonAnywhere (erpuma.pythonanywhere.com)...
+python deploy_backend_sync.py
 
 echo.
 echo ========================================================

@@ -9,10 +9,13 @@ venv/
 ENV/
 .venv/
 
-# Django
+# Local & Scratch
+backups/
+scratch/
 *.log
 local_settings.py
 staticfiles/
+deployment_history.json
 
 # IDE
 .vscode/

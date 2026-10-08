@@ -2,12 +2,14 @@
 Django settings for erp_backend project.
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-_tw-q!k8uoy6r-pwiw4q$cb0v^#nxk2s!n0w*azzy7jbvlqs6c'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-_tw-q!k8uoy6r-pwiw4q$cb0v^#nxk2s!n0w*azzy7jbvlqs6c')
+DEPLOY_SECRET_KEY = os.environ.get('DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
 
 DEBUG = True
 

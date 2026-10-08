@@ -23,7 +23,11 @@ router.register(r'security-checks', SecurityCheckRecordViewSet, basename='securi
 router.register(r'go-live-checklist', GoLiveChecklistItemViewSet, basename='go-live-checklist')
 
 
+from .system_views import SystemHealthView, SystemDeployView
+
 urlpatterns = [
     path('company/', CompanySettingView.as_view(), name='company-settings'),
+    path('health/', SystemHealthView.as_view(), name='system-health'),
+    path('deploy/', SystemDeployView.as_view(), name='system-deploy'),
     path('', include(router.urls)),
 ]
