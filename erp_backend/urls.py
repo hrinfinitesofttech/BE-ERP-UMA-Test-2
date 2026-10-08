@@ -98,6 +98,7 @@ from apps.production.views import (
     FinishedGoodsItemViewSet,
     ProductionMaterialRequestViewSet,
     DispatchOrderViewSet,
+    PackingOrderViewSet,
 )
 from apps.maintenance.views import (
     InternalAssetViewSet,
@@ -107,6 +108,13 @@ from apps.maintenance.views import (
     BreakdownRecordViewSet,
     ServiceVisitViewSet,
     AMCContractViewSet,
+    ServiceWorkOrderViewSet,
+    ServicePartIssueViewSet,
+    ServicePartReturnViewSet,
+    ServiceReportViewSet,
+    WarrantyRecordViewSet,
+    ServiceContractViewSet,
+    DowntimeRecordViewSet,
 )
 from apps.hr.views import (
     DesignationViewSet,
@@ -147,6 +155,7 @@ from apps.accounting.views import (
     BankAccountViewSet,
     ContraVoucherViewSet,
     ExpenseEntryViewSet,
+    FixedAssetViewSet,
 )
 from apps.integration.views import (
     ApprovalItemViewSet,
@@ -254,15 +263,25 @@ api_router.register(r'finished-goods', FinishedGoodsItemViewSet, basename='finis
 api_router.register(r'production-material-requests', ProductionMaterialRequestViewSet, basename='production-material-request')
 api_router.register(r'dispatch-orders', DispatchOrderViewSet, basename='dispatch-order')
 api_router.register(r'dispatch', DispatchOrderViewSet, basename='dispatch')
+api_router.register(r'packing-orders', PackingOrderViewSet, basename='packing-order')
+api_router.register(r'packing', PackingOrderViewSet, basename='packing')
 
 # Maintenance & Plant Service
 api_router.register(r'internal-assets', InternalAssetViewSet, basename='internal-asset')
 api_router.register(r'customer-machines', CustomerMachineViewSet, basename='customer-machine')
+api_router.register(r'installations', CustomerMachineViewSet, basename='installation')
 api_router.register(r'service-requests', ServiceRequestViewSet, basename='service-request')
 api_router.register(r'pm-plans', PreventiveMaintenancePlanViewSet, basename='pm-plan')
 api_router.register(r'breakdowns', BreakdownRecordViewSet, basename='breakdown')
 api_router.register(r'service-visits', ServiceVisitViewSet, basename='service-visit')
 api_router.register(r'amc-contracts', AMCContractViewSet, basename='amc-contract')
+api_router.register(r'service-work-orders', ServiceWorkOrderViewSet, basename='service-work-order')
+api_router.register(r'service-part-issues', ServicePartIssueViewSet, basename='service-part-issue')
+api_router.register(r'service-part-returns', ServicePartReturnViewSet, basename='service-part-return')
+api_router.register(r'service-reports', ServiceReportViewSet, basename='service-report')
+api_router.register(r'warranty-records', WarrantyRecordViewSet, basename='warranty-record')
+api_router.register(r'service-contracts', ServiceContractViewSet, basename='service-contract')
+api_router.register(r'downtime-records', DowntimeRecordViewSet, basename='downtime-record')
 
 # HR & Payroll
 api_router.register(r'designations', DesignationViewSet, basename='designation')
@@ -310,6 +329,7 @@ api_router.register(r'contra-entries', ContraVoucherViewSet, basename='contra-en
 api_router.register(r'contra-vouchers', ContraVoucherViewSet, basename='contra-voucher')
 api_router.register(r'expenses', ExpenseEntryViewSet, basename='expense')
 api_router.register(r'expense-entries', ExpenseEntryViewSet, basename='expense-entry')
+api_router.register(r'fixed-assets', FixedAssetViewSet, basename='fixed-asset')
 
 # Integration & Approvals
 api_router.register(r'approvals', ApprovalItemViewSet, basename='approval')
