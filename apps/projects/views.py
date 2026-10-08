@@ -432,7 +432,7 @@ class ProjectsDashboardSummaryView(APIView):
         dept_names = ['CRM', 'Design', 'Purchase', 'Store', 'Production', 'QC', 'Maintenance']
         dept_data_map = {d: {'count': 0, 'hours': 0} for d in dept_names}
         for t in tasks:
-            d = (t.assigned_department or '').strip()
+            d = (getattr(t, 'department', '') or getattr(t, 'assigned_department', '') or '').strip()
             for target in dept_names:
                 if target.lower() in d.lower():
                     dept_data_map[target]['count'] += 1
