@@ -107,6 +107,8 @@ class SystemHealthView(View):
             "python_version": sys.version.split()[0],
             "django_version": getattr(settings, 'DJANGO_VERSION', '4.2'),
             "environment": "pythonanywhere_production" if is_pa else "development",
+            "sync_engine_version": "2.0-automated-sync",
+            "deployment_pipeline": "github-actions-pa-sync-active",
         }
         if db_error:
             payload["database_error"] = db_error
