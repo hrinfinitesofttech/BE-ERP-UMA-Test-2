@@ -365,6 +365,7 @@ class DispatchOrder(models.Model):
     dispatch_date = models.DateField(default=timezone.now)
     job_id = models.CharField(max_length=64, blank=True)
     job_number = models.CharField(max_length=64, blank=True)
+    sales_order_number = models.CharField(max_length=64, blank=True, default='')
     work_order_number = models.CharField(max_length=64, blank=True)
     finished_goods_number = models.CharField(max_length=64, blank=True)
     customer_id = models.CharField(max_length=64, blank=True)

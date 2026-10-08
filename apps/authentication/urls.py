@@ -15,6 +15,7 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', CurrentUserView.as_view(), name='current_user'),
+    path('profile/', CurrentUserView.as_view(), name='current_user_profile'),
     path('change-password/', ChangePasswordView.as_view(), name='change_password'),
     path('', include(router.urls)),
 ]

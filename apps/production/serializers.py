@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from rest_framework import serializers
+from apps.core.base_serializers import UniversalModelSerializerMixin
 from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
@@ -8,10 +9,26 @@ from .models import (
 )
 
 
-class ManufacturingJobSerializer(serializers.ModelSerializer):
+class ManufacturingJobSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = ManufacturingJob
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('job_number'):
+            data['job_number'] = data.get('jobNumber') or data.get('jobCardNumber') or data.get('id') or f"JOB-{int(datetime.now().timestamp())}"
+        if not data.get('product_name'):
+            data['product_name'] = data.get('productName') or 'Industrial Process Equipment'
+        if not data.get('quantity'):
+            data['quantity'] = data.get('targetQuantity') or data.get('completedQuantity') or 1
+        if not data.get('planned_start_date') and not data.get('plannedStartDate'):
+            data['planned_start_date'] = data.get('startDate') or datetime.now().date().isoformat()
+        if not data.get('planned_completion_date') and not data.get('plannedCompletionDate'):
+            data['planned_completion_date'] = data.get('completionDate')
+        if not data.get('id'):
+            data['id'] = data.get('job_number')
+        return super().to_internal_value(data)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -451,6 +468,7 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
             'dispatchDate': 'dispatch_date',
             'jobId': 'job_id',
             'jobNumber': 'job_number',
+            'salesOrderNumber': 'sales_order_number',
             'workOrderNumber': 'work_order_number',
             'finishedGoodsNumber': 'finished_goods_number',
             'customerId': 'customer_id',
@@ -488,6 +506,7 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
         data['dispatchDate'] = str(instance.dispatch_date) if instance.dispatch_date else ''
         data['jobId'] = instance.job_id
         data['jobNumber'] = instance.job_number
+        data['salesOrderNumber'] = instance.sales_order_number
         data['workOrderNumber'] = instance.work_order_number
         data['finishedGoodsNumber'] = instance.finished_goods_number
         data['customerId'] = instance.customer_id

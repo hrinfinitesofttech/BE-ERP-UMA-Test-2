@@ -267,11 +267,12 @@ class EnquiryViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        if not data.get('id') or not data.get('enquiry_no') and not data.get('enquiryNo'):
+        enq_code = data.get('enquiry_no') or data.get('enquiryNo') or data.get('enquiryNumber') or data.get('id')
+        if not enq_code:
             num_setting = NumberingSetting.objects.filter(doc_type='enquiry').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"ENQ-2026-{Enquiry.objects.count() + 1:04d}"
-            data['id'] = code
-            data['enquiry_no'] = code
+            enq_code = num_setting.generate_next_number(increment=True) if num_setting else f"ENQ-2026-{Enquiry.objects.count() + 1:04d}"
+        data['id'] = data.get('id') or enq_code
+        data['enquiry_no'] = enq_code
         if not data.get('enquiry_date') and not data.get('enquiryDate'):
             data['enquiry_date'] = datetime.now().strftime('%Y-%m-%d')
         serializer = self.get_serializer(data=data)

@@ -75,26 +75,13 @@ class LoginView(APIView):
 
 
 class CurrentUserView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        if request.user.is_authenticated:
-            user = request.user
-        else:
-            # Fallback to superadmin for development convenience
-            user = User.objects.filter(is_family_member=True).first() or User.objects.first()
-
-        if not user:
-            return Response({'error': 'No users configured'}, status=status.HTTP_404_NOT_FOUND)
-
-        return Response(UserSerializer(user).data)
+        return Response(UserSerializer(request.user).data)
 
     def patch(self, request):
-        user = request.user if request.user.is_authenticated else User.objects.first()
-        if not user:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

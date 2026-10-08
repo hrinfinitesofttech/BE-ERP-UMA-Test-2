@@ -1,5 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
+from apps.core.base_serializers import UniversalModelSerializerMixin
 from .models import (
     Lead,
     Customer,
@@ -16,7 +17,7 @@ from .models import (
 )
 
 
-class LeadSerializer(serializers.ModelSerializer):
+class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Lead
         fields = [
@@ -81,13 +82,19 @@ class LeadSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if 'phone' in data and 'mobile' not in data:
+            data['mobile'] = data.pop('phone')
+        if not data.get('mobile'):
+            data['mobile'] = '9999999999'
+        if not data.get('product_name'):
+            data['product_name'] = data.get('productName') or data.get('notes') or data.get('requirement_description') or 'Industrial Process Equipment'
         inst = getattr(self, 'instance', None)
         if inst:
             if 'id' in data:
                 data.pop('id', None)
         else:
             if not data.get('lead_no'):
-                data['lead_no'] = data.get('id') or f"LEAD-{int(datetime.now().timestamp())}"
+                data['lead_no'] = data.get('leadNumber') or data.get('id') or f"LEAD-{int(datetime.now().timestamp())}"
             if not data.get('id'):
                 data['id'] = data['lead_no']
             if not data.get('created_date'):
@@ -131,7 +138,7 @@ class ContactSerializer(serializers.ModelSerializer):
         ]
 
 
-class CustomerSerializer(serializers.ModelSerializer):
+class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     contacts = ContactSerializer(many=True, read_only=True)
 
     class Meta:
@@ -182,6 +189,14 @@ class CustomerSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if 'phone' in data and 'mobile' not in data:
+            data['mobile'] = data.pop('phone')
+        if not data.get('mobile'):
+            data['mobile'] = '9999999999'
+        if 'address' in data and not data.get('billing_address'):
+            data['billing_address'] = data.get('address')
+        if not data.get('company_name'):
+            data['company_name'] = data.get('name', 'Customer Co')
         inst = getattr(self, 'instance', None)
         if inst:
             if 'id' in data:
@@ -214,7 +229,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         return rep
 
 
-class EnquirySerializer(serializers.ModelSerializer):
+class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Enquiry
         fields = [
@@ -239,6 +254,7 @@ class EnquirySerializer(serializers.ModelSerializer):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
         field_map = {
             'enquiryNo': 'enquiry_no',
+            'enquiryNumber': 'enquiry_no',
             'leadId': 'lead_id',
             'customerId': 'customer_id',
             'customerName': 'customer_name',
@@ -252,17 +268,23 @@ class EnquirySerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if not data.get('requirement'):
+            data['requirement'] = data.get('subject') or data.get('notes') or 'Customer Requirement'
+        if not data.get('machine_product'):
+            items = data.get('items', [])
+            item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
+            data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
+        if not data.get('enquiry_date'):
+            data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
         inst = getattr(self, 'instance', None)
         if inst:
             if 'id' in data:
                 data.pop('id', None)
         else:
             if not data.get('enquiry_no'):
-                data['enquiry_no'] = data.get('id') or f"ENQ-{int(datetime.now().timestamp())}"
+                data['enquiry_no'] = data.get('enquiryNumber') or data.get('id') or f"ENQ-{int(datetime.now().timestamp())}"
             if not data.get('id'):
                 data['id'] = data['enquiry_no']
-            if not data.get('enquiry_date'):
-                data['enquiry_date'] = datetime.now().date().isoformat()
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -370,7 +392,7 @@ class ExhibitionSerializer(serializers.ModelSerializer):
         ]
 
 
-class QuotationSerializer(serializers.ModelSerializer):
+class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     quotationNumber = serializers.CharField(source='quotation_number', required=False)
     currentRevision = serializers.CharField(source='current_revision', required=False)
     validUntil = serializers.CharField(source='valid_until', required=False, allow_blank=True)
@@ -405,13 +427,30 @@ class QuotationSerializer(serializers.ModelSerializer):
         ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or (inst.opportunity_id if inst else None)
         ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or (inst.sales_person_id if inst else '')
         ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or (inst.sales_person_name if inst else '')
-        
+        ret['status'] = data.get('status') or (inst.status if inst else 'draft')
+        ret['subtotal'] = float(data.get('subtotal') or (inst.subtotal if inst else 0))
+        ret['tax_amount'] = float(data.get('tax_amount') or data.get('taxAmount') or (inst.tax_amount if inst else 0))
+        ret['total_amount'] = float(data.get('total_amount') or data.get('totalAmount') or data.get('grand_total') or data.get('grandTotal') or (inst.total_amount if inst else 0))
+        ret['items'] = data.get('items') or (inst.items if inst else [])
+        if 'approved_by' in data or 'approvedBy' in data:
+            ret['approved_by'] = data.get('approved_by') or data.get('approvedBy')
+        if 'rejection_reason' in data or 'rejectionReason' in data:
+            ret['rejection_reason'] = data.get('rejection_reason') or data.get('rejectionReason')
+
         if 'revisions' in data:
             ret['revisions'] = data.get('revisions') or []
-        elif inst:
-            ret['revisions'] = inst.revisions or []
+        elif inst and inst.revisions:
+            ret['revisions'] = inst.revisions
         else:
-            ret['revisions'] = []
+            ret['revisions'] = [{
+                'revisionNumber': 'Rev-00',
+                'revisionDate': ret.get('date'),
+                'items': ret.get('items'),
+                'subtotal': ret.get('subtotal'),
+                'taxAmount': ret.get('tax_amount'),
+                'grandTotal': ret.get('total_amount'),
+                'status': ret.get('status'),
+            }]
 
         if 'notes' in data:
             ret['notes'] = data.get('notes') or ''
@@ -438,16 +477,25 @@ class QuotationSerializer(serializers.ModelSerializer):
         rep['salesPersonId'] = instance.sales_person_id
         rep['salesPersonName'] = instance.sales_person_name
         rep['revisions'] = instance.revisions or []
+        rep['items'] = instance.items or []
+        rep['subtotal'] = instance.subtotal
+        rep['taxAmount'] = instance.tax_amount
+        rep['totalAmount'] = instance.total_amount
+        rep['grandTotal'] = instance.total_amount
+        rep['status'] = instance.status
+        rep['approvedBy'] = instance.approved_by
+        rep['approvedAt'] = instance.approved_at.isoformat() if instance.approved_at else None
+        rep['rejectionReason'] = instance.rejection_reason
         rep['notes'] = instance.notes
         
         # Calculate latestSummary for frontend convenience
         revs = instance.revisions or []
         last_rev = revs[-1] if revs else {}
-        first_item = (last_rev.get('items') or [{}])[0]
+        first_item = (instance.items or last_rev.get('items') or [{}])[0]
         rep['latestSummary'] = {
             'machineProduct': first_item.get('productName', 'Process Equipment'),
-            'grandTotal': last_rev.get('grandTotal', 0),
-            'status': last_rev.get('status', 'draft')
+            'grandTotal': instance.total_amount or last_rev.get('grandTotal', 0),
+            'status': instance.status or last_rev.get('status', 'draft')
         }
         return rep
 

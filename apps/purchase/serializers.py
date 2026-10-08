@@ -1,5 +1,6 @@
 from datetime import datetime
 from rest_framework import serializers
+from apps.core.base_serializers import UniversalModelSerializerMixin
 from .models import (
     Supplier,
     SupplierContact,
@@ -266,7 +267,7 @@ class SupplierContactSerializer(serializers.ModelSerializer):
         ]
 
 
-class SupplierSerializer(serializers.ModelSerializer):
+class SupplierSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     contacts = SupplierContactSerializer(many=True, read_only=True)
 
     class Meta:
@@ -293,6 +294,32 @@ class SupplierSerializer(serializers.ModelSerializer):
             'status',
             'contacts',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('vendor_code'):
+            data['vendor_code'] = data.get('supplierCode') or data.get('supplier_code') or data.get('vendorCode') or data.get('id') or f"SUP-{int(datetime.now().timestamp())}"
+        if not data.get('name'):
+            data['name'] = data.get('supplierName') or data.get('supplier_name') or data.get('companyName') or data.get('company_name') or 'Supplier Co'
+        if not data.get('contact_person'):
+            data['contact_person'] = data.get('contactPerson') or data.get('name') or 'Contact Person'
+        if 'phone' in data and not data.get('mobile'):
+            data['mobile'] = data.get('phone')
+        if not data.get('mobile'):
+            data['mobile'] = data.get('phone') or '9999999999'
+        if not data.get('id'):
+            data['id'] = data.get('vendor_code') or f"SUP-{int(datetime.now().timestamp())}"
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['supplierCode'] = instance.vendor_code
+        rep['vendorCode'] = instance.vendor_code
+        rep['supplierName'] = instance.name
+        rep['contactPerson'] = instance.contact_person
+        rep['pinCode'] = instance.pincode
+        rep['panNumber'] = instance.pan
+        return rep
 
 
 class QuotationComparisonSerializer(serializers.ModelSerializer):
