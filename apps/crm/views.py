@@ -621,6 +621,17 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
     serializer_class = SalesOrderSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_val = self.kwargs.get(lookup_url_kwarg)
+        obj = queryset.filter(id=lookup_val).first() or queryset.filter(sales_order_number=lookup_val).first()
+        if not obj:
+            from rest_framework.exceptions import NotFound
+            raise NotFound(f"Sales order '{lookup_val}' not found.")
+        self.check_object_permissions(self.request, obj)
+        return obj
+
     def get_queryset(self):
         try:
             # Clean up and merge any stray DOC- sales orders into real SO-2026- records

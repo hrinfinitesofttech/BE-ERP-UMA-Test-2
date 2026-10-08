@@ -553,6 +553,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
     billingAddress = serializers.CharField(source='billing_address', required=False, allow_blank=True)
     shippingAddress = serializers.CharField(source='shipping_address', required=False, allow_blank=True)
     projectId = serializers.CharField(source='project_id', required=False, allow_blank=True, allow_null=True)
+    jobNumber = serializers.CharField(source='job_number', required=False, allow_blank=True)
     createdBy = serializers.CharField(source='created_by', required=False, allow_blank=True)
     approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
 
@@ -614,6 +615,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         ret['shipping_address'] = data.get('shipping_address') or data.get('shippingAddress') or (inst.shipping_address if inst else '')
         ret['status'] = data.get('status') or (inst.status if inst else 'confirmed')
         ret['project_id'] = data.get('project_id') or data.get('projectId') or (inst.project_id if inst else None)
+        ret['job_number'] = data.get('job_number') or data.get('jobNumber') or (inst.job_number if inst else '')
         ret['created_by'] = data.get('created_by') or data.get('createdBy') or (inst.created_by if inst else '')
         ret['approved_by'] = data.get('approved_by') or data.get('approvedBy') or (inst.approved_by if inst else '')
         return ret
@@ -641,6 +643,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         rep['shippingAddress'] = instance.shipping_address
         rep['status'] = instance.status
         rep['projectId'] = instance.project_id
+        rep['jobNumber'] = getattr(instance, 'job_number', '')
         rep['createdBy'] = instance.created_by
         rep['approvedBy'] = instance.approved_by
         return rep

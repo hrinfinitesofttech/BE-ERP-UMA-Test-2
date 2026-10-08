@@ -64,9 +64,29 @@ class CustomerPOAdmin(admin.ModelAdmin):
 
 @admin.register(SalesOrder)
 class SalesOrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'sales_order_number', 'customer_po_id', 'customer_po_number', 'quotation_id', 'quotation_number')
-    search_fields = ('id', 'sales_order_number', 'customer_po_id', 'customer_po_number')
-    list_filter = ('status', 'created_at', 'updated_at')
+    list_display = (
+        'sales_order_number',
+        'customer_name',
+        'customer_po_number',
+        'grand_total',
+        'status',
+        'project_id',
+        'job_number',
+        'order_date',
+        'target_delivery_date',
+        'created_at',
+    )
+    search_fields = (
+        'id',
+        'sales_order_number',
+        'customer_name',
+        'customer_po_number',
+        'project_id',
+        'job_number',
+        'quotation_number',
+    )
+    list_filter = ('status', 'created_at', 'order_date')
+    list_per_page = 25
 
 @admin.register(Activity)
 class ActivityAdmin(admin.ModelAdmin):

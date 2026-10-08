@@ -295,6 +295,7 @@ class SalesOrder(models.Model):
     shipping_address = models.TextField(blank=True, default='')
     status = models.CharField(max_length=50, default='confirmed')
     project_id = models.CharField(max_length=64, blank=True, null=True)
+    job_number = models.CharField(max_length=64, blank=True, default='')
     created_by = models.CharField(max_length=150, blank=True, default='')
     approved_by = models.CharField(max_length=150, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
