@@ -58,10 +58,25 @@ def get_github_latest_commit():
 
 
 def get_pa_deployed_commit_via_file():
-    """Reads the exact deployed git commit from .git/refs/heads/main on PythonAnywhere via Files API."""
-    url = f"{PA_BASE_URL}/files/path/home/{PA_USERNAME}/BE-ERP-UMA/.git/refs/heads/{BRANCH}"
+    """Reads the exact deployed git commit from PythonAnywhere via Files API."""
+    url_head = f"{PA_BASE_URL}/files/path/home/{PA_USERNAME}/BE-ERP-UMA/.git/HEAD"
     try:
-        r = requests.get(url, headers=PA_HEADERS, timeout=15)
+        r = requests.get(url_head, headers=PA_HEADERS, timeout=15)
+        if r.status_code == 200:
+            head_val = r.text.strip()
+            if head_val.startswith("ref: "):
+                ref_rel = head_val.replace("ref: ", "").strip()
+                r_ref = requests.get(f"{PA_BASE_URL}/files/path/home/{PA_USERNAME}/BE-ERP-UMA/.git/{ref_rel}", headers=PA_HEADERS, timeout=15)
+                if r_ref.status_code == 200:
+                    return r_ref.text.strip()
+            else:
+                return head_val
+    except Exception as e:
+        log(f"Error fetching HEAD via Files API: {e}")
+
+    url_main = f"{PA_BASE_URL}/files/path/home/{PA_USERNAME}/BE-ERP-UMA/.git/refs/heads/{BRANCH}"
+    try:
+        r = requests.get(url_main, headers=PA_HEADERS, timeout=15)
         if r.status_code == 200:
             return r.text.strip()
     except Exception as e:

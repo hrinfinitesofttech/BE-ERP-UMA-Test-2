@@ -86,8 +86,8 @@ def main():
 
     # 3. Checkout / Pull
     if args.rollback:
-        print(f"\n[ROLLBACK MODE] Checking out target commit: {args.rollback}")
-        ok_co, _, err_co = run_command(['git', 'checkout', args.rollback], f"Checkout {args.rollback}")
+        run_command(['git', 'checkout', 'main'], "Checkout Main")
+        ok_co, _, err_co = run_command(['git', 'reset', '--hard', args.rollback], f"Git Reset Hard {args.rollback}")
         if not ok_co:
             print(f"ERROR: Rollback failed: {err_co}")
             sys.exit(1)

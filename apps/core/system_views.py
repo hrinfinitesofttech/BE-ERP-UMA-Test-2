@@ -21,15 +21,7 @@ def get_current_git_commit():
     base_dir = Path(settings.BASE_DIR)
     git_dir = base_dir / '.git'
     
-    # 1. Try reading .git/refs/heads/main
-    ref_main = git_dir / 'refs' / 'heads' / 'main'
-    if ref_main.exists():
-        try:
-            return ref_main.read_text().strip()
-        except Exception:
-            pass
-
-    # 2. Try reading .git/HEAD directly if detached or packed
+    # 1. Read .git/HEAD first (handles both branches and detached HEAD)
     head_file = git_dir / 'HEAD'
     if head_file.exists():
         try:
@@ -39,7 +31,15 @@ def get_current_git_commit():
                 if ref_path.exists():
                     return ref_path.read_text().strip()
             else:
-                return content
+                return content  # Detached HEAD SHA
+        except Exception:
+            pass
+
+    # 2. Try reading .git/refs/heads/main
+    ref_main = git_dir / 'refs' / 'heads' / 'main'
+    if ref_main.exists():
+        try:
+            return ref_main.read_text().strip()
         except Exception:
             pass
 
@@ -193,9 +193,10 @@ class SystemDeployView(View):
         if 'requirements.txt' in diff_out:
             reqs_changed = True
 
-        # Step 3: Git checkout / pull
-        if target_commit:
-            run_step(['git', 'checkout', target_commit], f"Git Checkout {target_commit}")
+        # Step 3: Git checkout / pull / rollback
+        if target_commit and target_commit != 'HEAD':
+            run_step(['git', 'checkout', 'main'], "Git Checkout Main")
+            run_step(['git', 'reset', '--hard', target_commit], f"Git Reset Hard {target_commit}")
         else:
             run_step(['git', 'checkout', 'main'], "Git Checkout Main")
             run_step(['git', 'pull', 'origin', 'main'], "Git Pull")
