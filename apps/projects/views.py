@@ -436,7 +436,7 @@ class ProjectsDashboardSummaryView(APIView):
             for target in dept_names:
                 if target.lower() in d.lower():
                     dept_data_map[target]['count'] += 1
-                    dept_data_map[target]['hours'] += int(t.estimated_hours or 0)
+                    dept_data_map[target]['hours'] += int(getattr(t, 'estimated_hours', 0) or getattr(t, 'hours', 0) or 8)
                     break
 
         department_chart_data = [
