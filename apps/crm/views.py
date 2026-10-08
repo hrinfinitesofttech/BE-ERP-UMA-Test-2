@@ -270,22 +270,34 @@ class CustomerViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        cust_code = data.get('customer_code') or data.get('customerCode') or data.get('id')
-        if not cust_code:
-            cnt = Customer.objects.count() + 1
-            cust_code = f"CUST-2026-{cnt:04d}"
-            while Customer.objects.filter(id=cust_code).exists() or Customer.objects.filter(customer_code=cust_code).exists():
-                cnt += 1
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
+        with self.__class__._create_lock:
+            data = request.data.copy()
+            cust_code = data.get('customer_code') or data.get('customerCode') or data.get('id')
+            if not cust_code:
+                import re
+                all_codes = list(Customer.objects.values_list('customer_code', flat=True)) + list(Customer.objects.values_list('id', flat=True))
+                max_num = 0
+                for cc in all_codes:
+                    m = re.search(r'(\d+)$', str(cc))
+                    if m:
+                        max_num = max(max_num, int(m.group(1)))
+                cnt = max(max_num + 1, Customer.objects.count() + 1)
                 cust_code = f"CUST-2026-{cnt:04d}"
-        data['id'] = data.get('id') or cust_code
-        data['customer_code'] = data.get('customer_code') or cust_code
-        if not data.get('created_date') and not data.get('createdDate'):
-            data['created_date'] = datetime.now().strftime('%Y-%m-%d')
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+                while Customer.objects.filter(id=cust_code).exists() or Customer.objects.filter(customer_code=cust_code).exists():
+                    cnt += 1
+                    cust_code = f"CUST-2026-{cnt:04d}"
+            data['id'] = data.get('id') or cust_code
+            data['customer_code'] = data.get('customer_code') or cust_code
+            if not data.get('created_date') and not data.get('createdDate'):
+                data['created_date'] = datetime.now().strftime('%Y-%m-%d')
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class ContactViewSet(viewsets.ModelViewSet):
@@ -469,55 +481,60 @@ class QuotationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        quo_num = data.get('quotation_number') or data.get('quotationNumber') or data.get('id')
-        if not quo_num or Quotation.objects.filter(id=quo_num).exists():
-            import re
-            all_ids = list(Quotation.objects.values_list('id', flat=True))
-            max_num = 0
-            for qid in all_ids:
-                match = re.search(r'(\d+)$', str(qid))
-                if match:
-                    max_num = max(max_num, int(match.group(1)))
-            num_setting = NumberingSetting.objects.filter(doc_type='quotation').first()
-            prefix = num_setting.prefix if num_setting else "QT-2026-"
-            digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
-            next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
-            quo_num = f"{prefix}{next_num:0{digit_count}d}"
-            while Quotation.objects.filter(id=quo_num).exists():
-                next_num += 1
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
+        with self.__class__._create_lock:
+            data = request.data.copy()
+            quo_num = data.get('quotation_number') or data.get('quotationNumber') or data.get('id')
+
+            if not quo_num or Quotation.objects.filter(id=quo_num).exists():
+                import re
+                all_ids = list(Quotation.objects.values_list('id', flat=True))
+                max_num = 0
+                for qid in all_ids:
+                    match = re.search(r'(\d+)$', str(qid))
+                    if match:
+                        max_num = max(max_num, int(match.group(1)))
+                num_setting = NumberingSetting.objects.filter(doc_type='quotation').first()
+                prefix = num_setting.prefix if num_setting else "QT-2026-"
+                digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
+                next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
                 quo_num = f"{prefix}{next_num:0{digit_count}d}"
-            if num_setting:
-                num_setting.current_number = next_num
-                num_setting.save(update_fields=['current_number'])
-        data['id'] = quo_num
-        data['quotation_number'] = quo_num
+                while Quotation.objects.filter(id=quo_num).exists():
+                    next_num += 1
+                    quo_num = f"{prefix}{next_num:0{digit_count}d}"
+                if num_setting:
+                    num_setting.current_number = next_num
+                    num_setting.save(update_fields=['current_number'])
+            data['id'] = quo_num
+            data['quotation_number'] = quo_num
 
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
 
-        # Update linked enquiry if provided
-        enq_id = data.get('enquiry_id') or data.get('enquiryId')
-        cust_id = data.get('customer_id') or data.get('customerId')
-        if enq_id:
-            Enquiry.objects.filter(models.Q(id=enq_id) | models.Q(enquiry_no=enq_id)).update(
-                quotation_id=quo_num,
-                status='quotation_sent'
-            )
-            Lead.objects.filter(converted_enquiry_id=enq_id).update(
-                status='quotation_sent'
-            )
-        elif cust_id:
-            Enquiry.objects.filter(customer_id=cust_id, quotation_id__isnull=True).update(
-                quotation_id=quo_num,
-                status='quotation_sent'
-            )
-            Lead.objects.filter(converted_customer_id=cust_id).update(
-                status='quotation_sent'
-            )
+            # Update linked enquiry if provided
+            enq_id = data.get('enquiry_id') or data.get('enquiryId')
+            cust_id = data.get('customer_id') or data.get('customerId')
+            if enq_id:
+                Enquiry.objects.filter(models.Q(id=enq_id) | models.Q(enquiry_no=enq_id)).update(
+                    quotation_id=quo_num,
+                    status='quotation_sent'
+                )
+                Lead.objects.filter(converted_enquiry_id=enq_id).update(
+                    status='quotation_sent'
+                )
+            elif cust_id:
+                Enquiry.objects.filter(customer_id=cust_id, quotation_id__isnull=True).update(
+                    quotation_id=quo_num,
+                    status='quotation_sent'
+                )
+                Lead.objects.filter(converted_customer_id=cust_id).update(
+                    status='quotation_sent'
+                )
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'], url_path='add-revision')
     def add_revision(self, request, pk=None):
