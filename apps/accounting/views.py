@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from django.db.models import Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.views import APIView
@@ -59,11 +60,24 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'payment_status', 'customer_id']
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id'):
-            data['id'] = data.get('invoice_number') or data.get('invoiceNumber') or f"INV-2026-{SalesInvoice.objects.count() + 1:04d}"
-        if 'invoice_number' not in data:
-            data['invoice_number'] = data.get('invoiceNumber') or data.get('id')
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
+
+        with self.__class__._create_lock:
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if not data.get('id') and not data.get('invoice_number') and not data.get('invoiceNumber'):
+                count = SalesInvoice.objects.count() + 1
+                code = f"INV-2026-{count:04d}"
+                while SalesInvoice.objects.filter(Q(id=code) | Q(invoice_number=code)).exists():
+                    count += 1
+                    code = f"INV-2026-{count:04d}"
+                data['id'] = code
+                data['invoice_number'] = code
+            elif not data.get('id'):
+                data['id'] = data.get('invoice_number') or data.get('invoiceNumber')
+            if 'invoice_number' not in data:
+                data['invoice_number'] = data.get('invoiceNumber') or data.get('id')
         if 'invoice_date' not in data:
             data['invoice_date'] = data.get('invoiceDate') or timezone.now().strftime('%Y-%m-%d')
         if 'due_date' not in data:

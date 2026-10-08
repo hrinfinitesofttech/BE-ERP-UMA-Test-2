@@ -144,109 +144,118 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id') and not data.get('grn_number') and not data.get('grnNumber'):
-            code = f"GRN-2026-{GoodsReceiptNote.objects.count() + 1:04d}"
-            data['id'] = code
-            data['grn_number'] = code
-        elif not data.get('id'):
-            data['id'] = data.get('grn_number') or data.get('grnNumber')
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
 
-        if 'grn_number' not in data:
-            data['grn_number'] = data.get('grnNumber') or data.get('id')
-        if 'date' not in data:
-            data['date'] = data.get('grnDate') or data.get('receiptDate') or datetime.now().strftime('%Y-%m-%d')
-        if 'po_id' not in data:
-            data['po_id'] = data.get('poId') or ''
-        if 'po_number' not in data:
-            data['po_number'] = data.get('poNumber') or ''
-        if 'supplier_id' not in data:
-            data['supplier_id'] = data.get('supplierId') or 'SUP-001'
-        if 'supplier_name' not in data:
-            data['supplier_name'] = data.get('supplierName') or 'Supplier'
-        if 'challan_number' not in data:
-            data['challan_number'] = data.get('deliveryChallanNumber') or data.get('challanNumber') or ''
-        if 'invoice_number' not in data:
-            data['invoice_number'] = data.get('invoiceNumber') or ''
-        if 'vehicle_number' not in data:
-            data['vehicle_number'] = data.get('vehicleNumber') or ''
-        if 'received_by' not in data:
-            data['received_by'] = data.get('receivedBy') or 'Store Officer'
-        if 'warehouse_id' not in data:
-            data['warehouse_id'] = data.get('warehouseId') or 'WH-001'
-        if 'notes' not in data:
-            data['notes'] = data.get('remarks') or data.get('notes') or ''
-        if 'items' not in data or not data['items']:
-            data['items'] = []
+        with self.__class__._create_lock:
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if not data.get('id') and not data.get('grn_number') and not data.get('grnNumber'):
+                count = GoodsReceiptNote.objects.count() + 1
+                code = f"GRN-2026-{count:04d}"
+                while GoodsReceiptNote.objects.filter(Q(id=code) | Q(grn_number=code)).exists():
+                    count += 1
+                    code = f"GRN-2026-{count:04d}"
+                data['id'] = code
+                data['grn_number'] = code
+            elif not data.get('id'):
+                data['id'] = data.get('grn_number') or data.get('grnNumber')
 
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        grn = serializer.save()
+            if 'grn_number' not in data:
+                data['grn_number'] = data.get('grnNumber') or data.get('id')
+            if 'date' not in data:
+                data['date'] = data.get('grnDate') or data.get('receiptDate') or datetime.now().strftime('%Y-%m-%d')
+            if 'po_id' not in data:
+                data['po_id'] = data.get('poId') or ''
+            if 'po_number' not in data:
+                data['po_number'] = data.get('poNumber') or ''
+            if 'supplier_id' not in data:
+                data['supplier_id'] = data.get('supplierId') or 'SUP-001'
+            if 'supplier_name' not in data:
+                data['supplier_name'] = data.get('supplierName') or 'Supplier'
+            if 'challan_number' not in data:
+                data['challan_number'] = data.get('deliveryChallanNumber') or data.get('challanNumber') or ''
+            if 'invoice_number' not in data:
+                data['invoice_number'] = data.get('invoiceNumber') or ''
+            if 'vehicle_number' not in data:
+                data['vehicle_number'] = data.get('vehicleNumber') or ''
+            if 'received_by' not in data:
+                data['received_by'] = data.get('receivedBy') or 'Store Officer'
+            if 'warehouse_id' not in data:
+                data['warehouse_id'] = data.get('warehouseId') or 'WH-001'
+            if 'notes' not in data:
+                data['notes'] = data.get('remarks') or data.get('notes') or ''
+            if 'items' not in data or not data['items']:
+                data['items'] = []
 
-        # Update Stock Balance, Item Master, and Ledger for accepted items
-        for itm in (grn.items or []):
-            item_code = str(itm.get('itemCode') or itm.get('item_code') or itm.get('partNumber') or 'ITM-01')
-            raw_name = str(itm.get('itemName') or itm.get('item_name') or itm.get('description') or item_code)
-            clean_name = raw_name.split(' (')[0].strip()
-            qty = float(itm.get('acceptedQuantity') or itm.get('acceptedQty') or itm.get('receivedQuantity') or itm.get('receivedQty') or itm.get('quantity') or 0.0)
-            rate = float(itm.get('unitPrice') or itm.get('unitRate') or itm.get('rate') or 0.0)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            grn = serializer.save()
 
-            bal = StockBalance.objects.filter(item_code=item_code, warehouse_id=grn.warehouse_id).first()
-            if not bal:
-                bal = StockBalance.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
-            if not bal:
-                bal = StockBalance(
-                    id=f"stk-{item_code.lower()}",
-                    item_id=itm.get('itemId', item_code),
-                    item_code=item_code,
-                    item_name=clean_name,
-                    warehouse_id=grn.warehouse_id,
-                    quantity=0,
-                    available_quantity=0,
-                    unit_rate=rate,
-                )
-            bal.quantity += qty
-            bal.available_quantity += qty
-            bal.total_value = bal.quantity * (bal.unit_rate or rate)
-            bal.save()
+            # Update Stock Balance, Item Master, and Ledger for accepted items
+            for itm in (grn.items or []):
+                item_code = str(itm.get('itemCode') or itm.get('item_code') or itm.get('partNumber') or 'ITM-01')
+                raw_name = str(itm.get('itemName') or itm.get('item_name') or itm.get('description') or item_code)
+                clean_name = raw_name.split(' (')[0].strip()
+                qty = float(itm.get('acceptedQuantity') or itm.get('acceptedQty') or itm.get('receivedQuantity') or itm.get('receivedQty') or itm.get('quantity') or 0.0)
+                rate = float(itm.get('unitPrice') or itm.get('unitRate') or itm.get('rate') or 0.0)
 
-            # Ensure ItemMaster is also created or updated with current stock
-            try:
-                item_master = ItemMaster.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
-                if not item_master:
-                    ItemMaster.objects.create(
-                        id=f"itm-{item_code.lower()}",
+                bal = StockBalance.objects.filter(item_code=item_code, warehouse_id=grn.warehouse_id).first()
+                if not bal:
+                    bal = StockBalance.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
+                if not bal:
+                    bal = StockBalance(
+                        id=f"stk-{item_code.lower()}",
+                        item_id=itm.get('itemId', item_code),
                         item_code=item_code,
                         item_name=clean_name,
-                        category=itm.get('category', 'Fasteners, Flanges & Hardware'),
-                        uom=itm.get('uom', 'PCS'),
-                        unit_cost=rate,
-                        status='Active'
+                        warehouse_id=grn.warehouse_id,
+                        quantity=0,
+                        available_quantity=0,
+                        unit_rate=rate,
                     )
-            except Exception:
-                pass
+                bal.quantity += qty
+                bal.available_quantity += qty
+                bal.total_value = bal.quantity * (bal.unit_rate or rate)
+                bal.save()
 
-            # Record in perpetual stock ledger
-            StockLedgerEntry.objects.update_or_create(
-                id=f"ledg-{grn.grn_number.lower()}-{item_code.lower()}",
-                defaults={
-                    'date': grn.date,
-                    'transaction_type': 'GRN',
-                    'reference_number': grn.grn_number,
-                    'item_id': itm.get('itemId', item_code),
-                    'item_code': item_code,
-                    'item_name': clean_name,
-                    'warehouse_id': grn.warehouse_id,
-                    'inward_quantity': qty,
-                    'outward_quantity': 0,
-                    'closing_quantity': bal.quantity,
-                    'unit_rate': rate,
-                    'total_amount': qty * rate,
-                    'performed_by': grn.received_by,
-                }
-            )
+                # Ensure ItemMaster is also created or updated with current stock
+                try:
+                    item_master = ItemMaster.objects.filter(Q(item_code=item_code) | Q(item_name=clean_name)).first()
+                    if not item_master:
+                        ItemMaster.objects.create(
+                            id=f"itm-{item_code.lower()}",
+                            item_code=item_code,
+                            item_name=clean_name,
+                            category=itm.get('category', 'Fasteners, Flanges & Hardware'),
+                            uom=itm.get('uom', 'PCS'),
+                            unit_cost=rate,
+                            status='Active'
+                        )
+                except Exception:
+                    pass
 
-        return Response(GoodsReceiptNoteSerializer(grn).data, status=status.HTTP_201_CREATED)
+                # Record in perpetual stock ledger
+                StockLedgerEntry.objects.update_or_create(
+                    id=f"ledg-{grn.grn_number.lower()}-{item_code.lower()}",
+                    defaults={
+                        'date': grn.date,
+                        'transaction_type': 'GRN',
+                        'reference_number': grn.grn_number,
+                        'item_id': itm.get('itemId', item_code),
+                        'item_code': item_code,
+                        'item_name': clean_name,
+                        'warehouse_id': grn.warehouse_id,
+                        'inward_quantity': qty,
+                        'outward_quantity': 0,
+                        'closing_quantity': bal.quantity,
+                        'unit_rate': rate,
+                        'total_amount': qty * rate,
+                        'performed_by': grn.received_by,
+                    }
+                )
+
+            return Response(GoodsReceiptNoteSerializer(grn).data, status=status.HTTP_201_CREATED)
 
 
 class QCInspectionViewSet(viewsets.ModelViewSet):

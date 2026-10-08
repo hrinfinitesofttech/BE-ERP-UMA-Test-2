@@ -260,23 +260,34 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         return obj
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        po_num = data.get('poNumber') or data.get('po_number') or data.get('id') or f"PO-2026-{PurchaseOrder.objects.count() + 1:04d}"
-        po_id = data.get('id') or po_num
-        data['id'] = po_id
-        data['po_number'] = po_num
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
 
-        existing = PurchaseOrder.objects.filter(Q(id=po_id) | Q(po_number=po_num)).first()
-        if existing:
-            serializer = self.get_serializer(existing, data=data, partial=True)
+        with self.__class__._create_lock:
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            po_num = data.get('poNumber') or data.get('po_number') or data.get('id')
+            if not po_num:
+                count = PurchaseOrder.objects.count() + 1
+                po_num = f"PO-2026-{count:04d}"
+                while PurchaseOrder.objects.filter(Q(id=po_num) | Q(po_number=po_num)).exists():
+                    count += 1
+                    po_num = f"PO-2026-{count:04d}"
+            po_id = data.get('id') or po_num
+            data['id'] = po_id
+            data['po_number'] = po_num
+
+            existing = PurchaseOrder.objects.filter(Q(id=po_id) | Q(po_number=po_num)).first()
+            if existing:
+                serializer = self.get_serializer(existing, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+            serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
-            self.perform_update(serializer)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
