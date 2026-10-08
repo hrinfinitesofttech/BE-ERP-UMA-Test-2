@@ -381,6 +381,15 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# CSRF Trusted Origins (Required for PythonAnywhere and Vercel frontend)
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.pythonanywhere.com',
+    'https://erpuma.pythonanywhere.com',
+    'https://*.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+
 # Django REST Framework Settings
 try:
     import djangorestframework_camel_case  # noqa: F401
