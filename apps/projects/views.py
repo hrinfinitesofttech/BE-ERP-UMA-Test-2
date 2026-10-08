@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from rest_framework import viewsets, permissions, status
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 
@@ -417,3 +418,99 @@ class ProjectCostViewSet(viewsets.ModelViewSet):
     queryset = ProjectCost.objects.all().order_by('category')
     serializer_class = ProjectCostSerializer
     permission_classes = [permissions.AllowAny]
+
+
+class ProjectsDashboardSummaryView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        today = datetime.now().date()
+        projects = list(ProjectJobMaster.objects.all())
+        tasks = list(ProjectTask.objects.all())
+        delays = list(ProjectDelay.objects.all())
+
+        dept_names = ['CRM', 'Design', 'Purchase', 'Store', 'Production', 'QC', 'Maintenance']
+        dept_data_map = {d: {'count': 0, 'hours': 0} for d in dept_names}
+        for t in tasks:
+            d = (t.assigned_department or '').strip()
+            for target in dept_names:
+                if target.lower() in d.lower():
+                    dept_data_map[target]['count'] += 1
+                    dept_data_map[target]['hours'] += int(t.estimated_hours or 0)
+                    break
+
+        department_chart_data = [
+            {'name': d, 'count': dept_data_map[d]['count'], 'hours': dept_data_map[d]['hours']}
+            for d in dept_names
+        ]
+
+        priority_counts = {'low': 0, 'medium': 0, 'high': 0, 'urgent': 0}
+        for p in projects:
+            pr = (p.priority or 'medium').lower()
+            if pr in priority_counts:
+                priority_counts[pr] += 1
+            else:
+                priority_counts['medium'] += 1
+
+        priority_chart_data = [
+            {'name': 'Low', 'count': priority_counts['low'], 'fill': '#94A3B8'},
+            {'name': 'Medium', 'count': priority_counts['medium'], 'fill': '#3B82F6'},
+            {'name': 'High', 'count': priority_counts['high'], 'fill': '#F59E0B'},
+            {'name': 'Urgent', 'count': priority_counts['urgent'], 'fill': '#EF4444'},
+        ]
+
+        month_keys = []
+        month_map = {}
+        for i in range(5, -1, -1):
+            m = (today.month - i - 1) % 12 + 1
+            y = today.year + ((today.month - i - 1) // 12)
+            name = date(y, m, 1).strftime('%b %Y')
+            key = f"{y}-{m:02d}"
+            month_keys.append((key, name))
+            month_map[key] = {'month': name, 'count': 0, 'value': 0}
+
+        for p in projects:
+            dt = None
+            if hasattr(p, 'created_at') and p.created_at:
+                dt = p.created_at.date()
+            elif p.start_date:
+                dt = p.start_date
+            if dt:
+                key = f"{dt.year}-{dt.month:02d}"
+                if key in month_map:
+                    month_map[key]['count'] += 1
+                    month_map[key]['value'] += round(float(p.contract_value or 0) / 100000, 1)
+
+        monthly_creation_data = [
+            month_map[k] for k, _ in month_keys
+        ]
+
+        completion_trend_data = [
+            {
+                'month': name.split()[0],
+                'planned': sum(1 for p in projects if p.target_completion_date and p.target_completion_date.strftime('%b') == name.split()[0]),
+                'actual': sum(1 for p in projects if p.status == 'completed' and p.actual_completion_date and p.actual_completion_date.strftime('%b') == name.split()[0])
+            }
+            for _, name in month_keys[-5:]
+        ]
+
+        delay_reason_map = {}
+        for d in delays:
+            r = d.delay_reason or 'Other Reason'
+            delay_reason_map[r] = delay_reason_map.get(r, 0) + int(d.delay_days or 0)
+
+        delay_breakdown_data = [
+            {'reason': k, 'days': v} for k, v in delay_reason_map.items()
+        ]
+
+        return Response({
+            'department_chart_data': department_chart_data,
+            'priority_chart_data': priority_chart_data,
+            'monthly_creation_data': monthly_creation_data,
+            'completion_trend_data': completion_trend_data,
+            'delay_breakdown_data': delay_breakdown_data,
+            'total_projects_count': len(projects),
+            'tasks_count': len(tasks),
+            'delays_count': len(delays),
+        })
+

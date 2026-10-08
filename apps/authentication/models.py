@@ -1,9 +1,14 @@
+import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 
+def generate_user_id():
+    return f"USR-{uuid.uuid4().hex[:12].upper()}"
+
+
 class User(AbstractUser):
-    id = models.CharField(max_length=64, primary_key=True)
+    id = models.CharField(max_length=64, primary_key=True, default=generate_user_id)
     gender = models.CharField(max_length=20, default='male')
     dob = models.CharField(max_length=30, blank=True, default='')
     mobile = models.CharField(max_length=30, blank=True, default='')
@@ -34,6 +39,11 @@ class User(AbstractUser):
     last_login_str = models.CharField(max_length=60, blank=True, default='')
     is_family_member = models.BooleanField(default=False)
     profile_photo = models.CharField(max_length=255, blank=True, default='')
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = generate_user_id()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.id})"

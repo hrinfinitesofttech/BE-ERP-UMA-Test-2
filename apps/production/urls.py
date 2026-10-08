@@ -5,7 +5,8 @@ from .views import (
     RoutingOperationViewSet, WorkOrderViewSet, ProductionOrderViewSet,
     ProductionScheduleItemViewSet, ProductionEntryViewSet, WIPRecordViewSet,
     ProductionHoldViewSet, ReworkOrderViewSet, ProductionScrapViewSet,
-    FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet, DispatchOrderViewSet
+    FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet, DispatchOrderViewSet,
+    PackingOrderViewSet, ProductionDashboardStatsView
 )
 
 router = DefaultRouter()
@@ -26,7 +27,11 @@ router.register('production-scraps', ProductionScrapViewSet, basename='productio
 router.register('finished-goods', FinishedGoodsItemViewSet, basename='finished-good')
 router.register('dispatch-orders', DispatchOrderViewSet, basename='dispatch-order')
 router.register('dispatch', DispatchOrderViewSet, basename='dispatch')
+router.register('packing-orders', PackingOrderViewSet, basename='packing-order')
+router.register('packing', PackingOrderViewSet, basename='packing')
 
 urlpatterns = [
+    path('dashboard-stats/', ProductionDashboardStatsView.as_view(), name='production-dashboard-stats'),
     path('', include(router.urls)),
 ]
+

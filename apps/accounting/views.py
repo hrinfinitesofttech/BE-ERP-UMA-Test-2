@@ -1,5 +1,7 @@
+from datetime import datetime, date, timedelta
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
 from .models import (
@@ -284,6 +286,150 @@ class FixedAssetViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['asset_code', 'asset_name', 'category', 'location']
     filterset_fields = ['category', 'status', 'depreciation_method']
+
+
+class AccountingDashboardMetricsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        today = timezone.now().date()
+
+        month_keys = []
+        month_map = {}
+        for i in range(5, -1, -1):
+            m = (today.month - i - 1) % 12 + 1
+            y = today.year + ((today.month - i - 1) // 12)
+            name = date(y, m, 1).strftime('%b')
+            key = f"{y}-{m:02d}"
+            month_keys.append((key, name))
+            month_map[key] = {
+                'month': name,
+                'Revenue': 0.0,
+                'Expense': 0.0,
+                'Profit': 0.0,
+                'Inflow': 0.0,
+                'Outflow': 0.0,
+                'NetBalance': 0.0,
+            }
+
+        sales_invoices = list(SalesInvoice.objects.all())
+        for inv in sales_invoices:
+            if inv.invoice_date:
+                key = f"{inv.invoice_date.year}-{inv.invoice_date.month:02d}"
+                if key in month_map:
+                    month_map[key]['Revenue'] += float(inv.grand_total or 0.0)
+
+        purchase_invoices = list(PurchaseInvoice.objects.all())
+        for inv in purchase_invoices:
+            if inv.invoice_date:
+                key = f"{inv.invoice_date.year}-{inv.invoice_date.month:02d}"
+                if key in month_map:
+                    month_map[key]['Expense'] += float(inv.grand_total or 0.0)
+
+        expense_entries = list(ExpenseEntry.objects.all())
+        for exp in expense_entries:
+            if exp.expense_date:
+                key = f"{exp.expense_date.year}-{exp.expense_date.month:02d}"
+                if key in month_map:
+                    month_map[key]['Expense'] += float(exp.amount or 0.0)
+
+        receipts = list(CustomerReceipt.objects.all())
+        for r in receipts:
+            if r.receipt_date:
+                key = f"{r.receipt_date.year}-{r.receipt_date.month:02d}"
+                if key in month_map:
+                    month_map[key]['Inflow'] += float(r.amount or 0.0)
+
+        payments = list(SupplierPayment.objects.all())
+        for p in payments:
+            if p.payment_date:
+                key = f"{p.payment_date.year}-{p.payment_date.month:02d}"
+                if key in month_map:
+                    month_map[key]['Outflow'] += float(p.amount or 0.0)
+
+        monthly_revenue_expense = []
+        cash_flow = []
+        for key, name in month_keys:
+            data = month_map[key]
+            data['Profit'] = data['Revenue'] - data['Expense']
+            data['NetBalance'] = data['Inflow'] - data['Outflow']
+            monthly_revenue_expense.append({
+                'month': data['month'],
+                'Revenue': round(data['Revenue'], 2),
+                'Expense': round(data['Expense'], 2),
+                'Profit': round(data['Profit'], 2),
+            })
+            cash_flow.append({
+                'month': data['month'],
+                'Inflow': round(data['Inflow'], 2),
+                'Outflow': round(data['Outflow'], 2),
+                'NetBalance': round(data['NetBalance'], 2),
+            })
+
+        ar_buckets = {'0-30 Days': 0.0, '31-60 Days': 0.0, '61-90 Days': 0.0, '90+ Days': 0.0}
+        for inv in sales_invoices:
+            outstanding = float(inv.outstanding_amount or (inv.grand_total - inv.paid_amount) or 0.0)
+            if outstanding > 0 and inv.invoice_date:
+                age = (today - inv.invoice_date).days
+                if age <= 30:
+                    ar_buckets['0-30 Days'] += outstanding
+                elif age <= 60:
+                    ar_buckets['31-60 Days'] += outstanding
+                elif age <= 90:
+                    ar_buckets['61-90 Days'] += outstanding
+                else:
+                    ar_buckets['90+ Days'] += outstanding
+
+        ar_colors = {'0-30 Days': '#10B981', '31-60 Days': '#3B82F6', '61-90 Days': '#F59E0B', '90+ Days': '#EF4444'}
+        ar_aging = [
+            {'name': k, 'amount': round(v, 2), 'color': ar_colors[k]} for k, v in ar_buckets.items()
+        ]
+
+        ap_buckets = {'0-30 Days': 0.0, '31-60 Days': 0.0, '61-90 Days': 0.0, '90+ Days': 0.0}
+        for inv in purchase_invoices:
+            outstanding = float(inv.outstanding_amount or (inv.grand_total - inv.paid_amount) or 0.0)
+            if outstanding > 0 and inv.invoice_date:
+                age = (today - inv.invoice_date).days
+                if age <= 30:
+                    ap_buckets['0-30 Days'] += outstanding
+                elif age <= 60:
+                    ap_buckets['31-60 Days'] += outstanding
+                elif age <= 90:
+                    ap_buckets['61-90 Days'] += outstanding
+                else:
+                    ap_buckets['90+ Days'] += outstanding
+
+        ap_aging = [
+            {'name': k, 'amount': round(v, 2), 'color': ar_colors[k]} for k, v in ap_buckets.items()
+        ]
+
+        exp_categories = {}
+        for exp in expense_entries:
+            cat = exp.category or 'General Overhead'
+            exp_categories[cat] = exp_categories.get(cat, 0.0) + float(exp.amount or 0.0)
+
+        pi_total = sum(float(inv.taxable_amount or inv.grand_total or 0.0) for inv in purchase_invoices)
+        if pi_total > 0:
+            exp_categories['Raw Material & Components'] = exp_categories.get('Raw Material & Components', 0.0) + pi_total
+
+        palette = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#E11D48']
+        expense_breakdown = [
+            {'name': k, 'value': round(v, 2), 'color': palette[idx % len(palette)]}
+            for idx, (k, v) in enumerate(exp_categories.items())
+        ]
+
+        return Response({
+            'monthly_revenue_expense': monthly_revenue_expense,
+            'cash_flow': cash_flow,
+            'ar_aging': ar_aging,
+            'ap_aging': ap_aging,
+            'expense_breakdown': expense_breakdown,
+            'total_sales_invoices': len(sales_invoices),
+            'total_purchase_invoices': len(purchase_invoices),
+            'total_receipts': len(receipts),
+            'total_payments': len(payments),
+        })
+
 
 
 

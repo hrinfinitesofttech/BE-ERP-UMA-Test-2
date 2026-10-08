@@ -402,3 +402,44 @@ class DispatchOrder(models.Model):
     def __str__(self):
         return f"{self.dispatch_number} - {self.customer_name} ({self.status})"
 
+
+class PackingOrder(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    packing_number = models.CharField(max_length=64, unique=True)
+    packing_date = models.DateField(default=timezone.now)
+    customer_id = models.CharField(max_length=64, blank=True)
+    customer_name = models.CharField(max_length=255)
+    sales_order_id = models.CharField(max_length=64, blank=True)
+    sales_order_number = models.CharField(max_length=64, blank=True)
+    job_id = models.CharField(max_length=64, blank=True)
+    job_number = models.CharField(max_length=64, blank=True)
+    project_id = models.CharField(max_length=64, blank=True)
+    project_number = models.CharField(max_length=64, blank=True)
+    qc_inspection_number = models.CharField(max_length=64, blank=True)
+    finished_goods_number = models.CharField(max_length=64, blank=True)
+    product_name = models.CharField(max_length=255)
+    specification = models.TextField(blank=True)
+    total_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=1)
+    packed_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=1)
+    remaining_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    uom = models.CharField(max_length=32, default='Nos')
+    package_type = models.CharField(max_length=128, default='Heavy Duty Wooden Crate')
+    package_dimensions = models.CharField(max_length=128, blank=True, default='')
+    gross_weight_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    net_weight_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    packed_by = models.CharField(max_length=128, blank=True, default='Packing Supervisor')
+    verified_by = models.CharField(max_length=128, blank=True, default='Quality Inspector')
+    status = models.CharField(max_length=64, default='Packed')
+    items = models.JSONField(default=list, blank=True)
+    remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Packing Order'
+        verbose_name_plural = 'Packing Orders'
+
+    def __str__(self):
+        return f"{self.packing_number} - {self.customer_name} ({self.status})"
+
+

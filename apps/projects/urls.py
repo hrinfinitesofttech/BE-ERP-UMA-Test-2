@@ -7,6 +7,7 @@ from .views import (
     DepartmentAssignmentViewSet,
     ProjectCostViewSet,
     ProjectDocumentViewSet,
+    ProjectsDashboardSummaryView
 )
 
 # The root convenience router already serves /api/projects/ as the project list,
@@ -22,5 +23,6 @@ router.register(r'costs', ProjectCostViewSet, basename='cost')
 router.register(r'documents', ProjectDocumentViewSet, basename='document')
 
 urlpatterns = [
+    path('dashboard-summary/', ProjectsDashboardSummaryView.as_view(), name='projects-dashboard-summary'),
     path('', include(router.urls)),
 ]

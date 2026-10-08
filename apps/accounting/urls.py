@@ -6,7 +6,7 @@ from .views import (
     CustomerReceiptViewSet, SupplierPaymentViewSet, JournalEntryViewSet,
     JobCostingSummaryViewSet, CreditNoteViewSet, DebitNoteViewSet,
     BankAccountViewSet, ContraVoucherViewSet, ExpenseEntryViewSet,
-    FixedAssetViewSet
+    FixedAssetViewSet, AccountingDashboardMetricsView
 )
 
 router = DefaultRouter()
@@ -30,6 +30,7 @@ router.register('expense-entries', ExpenseEntryViewSet, basename='expense-entry'
 router.register('fixed-assets', FixedAssetViewSet, basename='fixed-asset')
 
 urlpatterns = [
+    path('dashboard-metrics/', AccountingDashboardMetricsView.as_view(), name='accounting-dashboard-metrics'),
     path('', include(router.urls)),
 ]
 

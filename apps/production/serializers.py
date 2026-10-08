@@ -5,7 +5,7 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder
+    ProductionMaterialRequest, DispatchOrder, PackingOrder
 )
 
 
@@ -548,4 +548,83 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
         data['status'] = instance.status
         data['remarks'] = instance.remarks
         return data
+
+
+class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = PackingOrder
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'packingNumber': 'packing_number',
+            'packingDate': 'packing_date',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'salesOrderId': 'sales_order_id',
+            'salesOrderNumber': 'sales_order_number',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'projectId': 'project_id',
+            'projectNumber': 'project_number',
+            'qcInspectionNumber': 'qc_inspection_number',
+            'finishedGoodsNumber': 'finished_goods_number',
+            'productName': 'product_name',
+            'totalQuantity': 'total_quantity',
+            'packedQuantity': 'packed_quantity',
+            'remainingQuantity': 'remaining_quantity',
+            'packageType': 'package_type',
+            'packageDimensions': 'package_dimensions',
+            'grossWeightKg': 'gross_weight_kg',
+            'netWeightKg': 'net_weight_kg',
+            'packedBy': 'packed_by',
+            'verifiedBy': 'verified_by',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('packing_number'):
+            data['packing_number'] = data.get('id') or f"PACK-{int(datetime.now().timestamp())}"
+        if not data.get('packing_date'):
+            data['packing_date'] = datetime.now().date().isoformat()
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('customerName') or 'Valued Customer'
+        if not data.get('product_name'):
+            data['product_name'] = data.get('productName') or 'Industrial Process Equipment'
+        if not data.get('id'):
+            data['id'] = data['packing_number']
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['packingNumber'] = instance.packing_number
+        data['packingDate'] = str(instance.packing_date) if instance.packing_date else ''
+        data['customerId'] = instance.customer_id
+        data['customerName'] = instance.customer_name
+        data['salesOrderId'] = instance.sales_order_id
+        data['salesOrderNumber'] = instance.sales_order_number
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['projectId'] = instance.project_id
+        data['projectNumber'] = instance.project_number
+        data['qcInspectionNumber'] = instance.qc_inspection_number
+        data['finishedGoodsNumber'] = instance.finished_goods_number
+        data['productName'] = instance.product_name
+        data['specification'] = instance.specification
+        data['totalQuantity'] = float(instance.total_quantity or 1)
+        data['packedQuantity'] = float(instance.packed_quantity or 1)
+        data['remainingQuantity'] = float(instance.remaining_quantity or 0)
+        data['uom'] = instance.uom
+        data['packageType'] = instance.package_type
+        data['packageDimensions'] = instance.package_dimensions
+        data['grossWeightKg'] = float(instance.gross_weight_kg or 0)
+        data['netWeightKg'] = float(instance.net_weight_kg or 0)
+        data['packedBy'] = instance.packed_by
+        data['verifiedBy'] = instance.verified_by
+        data['status'] = instance.status
+        data['items'] = instance.items
+        data['remarks'] = instance.remarks
+        return data
+
 

@@ -11,6 +11,7 @@ from .views import (
 router = DefaultRouter()
 router.register('internal-assets', InternalAssetViewSet, basename='internal-asset')
 router.register('customer-machines', CustomerMachineViewSet, basename='customer-machine')
+router.register('installations', CustomerMachineViewSet, basename='installation')
 router.register('service-requests', ServiceRequestViewSet, basename='service-request')
 router.register('pm-plans', PreventiveMaintenancePlanViewSet, basename='pm-plan')
 router.register('breakdowns', BreakdownRecordViewSet, basename='breakdown')

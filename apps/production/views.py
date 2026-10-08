@@ -3,20 +3,22 @@ from datetime import datetime
 from django.db.models import Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
 from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder
+    ProductionMaterialRequest, DispatchOrder, PackingOrder
 )
 from .serializers import (
     ManufacturingJobSerializer, ProductionPlanSerializer, WorkCenterSerializer,
     RoutingOperationSerializer, WorkOrderSerializer, ProductionOrderSerializer,
     ProductionScheduleItemSerializer, ProductionEntrySerializer, WIPRecordSerializer,
     ProductionHoldSerializer, ReworkOrderSerializer, ProductionScrapSerializer,
-    FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer, DispatchOrderSerializer
+    FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer, DispatchOrderSerializer,
+    PackingOrderSerializer
 )
 
 
@@ -555,4 +557,143 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
         dispatch.status = 'Delivered to Site'
         dispatch.save()
         return Response(DispatchOrderSerializer(dispatch).data)
+
+
+class PackingOrderViewSet(viewsets.ModelViewSet):
+    queryset = PackingOrder.objects.all().order_by('-created_at', '-id')
+    serializer_class = PackingOrderSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['packing_number', 'customer_name', 'job_number', 'sales_order_number', 'product_name']
+    filterset_fields = ['status', 'customer_id', 'job_id', 'sales_order_id']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        pack_num = (
+            data.get('packing_number')
+            or data.get('packingNumber')
+            or f"PACK-{datetime.now().year}-{PackingOrder.objects.count() + 1:04d}"
+        )
+        data['id'] = data.get('id') or pack_num
+        data['packing_number'] = pack_num
+        data['packing_date'] = data.get('packing_date') or data.get('packingDate') or datetime.now().strftime('%Y-%m-%d')
+        data['customer_id'] = data.get('customer_id') or data.get('customerId', '')
+        data['customer_name'] = data.get('customer_name') or data.get('customerName', 'Valued Customer')
+        data['sales_order_id'] = data.get('sales_order_id') or data.get('salesOrderId', '')
+        data['sales_order_number'] = data.get('sales_order_number') or data.get('salesOrderNumber', '')
+        data['job_id'] = data.get('job_id') or data.get('jobId', '')
+        data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
+        data['project_id'] = data.get('project_id') or data.get('projectId', '')
+        data['project_number'] = data.get('project_number') or data.get('projectNumber', '')
+        data['qc_inspection_number'] = data.get('qc_inspection_number') or data.get('qcInspectionNumber', '')
+        data['finished_goods_number'] = data.get('finished_goods_number') or data.get('finishedGoodsNumber', '')
+        data['product_name'] = data.get('product_name') or data.get('productName', 'Heavy Process Equipment')
+        data['specification'] = data.get('specification', '')
+        total_qty = float(data.get('total_quantity') or data.get('totalQuantity', 1))
+        packed_qty = float(data.get('packed_quantity') or data.get('packedQuantity', 1))
+        data['total_quantity'] = total_qty
+        data['packed_quantity'] = packed_qty
+        data['remaining_quantity'] = float(data.get('remaining_quantity') or data.get('remainingQuantity') or max(0, total_qty - packed_qty))
+        data['uom'] = data.get('uom', 'Nos')
+        data['package_type'] = data.get('package_type') or data.get('packageType', 'Heavy Duty Wooden Crate')
+        data['package_dimensions'] = data.get('package_dimensions') or data.get('packageDimensions', '')
+        data['gross_weight_kg'] = float(data.get('gross_weight_kg') or data.get('grossWeightKg', 0))
+        data['net_weight_kg'] = float(data.get('net_weight_kg') or data.get('netWeightKg', 0))
+        data['packed_by'] = data.get('packed_by') or data.get('packedBy', 'Packing Supervisor')
+        data['verified_by'] = data.get('verified_by') or data.get('verifiedBy', 'Quality Inspector')
+        data['status'] = data.get('status', 'Packed')
+        data['remarks'] = data.get('remarks', '')
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='mark-inspected')
+    def mark_inspected(self, request, pk=None):
+        order = self.get_object()
+        order.status = 'Ready for Dispatch'
+        order.save()
+        return Response(PackingOrderSerializer(order).data)
+
+
+class ProductionDashboardStatsView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        jobs = list(ManufacturingJob.objects.all())
+        work_centers = list(WorkCenter.objects.all())
+        entries = list(ProductionEntry.objects.all())
+        wips = list(WIPRecord.objects.all())
+
+        status_counts = {}
+        for j in jobs:
+            st = j.status or 'Pending'
+            status_counts[st] = status_counts.get(st, 0) + 1
+
+        job_status_data = [
+            {'name': k, 'value': v} for k, v in status_counts.items()
+        ]
+
+        work_center_capacity = [
+            {
+                'name': wc.work_center_code,
+                'Capacity': float(wc.capacity_per_day_hours or 0),
+                'Available': float(wc.available_hours or 0),
+                'Efficiency': float(wc.efficiency_percent or 0),
+            } for wc in work_centers
+        ]
+
+        # Group entries by day
+        day_output = {}
+        for e in entries:
+            day_str = e.entry_date.strftime('%a') if e.entry_date else 'Day'
+            if day_str not in day_output:
+                day_output[day_str] = {'GoodQty': 0, 'Rejected': 0, 'Scrap': 0}
+            day_output[day_str]['GoodQty'] += float(e.good_quantity or 0)
+            day_output[day_str]['Rejected'] += float(e.rejected_quantity or 0)
+            day_output[day_str]['Scrap'] += float(e.scrap_quantity or 0)
+
+        daily_output = [
+            {'day': k, **v} for k, v in day_output.items()
+        ]
+
+        wip_distribution = [
+            {
+                'job': w.job_number,
+                'OperationsDone': w.completed_operations_count,
+                'RemainingOps': max(0, w.total_operations_count - w.completed_operations_count),
+            } for w in wips
+        ]
+
+        cost_comparison = [
+            {
+                'job': j.job_number,
+                'Estimated': float(j.quantity or 1) * 100000,
+                'Actual': float(j.quantity or 1) * 95000,
+            } for j in jobs[:6]
+        ]
+
+        downtime_map = {}
+        for e in entries:
+            if e.downtime_reason:
+                r = e.downtime_reason.strip()
+                downtime_map[r] = downtime_map.get(r, 0) + int(e.downtime_minutes or 0)
+
+        downtime_reasons = [
+            {'name': k, 'value': v} for k, v in downtime_map.items()
+        ]
+
+        return Response({
+            'job_status_data': job_status_data,
+            'work_center_capacity': work_center_capacity,
+            'daily_output': daily_output,
+            'wip_distribution': wip_distribution,
+            'cost_comparison': cost_comparison,
+            'downtime_reasons': downtime_reasons,
+            'total_jobs_count': len(jobs),
+            'work_centers_count': len(work_centers),
+            'entries_count': len(entries),
+            'wip_count': len(wips),
+        })
+
 
