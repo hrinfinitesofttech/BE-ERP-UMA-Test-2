@@ -474,30 +474,55 @@ class ProjectsDashboardSummaryView(APIView):
             if hasattr(p, 'created_at') and p.created_at:
                 dt = p.created_at.date()
             elif p.start_date:
-                dt = p.start_date
+                try:
+                    dt = datetime.strptime(str(p.start_date)[:10], '%Y-%m-%d').date()
+                except Exception:
+                    dt = None
             if dt:
                 key = f"{dt.year}-{dt.month:02d}"
                 if key in month_map:
+                    val = getattr(p, 'order_value', 0) or getattr(p, 'contract_value', 0) or 0
                     month_map[key]['count'] += 1
-                    month_map[key]['value'] += round(float(p.contract_value or 0) / 100000, 1)
+                    month_map[key]['value'] += round(float(val) / 100000, 1)
 
         monthly_creation_data = [
             month_map[k] for k, _ in month_keys
         ]
 
-        completion_trend_data = [
-            {
-                'month': name.split()[0],
-                'planned': sum(1 for p in projects if p.target_completion_date and p.target_completion_date.strftime('%b') == name.split()[0]),
-                'actual': sum(1 for p in projects if p.status == 'completed' and p.actual_completion_date and p.actual_completion_date.strftime('%b') == name.split()[0])
-            }
-            for _, name in month_keys[-5:]
-        ]
+        completion_trend_data = []
+        for _, name in month_keys[-5:]:
+            m_short = name.split()[0]
+            planned_count = 0
+            actual_count = 0
+            for p in projects:
+                target_str = str(getattr(p, 'target_delivery_date', '') or '')
+                actual_str = str(getattr(p, 'actual_delivery_date', '') or '')
+                st = (getattr(p, 'current_status', '') or getattr(p, 'status', '')).lower()
+                try:
+                    if target_str:
+                        p_dt = datetime.strptime(target_str[:10], '%Y-%m-%d')
+                        if p_dt.strftime('%b') == m_short:
+                            planned_count += 1
+                except Exception:
+                    pass
+                try:
+                    if actual_str and st in ['completed', 'delivered']:
+                        a_dt = datetime.strptime(actual_str[:10], '%Y-%m-%d')
+                        if a_dt.strftime('%b') == m_short:
+                            actual_count += 1
+                except Exception:
+                    pass
+            completion_trend_data.append({
+                'month': m_short,
+                'planned': planned_count,
+                'actual': actual_count,
+            })
 
         delay_reason_map = {}
         for d in delays:
-            r = d.delay_reason or 'Other Reason'
-            delay_reason_map[r] = delay_reason_map.get(r, 0) + int(d.delay_days or 0)
+            r = getattr(d, 'delay_reason', None) or getattr(d, 'reason', None) or 'Other Reason'
+            days = getattr(d, 'delay_days', 0) or getattr(d, 'delayed_days', 0) or 0
+            delay_reason_map[r] = delay_reason_map.get(r, 0) + int(days)
 
         delay_breakdown_data = [
             {'reason': k, 'days': v} for k, v in delay_reason_map.items()
