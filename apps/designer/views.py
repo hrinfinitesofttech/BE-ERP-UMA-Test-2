@@ -4,6 +4,13 @@ from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from apps.core.approval_security import (
+    validate_approval_permission,
+    validate_approval_transition,
+    validate_edit_safety,
+    log_approval_audit,
+)
+
 
 from .models import (
     DesignJob,
@@ -194,6 +201,11 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             job.design_manager = data.get('designManager') or data.get('design_manager')
         if 'activeRevision' in data or 'active_revision' in data:
             job.active_revision = data.get('activeRevision') or data.get('active_revision')
+        
+        safe, err_resp = validate_edit_safety(job, data)
+        if not safe:
+            return err_resp
+
         job.save()
         return Response(DesignJobSerializer(job).data, status=status.HTTP_200_OK)
 
@@ -208,7 +220,22 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
         ).first()
 
-        approver = request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin User'
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Design', 'Engineering', 'R&D', 'Technical', 'Management'],
+            allowed_roles=['Design Manager', 'Chief Engineer', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        current_stat = job.status if job else 'pending'
+        valid_trans, trans_resp = validate_approval_transition(current_stat, 'approve')
+        if not valid_trans:
+            return trans_resp
+
+        approver = user_info['name'] or request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin User'
         notes = request.data.get('approvalNotes') or request.data.get('approval_notes') or request.data.get('notes') or 'Approved after engineering verification.'
         date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
 
@@ -253,6 +280,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             bom.approved_by = approver
             bom.save()
 
+        log_approval_audit(user_info, 'APPROVE', 'Design', 'DesignJob', job.id, notes)
         return Response({
             'success': True,
             'message': f'Design Job {job.design_job_number} approved successfully by {approver}.',
@@ -268,7 +296,22 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             models.Q(id=pk) | models.Q(design_job_number=pk) | models.Q(job_number=pk)
         ).first()
 
-        disapprover = request.data.get('disapprovedBy') or request.data.get('disapproved_by') or 'Admin User'
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Design', 'Engineering', 'R&D', 'Technical', 'Management'],
+            allowed_roles=['Design Manager', 'Chief Engineer', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        current_stat = job.status if job else 'pending'
+        valid_trans, trans_resp = validate_approval_transition(current_stat, 'disapprove')
+        if not valid_trans:
+            return trans_resp
+
+        disapprover = user_info['name'] or request.data.get('disapprovedBy') or request.data.get('disapproved_by') or 'Admin User'
         reason = request.data.get('rejectionReason') or request.data.get('rejection_reason') or request.data.get('reason') or 'Design requires revision and engineering adjustments.'
         date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
 
@@ -309,12 +352,18 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             bom.status = 'draft'
             bom.save()
 
+        log_approval_audit(user_info, 'REJECT', 'Design', 'DesignJob', job.id, reason)
         return Response({
             'success': True,
             'message': f'Design Job {job.design_job_number} disapproved. Reason recorded: {reason}',
             'job': DesignJobSerializer(job).data,
             'bom': BOMHeaderSerializer(bom).data if bom else None,
         })
+
+    @action(detail=True, methods=['post', 'patch'], url_path='reject')
+    def reject(self, request, pk=None):
+        return self.disapprove(request, pk=pk)
+
 
     @action(detail=True, methods=['post', 'patch'], url_path='release-to-production')
     def release_to_production(self, request, pk=None):

@@ -32,7 +32,10 @@ class CostCenterSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class SalesInvoiceSerializer(serializers.ModelSerializer):
+from apps.core.base_serializers import UniversalModelSerializerMixin
+
+
+class SalesInvoiceSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = SalesInvoice
         fields = '__all__'
@@ -44,8 +47,11 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             'invoiceDate': 'invoice_date',
             'dueDate': 'due_date',
             'customerId': 'customer_id',
+            'customerCode': 'customer_code',
             'customerName': 'customer_name',
             'customerGstin': 'customer_gstin',
+            'billingAddress': 'billing_address',
+            'shippingAddress': 'shipping_address',
             'placeOfSupply': 'place_of_supply',
             'salesOrderId': 'sales_order_id',
             'salesOrderNumber': 'sales_order_number',
@@ -53,10 +59,18 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             'projectId': 'project_id',
             'jobNumber': 'job_number',
             'paymentTerms': 'payment_terms',
+            'termsAndConditions': 'terms_and_conditions',
+            'subTotal': 'taxable_amount',
+            'subtotal': 'taxable_amount',
             'taxableAmount': 'taxable_amount',
+            'discountTotal': 'discount_total',
             'cgstAmount': 'cgst_amount',
             'sgstAmount': 'sgst_amount',
             'igstAmount': 'igst_amount',
+            'cgstTotal': 'cgst_amount',
+            'sgstTotal': 'sgst_amount',
+            'igstTotal': 'igst_amount',
+            'taxTotal': 'tax_total',
             'roundOff': 'round_off',
             'grandTotal': 'grand_total',
             'paidAmount': 'paid_amount',
@@ -67,6 +81,18 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if 'subtotal' not in data and 'taxable_amount' in data:
+            data['subtotal'] = data['taxable_amount']
+        if 'taxable_amount' not in data and 'subtotal' in data:
+            data['taxable_amount'] = data['subtotal']
+        if 'cgst_total' not in data and 'cgst_amount' in data:
+            data['cgst_total'] = data['cgst_amount']
+        if 'sgst_total' not in data and 'sgst_amount' in data:
+            data['sgst_total'] = data['sgst_amount']
+        if 'igst_total' not in data and 'igst_amount' in data:
+            data['igst_total'] = data['igst_amount']
+        if 'tax_total' not in data:
+            data['tax_total'] = float(data.get('cgst_amount') or 0) + float(data.get('sgst_amount') or 0) + float(data.get('igst_amount') or 0)
         if 'customer' in data and 'customer_id' not in data:
             data['customer_id'] = data.pop('customer')
         if 'salesOrder' in data and 'sales_order_id' not in data:
@@ -77,6 +103,8 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
                 c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
                 if c:
                     data['customer_name'] = c.company_name
+                    if not data.get('customer_code'):
+                        data['customer_code'] = c.customer_code
             except Exception:
                 pass
         if not data.get('customer_name'):
@@ -93,14 +121,52 @@ class SalesInvoiceSerializer(serializers.ModelSerializer):
             data['grand_total'] = data.get('totalAmount')
         return super().to_internal_value(data)
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['invoiceNumber'] = instance.invoice_number
+        ret['invoiceDate'] = str(instance.invoice_date)
+        ret['dueDate'] = str(instance.due_date)
+        ret['customerId'] = instance.customer_id
+        ret['customerCode'] = instance.customer_code
+        ret['customerName'] = instance.customer_name
+        ret['customerGstin'] = instance.customer_gstin
+        ret['billingAddress'] = instance.billing_address
+        ret['shippingAddress'] = instance.shipping_address
+        ret['placeOfSupply'] = instance.place_of_supply
+        ret['salesOrderId'] = instance.sales_order_id
+        ret['salesOrderNumber'] = instance.sales_order_number
+        ret['customerPoNumber'] = instance.customer_po_number
+        ret['projectId'] = instance.project_id
+        ret['jobNumber'] = instance.job_number
+        ret['paymentTerms'] = instance.payment_terms
+        ret['termsAndConditions'] = instance.terms_and_conditions
+        ret['taxableAmount'] = float(instance.taxable_amount)
+        ret['subtotal'] = float(instance.subtotal or instance.taxable_amount)
+        ret['subTotal'] = float(instance.subtotal or instance.taxable_amount)
+        ret['discountTotal'] = float(instance.discount_total)
+        ret['cgstAmount'] = float(instance.cgst_amount)
+        ret['sgstAmount'] = float(instance.sgst_amount)
+        ret['igstAmount'] = float(instance.igst_amount)
+        ret['cgstTotal'] = float(instance.cgst_total or instance.cgst_amount)
+        ret['sgstTotal'] = float(instance.sgst_total or instance.sgst_amount)
+        ret['igstTotal'] = float(instance.igst_total or instance.igst_amount)
+        ret['taxTotal'] = float(instance.tax_total or (instance.cgst_amount + instance.sgst_amount + instance.igst_amount))
+        ret['roundOff'] = float(instance.round_off)
+        ret['grandTotal'] = float(instance.grand_total)
+        ret['paidAmount'] = float(instance.paid_amount)
+        ret['outstandingAmount'] = float(instance.outstanding_amount)
+        ret['paymentStatus'] = instance.payment_status
+        ret['createdBy'] = instance.created_by
+        return ret
 
-class PurchaseInvoiceSerializer(serializers.ModelSerializer):
+
+class PurchaseInvoiceSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = PurchaseInvoice
         fields = '__all__'
 
 
-class CustomerReceiptSerializer(serializers.ModelSerializer):
+class CustomerReceiptSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = CustomerReceipt
         fields = '__all__'
@@ -115,8 +181,12 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
             'salesInvoiceNumber': 'sales_invoice_number',
             'paymentMode': 'payment_mode',
             'bankName': 'bank_name',
+            'bankAccountId': 'bank_account_id',
+            'bankCashAccountCode': 'bank_cash_account_code',
+            'bankCashAccountName': 'bank_cash_account_name',
             'referenceNumber': 'reference_number',
             'createdBy': 'created_by',
+            'tdsDeductedByCustomer': 'tds_deducted_by_customer',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
@@ -141,9 +211,36 @@ class CustomerReceiptSerializer(serializers.ModelSerializer):
             data['id'] = data['receipt_number']
         if not data.get('receipt_date'):
             data['receipt_date'] = data.get('date') or datetime.now().date().isoformat()
+        if not data.get('date'):
+            data['date'] = data['receipt_date']
         if 'amount' not in data:
             data['amount'] = data.get('amountPaid') or data.get('amountReceived') or data.get('paidAmount') or 0
+        if 'amount_paid' not in data:
+            data['amount_paid'] = data.get('amount') or 0
         return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['receiptNumber'] = instance.receipt_number
+        ret['receiptDate'] = str(instance.receipt_date)
+        ret['date'] = str(instance.date or instance.receipt_date)
+        ret['customerId'] = instance.customer_id
+        ret['customerName'] = instance.customer_name
+        ret['salesInvoiceNumber'] = instance.sales_invoice_number
+        ret['paymentMode'] = instance.payment_mode
+        ret['bankName'] = instance.bank_name
+        ret['bankAccountId'] = instance.bank_account_id
+        ret['bankCashAccountCode'] = instance.bank_cash_account_code
+        ret['bankCashAccountName'] = instance.bank_cash_account_name
+        ret['amount'] = float(instance.amount)
+        ret['amountPaid'] = float(instance.amount_paid or instance.amount)
+        ret['tdsDeductedByCustomer'] = float(instance.tds_deducted_by_customer)
+        ret['allocations'] = instance.allocations or []
+        ret['referenceNumber'] = instance.reference_number
+        ret['status'] = instance.status
+        ret['remarks'] = instance.remarks
+        ret['createdBy'] = instance.created_by
+        return ret
 
 
 class SupplierPaymentSerializer(serializers.ModelSerializer):

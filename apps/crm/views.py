@@ -7,6 +7,13 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 
 from apps.core.models import NumberingSetting, AuditLog
+from apps.core.approval_security import (
+    validate_approval_permission,
+    validate_approval_transition,
+    validate_edit_safety,
+    log_approval_audit,
+)
+
 from .models import (
     Lead,
     Customer,
@@ -57,66 +64,80 @@ class LeadViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        import threading
+        if not hasattr(self.__class__, '_create_lock'):
+            self.__class__._create_lock = threading.Lock()
+            
+        with self.__class__._create_lock:
+            data = request.data.copy()
 
-        # 1. Map camelCase fields to snake_case
-        field_mappings = {
-            'leadNo': 'lead_no',
-            'leadNumber': 'lead_no',
-            'lead_number': 'lead_no',
-            'companyName': 'company_name',
-            'contactPerson': 'contact_person',
-            'altMobile': 'alt_mobile',
-            'productName': 'product_name',
-            'machineType': 'machine_type',
-            'requirementDescription': 'requirement_description',
-            'expectedDelivery': 'expected_delivery',
-            'assignedSalesPersonId': 'assigned_sales_person_id',
-            'assignedSalesPersonName': 'assigned_sales_person_name',
-            'nextFollowUpDate': 'next_follow_up_date',
-            'createdDate': 'created_date',
-            'convertedCustomerId': 'converted_customer_id',
-            'convertedEnquiryId': 'converted_enquiry_id',
-            'convertedOpportunityId': 'converted_opportunity_id',
-        }
-        for camel, snake in field_mappings.items():
-            if camel in data and snake not in data:
-                data[snake] = data[camel]
+            # 1. Map camelCase fields to snake_case
+            field_mappings = {
+                'leadNo': 'lead_no',
+                'leadNumber': 'lead_no',
+                'lead_number': 'lead_no',
+                'companyName': 'company_name',
+                'contactPerson': 'contact_person',
+                'altMobile': 'alt_mobile',
+                'productName': 'product_name',
+                'machineType': 'machine_type',
+                'requirementDescription': 'requirement_description',
+                'expectedDelivery': 'expected_delivery',
+                'assignedSalesPersonId': 'assigned_sales_person_id',
+                'assignedSalesPersonName': 'assigned_sales_person_name',
+                'nextFollowUpDate': 'next_follow_up_date',
+                'createdDate': 'created_date',
+                'convertedCustomerId': 'converted_customer_id',
+                'convertedEnquiryId': 'converted_enquiry_id',
+                'convertedOpportunityId': 'converted_opportunity_id',
+            }
+            for camel, snake in field_mappings.items():
+                if camel in data and snake not in data:
+                    data[snake] = data[camel]
 
-        lead_val = data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id')
-        if lead_val:
-            data['lead_no'] = lead_val
-            if not data.get('id'):
-                data['id'] = lead_val
-        else:
-            num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
-            if num_setting:
-                code = num_setting.generate_next_number(increment=True)
-                while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
-                    code = num_setting.generate_next_number(increment=True)
+            is_explicit_id = bool(data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id'))
+            lead_val = data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id')
+            if is_explicit_id:
+                data['lead_no'] = lead_val
+                if not data.get('id'):
+                    data['id'] = lead_val
             else:
-                num = Lead.objects.count() + 1
-                code = f"LEAD-2026-{num:04d}"
-                while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
-                    num += 1
+                num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
+                if num_setting:
+                    code = num_setting.generate_next_number(increment=True)
+                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                        code = num_setting.generate_next_number(increment=True)
+                else:
+                    import re
+                    all_ids = list(Lead.objects.values_list('id', flat=True)) + list(Lead.objects.values_list('lead_no', flat=True))
+                    max_num = 0
+                    for lid in all_ids:
+                        m = re.search(r'(\d+)$', str(lid))
+                        if m:
+                            max_num = max(max_num, int(m.group(1)))
+                    num = max(max_num + 1, Lead.objects.count() + 1)
                     code = f"LEAD-2026-{num:04d}"
-            data['id'] = code
-            data['lead_no'] = code
+                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                        num += 1
+                        code = f"LEAD-2026-{num:04d}"
+                data['id'] = code
+                data['lead_no'] = code
 
-        # 2. Check if lead with this exact ID or lead_no already exists in database
-        target_id = data.get('id')
-        if target_id and not request.data.get('allow_existing'):
-            existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
-            if existing:
-                return Response({'error': f"Lead with number '{target_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+            # 2. Check if lead with this exact ID or lead_no already exists in database
+            target_id = data.get('id')
+            if is_explicit_id and target_id and not request.data.get('allow_existing'):
+                existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
+                if existing:
+                    return Response({'error': f"Lead with number '{target_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not data.get('created_date'):
-            data['created_date'] = datetime.now().strftime('%Y-%m-%d')
+            if not data.get('created_date'):
+                data['created_date'] = datetime.now().strftime('%Y-%m-%d')
 
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            serializer = self.get_serializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     @action(detail=True, methods=['post'], url_path='convert')
     def convert_to_customer(self, request, pk=None):
@@ -510,11 +531,115 @@ class QuotationViewSet(viewsets.ModelViewSet):
         quotation.save(update_fields=['revisions', 'current_revision'])
         return Response(QuotationSerializer(quotation).data)
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        safe, err_resp = validate_edit_safety(instance, request.data)
+        if not safe:
+            return err_resp
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        safe, err_resp = validate_edit_safety(instance, request.data)
+        if not safe:
+            return err_resp
+        return super().partial_update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        quotation = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Sales', 'Commercial', 'Marketing', 'Management'],
+            allowed_roles=['Sales Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(quotation.status, 'approve')
+        if not valid_trans:
+            return trans_resp
+
+        approver = user_info['name'] or request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin User'
+        comment = request.data.get('comment') or request.data.get('approvalNotes') or 'Approved'
+
+        quotation.status = 'approved'
+        quotation.approved_by = approver
+        from django.utils import timezone
+        quotation.approved_at = timezone.now()
+        
+        revisions = list(quotation.revisions or [])
+        if revisions:
+            revisions[-1]['status'] = 'approved'
+            revisions[-1]['approvedBy'] = approver
+            revisions[-1]['approvalComment'] = comment
+        quotation.revisions = revisions
+        quotation.save(update_fields=['status', 'approved_by', 'approved_at', 'revisions'])
+
+        log_approval_audit(user_info, 'APPROVE', 'CRM', 'Quotation', quotation.id, comment)
+        return Response(QuotationSerializer(quotation).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        quotation = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Sales', 'Commercial', 'Marketing', 'Management'],
+            allowed_roles=['Sales Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(quotation.status, 'reject')
+        if not valid_trans:
+            return trans_resp
+
+        reason = request.data.get('reason') or request.data.get('rejectionReason') or request.data.get('rejection_reason') or 'Commercial or technical discrepancy'
+        quotation.status = 'rejected'
+        quotation.rejection_reason = reason
+        
+        revisions = list(quotation.revisions or [])
+        if revisions:
+            revisions[-1]['status'] = 'rejected'
+            revisions[-1]['rejectionReason'] = reason
+        quotation.revisions = revisions
+        quotation.save(update_fields=['status', 'rejection_reason', 'revisions'])
+
+        log_approval_audit(user_info, 'REJECT', 'CRM', 'Quotation', quotation.id, reason)
+        return Response(QuotationSerializer(quotation).data, status=status.HTTP_200_OK)
+
+
     @action(detail=True, methods=['post'], url_path='update-status')
     def update_status(self, request, pk=None):
         quotation = self.get_object()
         revision_no = request.data.get('revisionNumber') or request.data.get('revision_number')
         new_status = request.data.get('status')
+        if not new_status:
+            return Response({'error': 'Status is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Apply state machine guards
+        if new_status.lower() == 'approved':
+            if quotation.status.lower() == 'approved':
+                return Response({'error': 'Quotation is already approved.'}, status=status.HTTP_400_BAD_REQUEST)
+            if quotation.status.lower() == 'rejected':
+                return Response({'error': 'Cannot approve a rejected quotation. Submit a new revision first.'}, status=status.HTTP_400_BAD_REQUEST)
+            quotation.approved_by = request.data.get('approvedBy') or 'Admin'
+            from django.utils import timezone
+            quotation.approved_at = timezone.now()
+        elif new_status.lower() == 'rejected':
+            if quotation.status.lower() == 'rejected':
+                return Response({'error': 'Quotation is already rejected.'}, status=status.HTTP_400_BAD_REQUEST)
+            if quotation.status.lower() == 'approved':
+                return Response({'error': 'Cannot reject an already approved quotation.'}, status=status.HTTP_400_BAD_REQUEST)
+            quotation.rejection_reason = request.data.get('reason') or request.data.get('rejectionReason') or ''
+
+        quotation.status = new_status
         revisions = list(quotation.revisions or [])
         matched = False
         for r in revisions:
@@ -524,7 +649,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
         if not matched and revisions:
             revisions[-1]['status'] = new_status
         quotation.revisions = revisions
-        quotation.save(update_fields=['revisions'])
+        quotation.save(update_fields=['status', 'revisions', 'approved_by', 'approved_at', 'rejection_reason'])
         return Response(QuotationSerializer(quotation).data)
 
 

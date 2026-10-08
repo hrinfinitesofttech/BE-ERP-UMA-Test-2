@@ -282,33 +282,32 @@ class SupplierSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
 
     class Meta:
         model = Supplier
-        fields = [
-            'id',
-            'vendor_code',
-            'name',
-            'category',
-            'supplier_type',
-            'contact_person',
-            'mobile',
-            'phone',
-            'email',
-            'address',
-            'city',
-            'state',
-            'country',
-            'pincode',
-            'gstin',
-            'pan',
-            'payment_terms',
-            'rating',
-            'status',
-            'contacts',
-        ]
+        fields = '__all__'
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'supplierCode': 'supplier_code',
+            'vendorCode': 'vendor_code',
+            'supplierName': 'name',
+            'contactPerson': 'contact_person',
+            'pinCode': 'pincode',
+            'panNumber': 'pan',
+            'bankName': 'bank_name',
+            'bankAccountNumber': 'bank_account_number',
+            'ifscCode': 'ifsc_code',
+            'creditDays': 'credit_period_days',
+            'creditPeriodDays': 'credit_period_days',
+            'msmeNumber': 'msme_number',
+            'msmeRegistered': 'msme_registered',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
         if not data.get('vendor_code'):
-            data['vendor_code'] = data.get('supplierCode') or data.get('supplier_code') or data.get('vendorCode') or data.get('id') or f"SUP-{int(datetime.now().timestamp())}"
+            data['vendor_code'] = data.get('supplier_code') or data.get('supplierCode') or data.get('id') or f"SUP-{int(datetime.now().timestamp())}"
+        if not data.get('supplier_code'):
+            data['supplier_code'] = data['vendor_code']
         if not data.get('name'):
             data['name'] = data.get('supplierName') or data.get('supplier_name') or data.get('companyName') or data.get('company_name') or 'Supplier Co'
         if not data.get('contact_person'):
@@ -323,12 +322,20 @@ class SupplierSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['supplierCode'] = instance.vendor_code
+        rep['supplierCode'] = instance.supplier_code or instance.vendor_code
         rep['vendorCode'] = instance.vendor_code
         rep['supplierName'] = instance.name
         rep['contactPerson'] = instance.contact_person
         rep['pinCode'] = instance.pincode
         rep['panNumber'] = instance.pan
+        rep['bankName'] = instance.bank_name
+        rep['bankAccountNumber'] = instance.bank_account_number
+        rep['ifscCode'] = instance.ifsc_code
+        rep['creditDays'] = instance.credit_period_days
+        rep['creditPeriodDays'] = instance.credit_period_days
+        rep['msmeNumber'] = instance.msme_number
+        rep['msmeRegistered'] = instance.msme_registered
+        rep['notes'] = instance.notes
         return rep
 
 
@@ -350,7 +357,7 @@ class QuotationComparisonSerializer(serializers.ModelSerializer):
         ]
 
 
-class PurchaseOrderSerializer(serializers.ModelSerializer):
+class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = PurchaseOrder
         fields = '__all__'

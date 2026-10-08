@@ -2,6 +2,13 @@ from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from apps.core.approval_security import (
+    validate_approval_permission,
+    validate_approval_transition,
+    validate_edit_safety,
+    log_approval_audit,
+)
+
 
 from .models import (
     Supplier,
@@ -97,6 +104,9 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         pr = self.get_object()
+        safe, err_resp = validate_edit_safety(pr, request.data)
+        if not safe:
+            return err_resp
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if 'status' in data:
             pr.status = data['status']
@@ -119,28 +129,63 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'patch'], url_path='approve')
     def approve(self, request, pk=None):
         pr = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Purchase', 'Procurement', 'Stores', 'Production', 'Planning', 'Management'],
+            allowed_roles=['Purchase Manager', 'Store Manager', 'Production Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(pr.status, 'approve')
+        if not valid_trans:
+            return trans_resp
+
+        approver = user_info['name'] or request.data.get('approvedBy') or request.data.get('approved_by') or 'Purchase Admin'
+        notes = request.data.get('comment') or request.data.get('approvalNotes') or 'Requisition approved'
+
         pr.status = 'Approved'
-        pr.approved_by = request.data.get('approvedBy') or request.data.get('approved_by') or 'Admin'
+        pr.approved_by = approver
+        if notes:
+            pr.remarks = f"{pr.remarks} | Approved: {notes}".strip(' |')
         pr.save()
+
+        log_approval_audit(user_info, 'APPROVE', 'Purchase', 'PurchaseRequisition', pr.id, notes)
         return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post', 'patch'], url_path='reject')
     def reject(self, request, pk=None):
         pr = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Purchase', 'Procurement', 'Stores', 'Production', 'Planning', 'Management'],
+            allowed_roles=['Purchase Manager', 'Store Manager', 'Production Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(pr.status, 'reject')
+        if not valid_trans:
+            return trans_resp
+
+        reason = request.data.get('reason') or request.data.get('rejectionReason') or request.data.get('remarks') or 'Requisition rejected'
         pr.status = 'Rejected'
-        if 'remarks' in request.data:
-            pr.remarks = request.data['remarks']
+        pr.remarks = f"{pr.remarks} | Rejected: {reason}".strip(' |')
         pr.save()
+
+        log_approval_audit(user_info, 'REJECT', 'Purchase', 'PurchaseRequisition', pr.id, reason)
         return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post', 'patch'], url_path='disapprove')
     def disapprove(self, request, pk=None):
-        pr = self.get_object()
-        pr.status = 'Rejected'
-        if 'remarks' in request.data:
-            pr.remarks = request.data['remarks']
-        pr.save()
-        return Response(PurchaseRequisitionSerializer(pr).data, status=status.HTTP_200_OK)
+        return self.reject(request, pk=pk)
+
 
     @action(detail=True, methods=['post'], url_path='convert-to-rfq')
     def convert_to_rfq(self, request, pk=None):
@@ -236,6 +281,9 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+        safe, err_resp = validate_edit_safety(instance, request.data)
+        if not safe:
+            return err_resp
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -248,17 +296,60 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'patch'], url_path='approve')
     def approve_po(self, request, pk=None):
         po = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Purchase', 'Procurement', 'Management'],
+            allowed_roles=['Purchase Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(po.status, 'approve')
+        if not valid_trans:
+            return trans_resp
+
+        approver = user_info['name'] or request.data.get('approvedBy') or request.data.get('approved_by') or 'Purchase Manager'
+        comment = request.data.get('comment') or request.data.get('approvalNotes') or 'PO Approved'
+
         po.status = 'Approved'
-        po.approved_by = request.data.get('approvedBy') or request.data.get('approved_by', 'Rajesh Patel')
-        po.save(update_fields=['status', 'approved_by'])
-        return Response(PurchaseOrderSerializer(po).data)
+        po.approved_by = approver
+        if comment:
+            po.remarks = f"{po.remarks} | Approved: {comment}".strip(' |')
+        po.save(update_fields=['status', 'approved_by', 'remarks'])
+
+        log_approval_audit(user_info, 'APPROVE', 'Purchase', 'PurchaseOrder', po.id, comment)
+        return Response(PurchaseOrderSerializer(po).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post', 'patch'], url_path='reject')
     def reject_po(self, request, pk=None):
         po = self.get_object()
+        
+        # 1. Authorization check
+        allowed, err_resp, user_info = validate_approval_permission(
+            request,
+            allowed_departments=['Purchase', 'Procurement', 'Management'],
+            allowed_roles=['Purchase Manager', 'Manager', 'Director', 'Admin']
+        )
+        if not allowed:
+            return err_resp
+
+        # 2. Transition guard
+        valid_trans, trans_resp = validate_approval_transition(po.status, 'reject')
+        if not valid_trans:
+            return trans_resp
+
+        reason = request.data.get('reason') or request.data.get('rejectionReason') or request.data.get('remarks') or 'PO Rejected'
         po.status = 'Rejected'
-        po.save(update_fields=['status'])
-        return Response(PurchaseOrderSerializer(po).data)
+        if reason:
+            po.remarks = f"{po.remarks} | Rejected: {reason}".strip(' |')
+        po.save(update_fields=['status', 'remarks'])
+
+        log_approval_audit(user_info, 'REJECT', 'Purchase', 'PurchaseOrder', po.id, reason)
+        return Response(PurchaseOrderSerializer(po).data, status=status.HTTP_200_OK)
+
 
 
 class PurchaseReturnViewSet(viewsets.ModelViewSet):

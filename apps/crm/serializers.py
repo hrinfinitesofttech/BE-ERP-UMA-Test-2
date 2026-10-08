@@ -451,9 +451,13 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or (inst.sales_person_id if inst else '')
         ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or (inst.sales_person_name if inst else '')
         ret['status'] = data.get('status') or (inst.status if inst else 'draft')
+        ret['lead_id'] = data.get('lead_id') or data.get('leadId') or (inst.lead_id if inst else None)
+        ret['machine_product'] = data.get('machine_product') or data.get('machineProduct') or (inst.machine_product if inst else '')
+        ret['latest_summary'] = data.get('latest_summary') or data.get('latestSummary') or (inst.latest_summary if inst else '')
         ret['subtotal'] = float(data.get('subtotal') or (inst.subtotal if inst else 0))
         ret['tax_amount'] = float(data.get('tax_amount') or data.get('taxAmount') or (inst.tax_amount if inst else 0))
         ret['total_amount'] = float(data.get('total_amount') or data.get('totalAmount') or data.get('grand_total') or data.get('grandTotal') or (inst.total_amount if inst else 0))
+        ret['grand_total'] = float(data.get('grand_total') or data.get('grandTotal') or ret['total_amount'] or (inst.grand_total if inst else 0))
         ret['items'] = data.get('items') or (inst.items if inst else [])
         if 'approved_by' in data or 'approvedBy' in data:
             ret['approved_by'] = data.get('approved_by') or data.get('approvedBy')
@@ -495,8 +499,10 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         rep['contactPerson'] = instance.contact_person
         rep['contactMobile'] = instance.contact_mobile
         rep['contactEmail'] = instance.contact_email
+        rep['leadId'] = instance.lead_id
         rep['enquiryId'] = instance.enquiry_id
         rep['opportunityId'] = instance.opportunity_id
+        rep['machineProduct'] = instance.machine_product
         rep['salesPersonId'] = instance.sales_person_id
         rep['salesPersonName'] = instance.sales_person_name
         rep['revisions'] = instance.revisions or []
@@ -504,7 +510,7 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         rep['subtotal'] = instance.subtotal
         rep['taxAmount'] = instance.tax_amount
         rep['totalAmount'] = instance.total_amount
-        rep['grandTotal'] = instance.total_amount
+        rep['grandTotal'] = instance.grand_total or instance.total_amount
         rep['status'] = instance.status
         rep['approvedBy'] = instance.approved_by
         rep['approvedAt'] = instance.approved_at.isoformat() if instance.approved_at else None
@@ -516,8 +522,8 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         last_rev = revs[-1] if revs else {}
         first_item = (instance.items or last_rev.get('items') or [{}])[0]
         rep['latestSummary'] = {
-            'machineProduct': first_item.get('productName', 'Process Equipment'),
-            'grandTotal': instance.total_amount or last_rev.get('grandTotal', 0),
+            'machineProduct': instance.machine_product or first_item.get('productName', 'Process Equipment'),
+            'grandTotal': instance.grand_total or instance.total_amount or last_rev.get('grandTotal', 0),
             'status': instance.status or last_rev.get('status', 'draft')
         }
         return rep
@@ -538,6 +544,7 @@ class CustomerPOSerializer(serializers.ModelSerializer):
     scopeOfWork = serializers.CharField(source='scope_of_work', required=False, allow_blank=True)
     paymentTerms = serializers.CharField(source='payment_terms', required=False, allow_blank=True)
     poDocumentUrl = serializers.CharField(source='po_document_url', required=False, allow_blank=True)
+    attachmentUrl = serializers.CharField(source='attachment_url', required=False, allow_blank=True)
     convertedSoId = serializers.CharField(source='converted_so_id', required=False, allow_blank=True, allow_null=True)
     salesOrderId = serializers.CharField(source='converted_so_id', required=False, allow_blank=True, allow_null=True)
     specialConditions = serializers.CharField(source='special_conditions', required=False, allow_blank=True)
@@ -582,11 +589,15 @@ class CustomerPOSerializer(serializers.ModelSerializer):
         else:
             ret['po_value'] = 0.0
 
+        ret['po_amount'] = ret['po_value']
         ret['scope_of_work'] = data.get('scope_of_work') or data.get('scopeOfWork') or data.get('remarks') or (inst.scope_of_work if inst else '')
+        ret['remarks'] = data.get('remarks') or ret['scope_of_work']
         ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or (inst.payment_terms if inst else '')
         ret['po_document_url'] = data.get('po_document_url') or data.get('poDocumentUrl') or (inst.po_document_url if inst else '')
+        ret['attachment_url'] = data.get('attachment_url') or data.get('attachmentUrl') or ret['po_document_url']
         ret['status'] = data.get('status') or (inst.status if inst else 'received')
-        ret['converted_so_id'] = data.get('converted_so_id') or data.get('convertedSoId') or data.get('salesOrderId') or (inst.converted_so_id if inst else None)
+        ret['converted_so_id'] = data.get('converted_so_id') or data.get('convertedSoId') or data.get('salesOrderId') or data.get('sales_order_id') or (inst.converted_so_id if inst else None)
+        ret['sales_order_id'] = ret['converted_so_id']
         ret['special_conditions'] = data.get('special_conditions') or data.get('specialConditions') or (inst.special_conditions if inst else '')
         return ret
 
@@ -602,15 +613,16 @@ class CustomerPOSerializer(serializers.ModelSerializer):
         rep['poDate'] = instance.po_date
         rep['receivedDate'] = instance.received_date
         rep['deliveryDate'] = instance.delivery_date
-        rep['poAmount'] = instance.po_value
+        rep['poAmount'] = instance.po_amount or instance.po_value
         rep['poValue'] = instance.po_value
         rep['scopeOfWork'] = instance.scope_of_work
-        rep['remarks'] = instance.scope_of_work
+        rep['remarks'] = instance.remarks or instance.scope_of_work
         rep['paymentTerms'] = instance.payment_terms
         rep['poDocumentUrl'] = instance.po_document_url
+        rep['attachmentUrl'] = instance.attachment_url or instance.po_document_url
         rep['status'] = instance.status
         rep['convertedSoId'] = instance.converted_so_id
-        rep['salesOrderId'] = instance.converted_so_id
+        rep['salesOrderId'] = instance.sales_order_id or instance.converted_so_id
         rep['specialConditions'] = instance.special_conditions
         return rep
 
@@ -625,16 +637,17 @@ class SalesOrderSerializer(serializers.ModelSerializer):
     customerName = serializers.CharField(source='customer_name', required=False)
     orderDate = serializers.CharField(source='order_date', required=False)
     targetDeliveryDate = serializers.CharField(source='target_delivery_date', required=False, allow_blank=True)
-    deliveryDate = serializers.CharField(source='target_delivery_date', required=False, allow_blank=True)
+    deliveryDate = serializers.CharField(source='delivery_date', required=False, allow_blank=True)
     totalAmount = serializers.FloatField(source='total_amount', required=False)
     taxAmount = serializers.FloatField(source='tax_amount', required=False)
     grandTotal = serializers.FloatField(source='grand_total', required=False)
-    orderValue = serializers.FloatField(source='grand_total', required=False)
+    orderValue = serializers.FloatField(source='order_value', required=False)
     paymentTerms = serializers.CharField(source='payment_terms', required=False, allow_blank=True)
     billingAddress = serializers.CharField(source='billing_address', required=False, allow_blank=True)
     shippingAddress = serializers.CharField(source='shipping_address', required=False, allow_blank=True)
     projectId = serializers.CharField(source='project_id', required=False, allow_blank=True, allow_null=True)
     jobNumber = serializers.CharField(source='job_number', required=False, allow_blank=True)
+    assignedProjectManager = serializers.CharField(source='assigned_project_manager', required=False, allow_blank=True)
     createdBy = serializers.CharField(source='created_by', required=False, allow_blank=True)
     approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
 
@@ -669,6 +682,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
             ret['customer_name'] = data.get('company_name') or data.get('companyName') or 'Valued Customer'
         ret['order_date'] = data.get('order_date') or data.get('orderDate') or (inst.order_date if inst else datetime.now().strftime('%Y-%m-%d'))
         ret['target_delivery_date'] = data.get('target_delivery_date') or data.get('targetDeliveryDate') or data.get('deliveryDate') or data.get('delivery_date') or (inst.target_delivery_date if inst else '')
+        ret['delivery_date'] = data.get('delivery_date') or data.get('deliveryDate') or ret['target_delivery_date']
         
         if 'items' in data:
             ret['items'] = data.get('items') or []
@@ -693,7 +707,7 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         else:
             ret['tax_amount'] = 0.0
 
-        gt_val = data.get('grand_total') if 'grand_total' in data else (data.get('grandTotal') if 'grandTotal' in data else (data.get('orderValue') if 'orderValue' in data else None))
+        gt_val = data.get('grand_total') if 'grand_total' in data else (data.get('grandTotal') if 'grandTotal' in data else (data.get('orderValue') if 'orderValue' in data else (data.get('order_value') if 'order_value' in data else None)))
         if gt_val is not None:
             ret['grand_total'] = float(gt_val)
         elif inst:
@@ -701,12 +715,14 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         else:
             ret['grand_total'] = ret['total_amount']
 
+        ret['order_value'] = float(data.get('order_value') or data.get('orderValue') or ret['grand_total'] or 0)
         ret['payment_terms'] = data.get('payment_terms') or data.get('paymentTerms') or (inst.payment_terms if inst else '')
         ret['billing_address'] = data.get('billing_address') or data.get('billingAddress') or (inst.billing_address if inst else '')
         ret['shipping_address'] = data.get('shipping_address') or data.get('shippingAddress') or (inst.shipping_address if inst else '')
         ret['status'] = data.get('status') or (inst.status if inst else 'confirmed')
         ret['project_id'] = data.get('project_id') or data.get('projectId') or (inst.project_id if inst else None)
         ret['job_number'] = data.get('job_number') or data.get('jobNumber') or (inst.job_number if inst else '')
+        ret['assigned_project_manager'] = data.get('assigned_project_manager') or data.get('assignedProjectManager') or data.get('project_manager_name') or ''
         ret['created_by'] = data.get('created_by') or data.get('createdBy') or (inst.created_by if inst else '')
         ret['approved_by'] = data.get('approved_by') or data.get('approvedBy') or (inst.approved_by if inst else '')
         return ret
@@ -723,18 +739,19 @@ class SalesOrderSerializer(serializers.ModelSerializer):
         rep['customerName'] = instance.customer_name
         rep['orderDate'] = instance.order_date
         rep['targetDeliveryDate'] = instance.target_delivery_date
-        rep['deliveryDate'] = instance.target_delivery_date
+        rep['deliveryDate'] = instance.delivery_date or instance.target_delivery_date
         rep['items'] = instance.items or []
         rep['totalAmount'] = instance.total_amount
         rep['taxAmount'] = instance.tax_amount
         rep['grandTotal'] = instance.grand_total
-        rep['orderValue'] = instance.grand_total
+        rep['orderValue'] = instance.order_value or instance.grand_total
         rep['paymentTerms'] = instance.payment_terms
         rep['billingAddress'] = instance.billing_address
         rep['shippingAddress'] = instance.shipping_address
         rep['status'] = instance.status
         rep['projectId'] = instance.project_id
-        rep['jobNumber'] = getattr(instance, 'job_number', '')
+        rep['jobNumber'] = instance.job_number
+        rep['assignedProjectManager'] = instance.assigned_project_manager
         rep['createdBy'] = instance.created_by
         rep['approvedBy'] = instance.approved_by
         return rep

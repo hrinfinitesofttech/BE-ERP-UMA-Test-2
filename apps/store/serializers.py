@@ -113,6 +113,9 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
             'grnNumber': 'grn_number',
             'grnDate': 'date',
             'receiptDate': 'date',
+            'projectId': 'project_id',
+            'jobId': 'job_number',
+            'jobNumber': 'job_number',
             'purchaseOrder': 'po_id',
             'purchaseOrderId': 'po_id',
             'poNumber': 'po_number',
@@ -120,11 +123,15 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
             'supplierId': 'supplier_id',
             'supplierName': 'supplier_name',
             'challanNumber': 'challan_number',
-            'deliveryChallanNumber': 'challan_number',
+            'deliveryChallanNumber': 'delivery_challan_number',
             'challanDate': 'challan_date',
             'vehicleNumber': 'vehicle_number',
             'warehouseId': 'warehouse_id',
+            'warehouseName': 'warehouse_name',
+            'transporterName': 'transporter_name',
+            'totalReceivedValue': 'total_received_value',
             'receivedBy': 'received_by',
+            'remarks': 'remarks',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
@@ -135,6 +142,16 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
             data['id'] = data['grn_number']
         if not data.get('date'):
             data['date'] = datetime.now().date().isoformat()
+        if not data.get('grn_date'):
+            data['grn_date'] = data['date']
+        if not data.get('delivery_challan_number') and data.get('challan_number'):
+            data['delivery_challan_number'] = data['challan_number']
+        if not data.get('challan_number') and data.get('delivery_challan_number'):
+            data['challan_number'] = data['delivery_challan_number']
+        if not data.get('remarks') and data.get('notes'):
+            data['remarks'] = data['notes']
+        if not data.get('notes') and data.get('remarks'):
+            data['notes'] = data['remarks']
         if not data.get('supplier_name') and data.get('supplier_id'):
             try:
                 from apps.purchase.models import Supplier
@@ -162,17 +179,23 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
         data['grnNumber'] = instance.grn_number
         data['grnDate'] = str(instance.date) if instance.date else ''
         data['receiptDate'] = str(instance.date) if instance.date else ''
+        data['projectId'] = instance.project_id
+        data['jobId'] = instance.job_number
+        data['jobNumber'] = instance.job_number
         data['poId'] = instance.po_id
         data['poNumber'] = instance.po_number
         data['supplierId'] = instance.supplier_id
         data['supplierName'] = instance.supplier_name
-        data['deliveryChallanNumber'] = instance.challan_number
-        data['challanNumber'] = instance.challan_number
+        data['deliveryChallanNumber'] = instance.delivery_challan_number or instance.challan_number
+        data['challanNumber'] = instance.challan_number or instance.delivery_challan_number
         data['invoiceNumber'] = instance.invoice_number
         data['vehicleNumber'] = instance.vehicle_number
+        data['transporterName'] = instance.transporter_name
         data['receivedBy'] = instance.received_by
         data['warehouseId'] = instance.warehouse_id
-        data['remarks'] = instance.notes
+        data['warehouseName'] = instance.warehouse_name
+        data['totalReceivedValue'] = instance.total_received_value
+        data['remarks'] = instance.remarks or instance.notes
         data['items'] = instance.items or []
         return data
 
@@ -180,16 +203,7 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
 class QCInspectionSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = QCInspection
-        fields = [
-            'id',
-            'grn_id',
-            'grn_number',
-            'inspection_date',
-            'inspector',
-            'items',
-            'overall_result',
-            'remarks',
-        ]
+        fields = '__all__'
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
@@ -206,14 +220,26 @@ class QCInspectionSerializer(UniversalModelSerializerMixin, serializers.ModelSer
             data['inspector'] = data.get('inspectorName') or data.get('inspector_name') or 'Quality Inspector'
         if not data.get('overall_result'):
             data['overall_result'] = data.get('overallResult') or data.get('qcResult') or data.get('inspectionStatus') or data.get('status') or 'Pass'
+        
+        item_c = data.get('item_code') or data.get('itemCode') or 'MAT-QC-01'
+        item_n = data.get('item_name') or data.get('itemName') or 'Inspection Item'
+        data['item_code'] = item_c
+        data['item_name'] = item_n
+        lot_q = float(data.get('lot_quantity') or data.get('lotQuantity') or data.get('inspectedQuantity') or data.get('inspected_quantity') or 1)
+        data['lot_quantity'] = lot_q
+        samp_q = float(data.get('sample_size') or data.get('sampleSize') or data.get('sampleQuantity') or lot_q)
+        data['sample_size'] = samp_q
+        acc_q = float(data.get('accepted_quantity') or data.get('acceptedQuantity') or lot_q)
+        data['accepted_quantity'] = acc_q
+        rej_q = float(data.get('rejected_quantity') or data.get('rejectedQuantity') or 0)
+        data['rejected_quantity'] = rej_q
+        data['rejection_reason'] = data.get('rejection_reason') or data.get('rejectionReason') or ''
+
         if not data.get('items') or len(data.get('items', [])) == 0:
-            item_c = data.get('itemCode') or data.get('item_code') or 'MAT-QC-01'
-            insp_q = float(data.get('lotQuantity') or data.get('inspectedQuantity') or data.get('inspected_quantity') or 1)
-            acc_q = float(data.get('acceptedQuantity') or data.get('accepted_quantity') or insp_q)
-            rej_q = float(data.get('rejectedQuantity') or data.get('rejected_quantity') or 0)
             data['items'] = [{
                 'itemCode': item_c,
-                'inspectedQuantity': insp_q,
+                'itemName': item_n,
+                'inspectedQuantity': lot_q,
                 'acceptedQuantity': acc_q,
                 'rejectedQuantity': rej_q,
             }]
@@ -228,16 +254,28 @@ class QCInspectionSerializer(UniversalModelSerializerMixin, serializers.ModelSer
         data['grnNumber'] = instance.grn_number
         data['grnId'] = instance.grn_id
         data['inspectorName'] = instance.inspector
+        data['overallResult'] = instance.overall_result
         data['qcResult'] = instance.overall_result
         data['remarks'] = instance.remarks
+        data['rejectionReason'] = instance.rejection_reason
+        data['itemCode'] = instance.item_code
+        data['itemName'] = instance.item_name
+        data['lotQuantity'] = instance.lot_quantity
+        data['sampleSize'] = instance.sample_size
+        data['acceptedQuantity'] = instance.accepted_quantity
+        data['rejectedQuantity'] = instance.rejected_quantity
 
         items = instance.items if isinstance(instance.items, list) else []
         if items and len(items) > 0:
             first = items[0] if isinstance(items[0], dict) else {}
-            data['itemCode'] = first.get('itemCode') or first.get('item_code') or ''
-            data['itemName'] = first.get('itemName') or first.get('item_name') or ''
-            data['acceptedQuantity'] = first.get('acceptedQuantity') or first.get('acceptedQty') or first.get('quantity', 0)
-            data['rejectedQuantity'] = first.get('rejectedQuantity') or first.get('rejectedQty', 0)
+            if not data['itemCode']:
+                data['itemCode'] = first.get('itemCode') or first.get('item_code') or ''
+            if not data['itemName']:
+                data['itemName'] = first.get('itemName') or first.get('item_name') or ''
+            if not data['acceptedQuantity']:
+                data['acceptedQuantity'] = first.get('acceptedQuantity') or first.get('acceptedQty') or first.get('quantity', 0)
+            if not data['rejectedQuantity']:
+                data['rejectedQuantity'] = first.get('rejectedQuantity') or first.get('rejectedQty', 0)
             data['supplierName'] = first.get('supplierName') or first.get('supplier_name', '')
             data['jobId'] = first.get('jobId') or first.get('job_id', 'General Stock')
         return data
@@ -333,14 +371,17 @@ class MaterialIssueSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             'issueDate': 'issue_date',
             'projectId': 'project_id',
             'project': 'project_id',
-            'jobId': 'job_number',
+            'jobId': 'job_id',
             'jobNumber': 'job_number',
-            'workOrderNumber': 'work_order_id',
+            'workOrderNumber': 'work_order_number',
             'workOrderId': 'work_order_id',
-            'requestedBy': 'issued_to',
+            'requestedBy': 'requested_by',
             'issuedTo': 'issued_to',
             'warehouseId': 'warehouse_id',
-            'remarks': 'notes',
+            'warehouseName': 'warehouse_name',
+            'totalIssueValue': 'total_issue_value',
+            'remarks': 'remarks',
+            'notes': 'notes',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
@@ -351,8 +392,22 @@ class MaterialIssueSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             data['id'] = data['issue_number']
         if not data.get('issue_date'):
             data['issue_date'] = datetime.now().date().isoformat()
+        if not data.get('job_number') and data.get('job_id'):
+            data['job_number'] = data['job_id']
+        if not data.get('job_id') and data.get('job_number'):
+            data['job_id'] = data['job_number']
+        if not data.get('work_order_number') and data.get('work_order_id'):
+            data['work_order_number'] = data['work_order_id']
+        if not data.get('work_order_id') and data.get('work_order_number'):
+            data['work_order_id'] = data['work_order_number']
+        if not data.get('requested_by') and data.get('issued_to'):
+            data['requested_by'] = data['issued_to']
         if not data.get('issued_to'):
-            data['issued_to'] = data.get('department') or 'Shop Floor'
+            data['issued_to'] = data.get('requested_by') or data.get('department') or 'Shop Floor'
+        if not data.get('remarks') and data.get('notes'):
+            data['remarks'] = data['notes']
+        if not data.get('notes') and data.get('remarks'):
+            data['notes'] = data['remarks']
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -360,17 +415,19 @@ class MaterialIssueSerializer(UniversalModelSerializerMixin, serializers.ModelSe
         data['issueNumber'] = instance.issue_number
         data['issueDate'] = instance.issue_date
         data['projectId'] = instance.project_id
-        data['jobId'] = instance.job_number
-        data['workOrderNumber'] = getattr(instance, 'work_order_id', '') or ''
-        data['bomNumber'] = getattr(instance, 'bom_number', '') or ''
-        data['bomRevision'] = getattr(instance, 'bom_revision', 'Rev-01') or ''
-        data['productionStage'] = getattr(instance, 'production_stage', '') or ''
-        data['requestedBy'] = instance.issued_to
-        data['issuedBy'] = getattr(instance, 'issued_by', 'Hitesh Rawal (Store Head)')
+        data['jobId'] = instance.job_id or instance.job_number
+        data['jobNumber'] = instance.job_number or instance.job_id
+        data['workOrderNumber'] = instance.work_order_number or instance.work_order_id
+        data['bomNumber'] = instance.bom_number or ''
+        data['bomRevision'] = instance.bom_revision or 'Rev-01'
+        data['productionStage'] = instance.production_stage or ''
+        data['requestedBy'] = instance.requested_by or instance.issued_to
+        data['issuedTo'] = instance.issued_to
+        data['issuedBy'] = instance.issued_by
         data['warehouseId'] = instance.warehouse_id
-        data['warehouseName'] = getattr(instance, 'warehouse_name', 'Main Raw Material Warehouse')
-        data['totalIssueValue'] = getattr(instance, 'total_issue_value', 0)
-        data['remarks'] = instance.notes
+        data['warehouseName'] = instance.warehouse_name
+        data['totalIssueValue'] = instance.total_issue_value
+        data['remarks'] = instance.remarks or instance.notes
         return data
 
 
