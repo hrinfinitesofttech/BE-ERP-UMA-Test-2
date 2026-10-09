@@ -436,12 +436,41 @@ class MaterialReturnSerializer(serializers.ModelSerializer):
         model = MaterialReturn
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'returnNumber': 'return_number',
+            'returnDate': 'return_date',
+            'projectId': 'project_id',
+            'jobId': 'job_number',
+            'jobNumber': 'job_number',
+            'workOrderNumber': 'work_order_number',
+            'materialIssueNumber': 'material_issue_number',
+            'returnedBy': 'returned_by',
+            'receivedBy': 'received_by',
+            'warehouseId': 'warehouse_id',
+            'warehouseName': 'warehouse_name',
+            'totalReturnValue': 'total_return_value',
+            'remarks': 'notes',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('return_number'):
+            data['return_number'] = data.get('id') or f"RET-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['return_number']
+        if not data.get('return_date'):
+            data['return_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['returnNumber'] = instance.return_number
         data['returnDate'] = instance.return_date
         data['projectId'] = instance.project_id
         data['jobId'] = instance.job_number
+        data['jobNumber'] = instance.job_number
         data['workOrderNumber'] = getattr(instance, 'work_order_number', '') or ''
         data['materialIssueNumber'] = getattr(instance, 'material_issue_number', '') or ''
         data['returnedBy'] = instance.returned_by
