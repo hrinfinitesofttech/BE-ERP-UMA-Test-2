@@ -258,11 +258,11 @@ def main():
 
     # 3. Trigger Deployment
     log("Deploying latest changes to PythonAnywhere...")
-    deploy_ok, deploy_info = deploy_via_webhook(target_commit=args.rollback, force_pip=args.force_pip)
+    deploy_ok, deploy_info = deploy_via_webhook(target_commit=target_sha, force_pip=args.force_pip)
     
     if not deploy_ok:
         log(f"Webhook deploy encountered issue: {deploy_info}. Falling back to Tier 2 Bootstrap...")
-        deploy_ok, deploy_info = deploy_via_pa_bootstrap(target_commit=args.rollback)
+        deploy_ok, deploy_info = deploy_via_pa_bootstrap(target_commit=target_sha)
 
     # 4. Trigger WebApp Reload
     log("Reloading PythonAnywhere Web Application...")
