@@ -530,6 +530,17 @@ class MaterialReturnViewSet(viewsets.ModelViewSet):
         if 'status' not in data:
             data['status'] = data.get('status') or 'Completed'
 
+        # Validate that return quantity does not exceed issued quantity
+        for itm in (data.get('items') or []):
+            item_code = itm.get('itemCode') or itm.get('item_code') or 'Item'
+            qty = float(itm.get('returnQty') or itm.get('returnQuantity') or itm.get('quantity', 0))
+            issued = float(itm.get('issuedQty') or itm.get('issuedQuantity', 0))
+            if issued > 0 and qty > issued:
+                return Response(
+                    {'error': f"Return quantity ({qty}) cannot exceed issued quantity ({issued}) for item {item_code}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         ret = serializer.save()

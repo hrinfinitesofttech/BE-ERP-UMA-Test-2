@@ -443,3 +443,41 @@ class PackingOrder(models.Model):
         return f"{self.packing_number} - {self.customer_name} ({self.status})"
 
 
+class ProductionCompletion(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    completion_number = models.CharField(max_length=64, unique=True)
+    completion_date = models.DateField()
+    job_id = models.CharField(max_length=64, blank=True)
+    job_number = models.CharField(max_length=64, blank=True)
+    work_order_number = models.CharField(max_length=64, blank=True)
+    product_name = models.CharField(max_length=255)
+    completed_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=1)
+    rejected_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    rework_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    scrap_quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    completed_by = models.CharField(max_length=128, blank=True)
+    qc_status = models.CharField(max_length=64, default='Passed')
+    remarks = models.TextField(blank=True)
+    
+    # ASME Inspection & Quality Clearance Fields
+    hydro_test_pressure = models.CharField(max_length=128, blank=True)
+    hydro_holding_duration = models.CharField(max_length=64, blank=True)
+    hydro_test_status = models.CharField(max_length=64, default='Passed')
+    dp_test_joints = models.CharField(max_length=255, blank=True)
+    dp_test_status = models.CharField(max_length=64, default='Accepted')
+    dimension_report_no = models.CharField(max_length=128, blank=True)
+    dimension_status = models.CharField(max_length=128, blank=True)
+    qc_inspector_name = models.CharField(max_length=128, blank=True)
+    certificate_number = models.CharField(max_length=128, blank=True)
+    equipment_serial_number = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Production Completion & QC Clearance'
+        verbose_name_plural = 'Production Completions & QC Clearances'
+
+    def __str__(self):
+        return f"{self.completion_number} - {self.product_name} ({self.qc_status})"
+
+

@@ -5,7 +5,7 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder, PackingOrder
+    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion
 )
 
 
@@ -625,6 +625,77 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
         data['status'] = instance.status
         data['items'] = instance.items
         data['remarks'] = instance.remarks
+        return data
+
+
+class ProductionCompletionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductionCompletion
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'completionNumber': 'completion_number',
+            'completionDate': 'completion_date',
+            'jobId': 'job_id',
+            'jobNumber': 'job_number',
+            'workOrderNumber': 'work_order_number',
+            'productName': 'product_name',
+            'completedQuantity': 'completed_quantity',
+            'rejectedQuantity': 'rejected_quantity',
+            'reworkQuantity': 'rework_quantity',
+            'scrapQuantity': 'scrap_quantity',
+            'completedBy': 'completed_by',
+            'qcStatus': 'qc_status',
+            'hydroTestPressure': 'hydro_test_pressure',
+            'hydroHoldingDuration': 'hydro_holding_duration',
+            'hydroTestStatus': 'hydro_test_status',
+            'dpTestJoints': 'dp_test_joints',
+            'dpTestStatus': 'dp_test_status',
+            'dimensionReportNo': 'dimension_report_no',
+            'dimensionStatus': 'dimension_status',
+            'qcInspectorName': 'qc_inspector_name',
+            'certificateNumber': 'certificate_number',
+            'equipmentSerialNumber': 'equipment_serial_number',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('completion_number'):
+            data['completion_number'] = data.get('id') or f"CMP-{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['completion_number']
+        if not data.get('completion_date'):
+            data['completion_date'] = datetime.now().date().isoformat()
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['completionNumber'] = instance.completion_number
+        data['completionDate'] = str(instance.completion_date) if instance.completion_date else ''
+        data['jobId'] = instance.job_id
+        data['jobNumber'] = instance.job_number
+        data['workOrderNumber'] = instance.work_order_number
+        data['productName'] = instance.product_name
+        data['completedQuantity'] = float(instance.completed_quantity or 1)
+        data['rejectedQuantity'] = float(instance.rejected_quantity or 0)
+        data['reworkQuantity'] = float(instance.rework_quantity or 0)
+        data['scrapQuantity'] = float(instance.scrap_quantity or 0)
+        data['completedBy'] = instance.completed_by
+        data['qcStatus'] = instance.qc_status
+        data['remarks'] = instance.remarks
+        data['hydroTestPressure'] = instance.hydro_test_pressure
+        data['hydroHoldingDuration'] = instance.hydro_holding_duration
+        data['hydroTestStatus'] = instance.hydro_test_status
+        data['dpTestJoints'] = instance.dp_test_joints
+        data['dpTestStatus'] = instance.dp_test_status
+        data['dimensionReportNo'] = instance.dimension_report_no
+        data['dimensionStatus'] = instance.dimension_status
+        data['qcInspectorName'] = instance.qc_inspector_name
+        data['certificateNumber'] = instance.certificate_number
+        data['equipmentSerialNumber'] = instance.equipment_serial_number
+        data['createdAt'] = str(instance.created_at) if instance.created_at else ''
         return data
 
 

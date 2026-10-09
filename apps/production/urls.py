@@ -6,7 +6,7 @@ from .views import (
     ProductionScheduleItemViewSet, ProductionEntryViewSet, WIPRecordViewSet,
     ProductionHoldViewSet, ReworkOrderViewSet, ProductionScrapViewSet,
     FinishedGoodsItemViewSet, ProductionMaterialRequestViewSet, DispatchOrderViewSet,
-    PackingOrderViewSet, ProductionDashboardStatsView
+    PackingOrderViewSet, ProductionCompletionViewSet, ProductionDashboardStatsView
 )
 
 router = DefaultRouter()
@@ -25,6 +25,8 @@ router.register('production-holds', ProductionHoldViewSet, basename='production-
 router.register('rework-orders', ReworkOrderViewSet, basename='rework-order')
 router.register('production-scraps', ProductionScrapViewSet, basename='production-scrap')
 router.register('finished-goods', FinishedGoodsItemViewSet, basename='finished-good')
+router.register('production-completions', ProductionCompletionViewSet, basename='production-completion')
+router.register('completions', ProductionCompletionViewSet, basename='completion')
 router.register('dispatch-orders', DispatchOrderViewSet, basename='dispatch-order')
 router.register('dispatch', DispatchOrderViewSet, basename='dispatch')
 router.register('packing-orders', PackingOrderViewSet, basename='packing-order')

@@ -10,7 +10,7 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder, PackingOrder
+    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion
 )
 from .serializers import (
     ManufacturingJobSerializer, ProductionPlanSerializer, WorkCenterSerializer,
@@ -18,7 +18,7 @@ from .serializers import (
     ProductionScheduleItemSerializer, ProductionEntrySerializer, WIPRecordSerializer,
     ProductionHoldSerializer, ReworkOrderSerializer, ProductionScrapSerializer,
     FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer, DispatchOrderSerializer,
-    PackingOrderSerializer
+    PackingOrderSerializer, ProductionCompletionSerializer
 )
 
 
@@ -288,7 +288,39 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        entry = serializer.save()
+
+        # Automatically advance WorkOrder status and synchronize WIPRecord in database
+        wo_number = entry.work_order_number
+        if wo_number:
+            WorkOrder.objects.filter(work_order_number=wo_number).exclude(status='Completed').update(status='In Progress')
+            wip = WIPRecord.objects.filter(work_order_number=wo_number).first()
+            if wip:
+                wip.current_operation_name = entry.operation_name
+                wip.completed_operations_count = min(wip.total_operations_count or 6, wip.completed_operations_count + 1)
+                wip.location = entry.work_center_name or wip.location
+                if wip.completed_operations_count >= (wip.total_operations_count or 6):
+                    wip.status = 'QC Pending'
+                else:
+                    wip.status = 'In Progress'
+                wip.save()
+            else:
+                WIPRecord.objects.create(
+                    id=f"WIP-{wo_number}",
+                    job_id=entry.job_id,
+                    job_number=entry.job_number,
+                    work_order_number=wo_number,
+                    production_order_number=entry.production_order_number or 'PO-PROD-2026-001',
+                    current_operation_name=entry.operation_name,
+                    completed_operations_count=1,
+                    total_operations_count=6,
+                    wip_quantity=entry.planned_quantity or 1,
+                    location=entry.work_center_name or 'Fabrication Bay 01',
+                    responsible_department='Fabrication & Welding Division',
+                    start_date=entry.entry_date,
+                    status='In Progress'
+                )
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -445,8 +477,27 @@ class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
     queryset = FinishedGoodsItem.objects.all().order_by('-created_at', '-id')
     serializer_class = FinishedGoodsItemSerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['finished_goods_number', 'job_number', 'product_name']
+    search_fields = ['finished_goods_number', 'job_number', 'product_name', 'serial_number']
     filterset_fields = ['status', 'qc_status', 'warehouse_id']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        serial = (data.get('serial_number') or data.get('serialNumber') or '').strip()
+        wo_num = data.get('work_order_number') or data.get('workOrderNumber') or ''
+
+        # Check if serial number already exists
+        if serial:
+            existing = FinishedGoodsItem.objects.filter(serial_number=serial).first()
+            if existing:
+                # If matching same work order, return existing idempotently to handle network retries
+                if not wo_num or existing.work_order_number == wo_num:
+                    return Response(self.get_serializer(existing).data, status=status.HTTP_200_OK)
+                return Response(
+                    {'error': f"Equipment serial number '{serial}' is already assigned to {existing.product_name} ({existing.finished_goods_number})."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        return super().create(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'], url_path='qc-pass')
     def qc_pass(self, request, pk=None):
@@ -455,6 +506,49 @@ class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
         fg.status = 'Ready for Dispatch'
         fg.save()
         return Response({'message': f'Finished Good {fg.finished_goods_number} passed QC', 'qcStatus': fg.qc_status, 'status': fg.status})
+
+
+class ProductionCompletionViewSet(viewsets.ModelViewSet):
+    queryset = ProductionCompletion.objects.all().order_by('-created_at', '-id')
+    serializer_class = ProductionCompletionSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['completion_number', 'work_order_number', 'job_number', 'equipment_serial_number', 'certificate_number']
+    filterset_fields = ['qc_status', 'hydro_test_status', 'dp_test_status']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        
+        hydro_status = data.get('hydro_test_status') or data.get('hydroTestStatus') or 'Passed'
+        dp_status = data.get('dp_test_status') or data.get('dpTestStatus') or 'Accepted'
+        qc_status = data.get('qc_status') or data.get('qcStatus') or 'Passed'
+
+        # Strict Quality Guard: Reject clearance if Hydro or DP test failed
+        if hydro_status == 'Failed' or dp_status == 'Defects Found' or qc_status == 'Failed':
+            return Response(
+                {
+                    'error': 'Quality Clearance REJECTED: Cannot mark completion or clear work order while Hydrostatic pressure test or NDT Dye Penetrant inspection is failed.',
+                    'hydroTestStatus': hydro_status,
+                    'dpTestStatus': dp_status,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        comp = serializer.save()
+
+        # Update Work Order to Completed
+        wo_num = comp.work_order_number
+        if wo_num:
+            WorkOrder.objects.filter(work_order_number=wo_num).update(status='Completed')
+            wip = WIPRecord.objects.filter(work_order_number=wo_num).first()
+            if wip:
+                wip.status = 'Completed'
+                wip.completed_operations_count = wip.total_operations_count or 6
+                wip.current_operation_name = 'Completed & QC Cleared'
+                wip.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
