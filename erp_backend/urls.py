@@ -16,7 +16,7 @@ from apps.core.views import (
     AuditLogViewSet,
     NotificationViewSet,
 )
-from apps.core.system_views import SystemHealthView, SystemDeployView
+from apps.core.system_views import SystemHealthView, SystemDeployView, SystemClearDataView
 from apps.crm.views import (
     LeadViewSet,
     CustomerViewSet,
@@ -346,6 +346,7 @@ urlpatterns = [
     path('api/health/', SystemHealthView.as_view(), name='api-health'),
     path('api/system/health/', SystemHealthView.as_view(), name='api-system-health'),
     path('api/system/deploy/', SystemDeployView.as_view(), name='api-system-deploy'),
+    path('api/system/clear-all-data/', SystemClearDataView.as_view(), name='api-system-clear-all-data'),
     path('api/job-360/<str:job_number>/', Job360APIView.as_view(), name='api-job-360-detail'),
     path('api/job-360/', Job360APIView.as_view(), name='api-job-360-query'),
 

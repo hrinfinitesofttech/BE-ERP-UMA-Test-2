@@ -261,3 +261,56 @@ class SystemDeployView(View):
             "errors": errors,
             "logs": logs,
         }, status=response_status)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class SystemClearDataView(View):
+    """
+    Secure endpoint to clear all operational records (Factory Reset).
+    Leaves authentication and core settings intact, but wipes all transactional
+    records (Leads, Quotations, Sales Orders, Projects, Jobs, Drawings, BOMs,
+    POs, Store stock, Work Orders, Invoices, Service Requests, etc.) down to 0.
+    """
+    def post(self, request, *args, **kwargs):
+        expected_token = getattr(settings, 'DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
+        received_token = (
+            request.headers.get('X-Deploy-Token')
+            or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+        )
+
+        if not received_token or received_token != expected_token:
+            return JsonResponse({
+                "status": "FORBIDDEN",
+                "error": "Invalid or missing authorization token for clearing data."
+            }, status=403)
+
+        from django.apps import apps
+        results = {}
+        errors = {}
+
+        # Apps to clear completely
+        target_app_labels = [
+            'crm', 'projects', 'designer', 'purchase',
+            'store', 'production', 'accounting', 'maintenance', 'integration'
+        ]
+
+        for app_label in target_app_labels:
+            try:
+                app_config = apps.get_app_config(app_label)
+                for model in app_config.get_models():
+                    try:
+                        deleted_count, _ = model.objects.all().delete()
+                        results[f"{app_label}.{model.__name__}"] = deleted_count
+                    except Exception as model_err:
+                        errors[f"{app_label}.{model.__name__}"] = str(model_err)
+            except LookupError:
+                pass
+
+        return JsonResponse({
+            "status": "SUCCESS",
+            "message": "All ERP operational and transactional data wiped to 0 records.",
+            "deleted_models": results,
+            "errors": errors,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+
