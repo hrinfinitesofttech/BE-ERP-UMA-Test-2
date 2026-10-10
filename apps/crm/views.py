@@ -173,36 +173,7 @@ class LeadViewSet(viewsets.ModelViewSet):
             created_date=datetime.now().strftime('%Y-%m-%d'),
         )
 
-        # 2. Also create Enquiry
-        enq_num = NumberingSetting.objects.filter(doc_type='enquiry').first()
-        if enq_num:
-            enq_code = enq_num.generate_next_number(increment=True)
-            while Enquiry.objects.filter(id=enq_code).exists() or Enquiry.objects.filter(enquiry_no=enq_code).exists():
-                enq_code = enq_num.generate_next_number(increment=True)
-        else:
-            num_e = Enquiry.objects.count() + 1
-            while Enquiry.objects.filter(id=f"ENQ-2026-{num_e:04d}").exists() or Enquiry.objects.filter(enquiry_no=f"ENQ-2026-{num_e:04d}").exists():
-                num_e += 1
-            enq_code = f"ENQ-2026-{num_e:04d}"
-
-        enquiry = Enquiry.objects.create(
-            id=enq_code,
-            enquiry_no=enq_code,
-            lead_id=lead.id,
-            customer_id=customer.id,
-            customer_name=customer.company_name,
-            enquiry_date=datetime.now().strftime('%Y-%m-%d'),
-            requirement=lead.requirement_description or f"Machine enquiry for {lead.product_name}",
-            machine_product=lead.product_name,
-            quantity=lead.quantity,
-            specification=f"Capacity: {lead.capacity}, Application: {lead.application}",
-            expected_delivery=lead.expected_delivery,
-            assigned_person_id=lead.assigned_sales_person_id,
-            assigned_person_name=lead.assigned_sales_person_name,
-            status='new',
-        )
-
-        # 3. Also create Opportunity
+        # 2. Also create Opportunity
         opp_num = NumberingSetting.objects.filter(doc_type='opportunity').first()
         if opp_num:
             opp_code = opp_num.generate_next_number(increment=True)
@@ -232,14 +203,12 @@ class LeadViewSet(viewsets.ModelViewSet):
         # Update Lead status
         lead.status = 'won'
         lead.converted_customer_id = customer.id
-        lead.converted_enquiry_id = enquiry.id
         lead.converted_opportunity_id = opportunity.id
-        lead.save(update_fields=['status', 'converted_customer_id', 'converted_enquiry_id', 'converted_opportunity_id'])
+        lead.save(update_fields=['status', 'converted_customer_id', 'converted_opportunity_id'])
 
         return Response({
             'success': True,
             'customer': CustomerSerializer(customer).data,
-            'enquiry': EnquirySerializer(enquiry).data,
             'opportunity': OpportunitySerializer(opportunity).data,
         })
 

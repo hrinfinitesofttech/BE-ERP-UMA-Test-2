@@ -21,7 +21,6 @@ from apps.crm.views import (
     LeadViewSet,
     CustomerViewSet,
     ContactViewSet,
-    EnquiryViewSet,
     OpportunityViewSet,
     FollowUpViewSet,
     SiteVisitViewSet,
@@ -178,7 +177,6 @@ api_router.register(r'notifications', NotificationViewSet, basename='notificatio
 api_router.register(r'leads', LeadViewSet, basename='lead')
 api_router.register(r'customers', CustomerViewSet, basename='customer')
 api_router.register(r'contacts', ContactViewSet, basename='contact')
-api_router.register(r'enquiries', EnquiryViewSet, basename='enquiry')
 api_router.register(r'opportunities', OpportunityViewSet, basename='opportunity')
 api_router.register(r'followups', FollowUpViewSet, basename='followup')
 api_router.register(r'visits', SiteVisitViewSet, basename='visit')
