@@ -238,6 +238,9 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             'lead_id',
             'customer_id',
             'customer_name',
+            'customer_email',
+            'contact_person',
+            'contact_mobile',
             'enquiry_date',
             'requirement',
             'machine_product',
@@ -261,6 +264,12 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             'customer': 'customer_id',
             'customerName': 'customer_name',
             'companyName': 'customer_name',
+            'customerEmail': 'customer_email',
+            'email': 'customer_email',
+            'contactPerson': 'contact_person',
+            'contactMobile': 'contact_mobile',
+            'mobile': 'contact_mobile',
+            'phone': 'contact_mobile',
             'enquiryDate': 'enquiry_date',
             'machineProduct': 'machine_product',
             'expectedDelivery': 'expected_delivery',
@@ -277,6 +286,12 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
                 c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
                 if c:
                     data['customer_name'] = c.company_name
+                    if not data.get('customer_email') and c.email:
+                        data['customer_email'] = c.email
+                    if not data.get('contact_person') and c.contact_person:
+                        data['contact_person'] = c.contact_person
+                    if not data.get('contact_mobile') and c.mobile:
+                        data['contact_mobile'] = c.mobile
             except Exception:
                 pass
         if not data.get('customer_name'):
@@ -306,6 +321,9 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         rep['leadId'] = instance.lead_id
         rep['customerId'] = instance.customer_id
         rep['customerName'] = instance.customer_name
+        rep['customerEmail'] = instance.customer_email
+        rep['contactPerson'] = instance.contact_person
+        rep['contactMobile'] = instance.contact_mobile
         rep['enquiryDate'] = str(instance.enquiry_date) if instance.enquiry_date else ''
         rep['machineProduct'] = instance.machine_product
         rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''

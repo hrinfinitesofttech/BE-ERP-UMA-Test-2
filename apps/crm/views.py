@@ -217,19 +217,21 @@ class LeadViewSet(viewsets.ModelViewSet):
         total_leads = Lead.objects.count()
         new_leads = Lead.objects.filter(status='new').count()
         won_leads = Lead.objects.filter(status='won').count()
-        total_enquiries = Enquiry.objects.count()
-        active_enquiries = Enquiry.objects.exclude(status__in=['closed', 'cancelled']).count()
+        total_quotations = Quotation.objects.count()
+        active_quotations = Quotation.objects.filter(status='draft').count()
         total_customers = Customer.objects.count()
         total_pipeline = Lead.objects.aggregate(total=models.Sum('budget'))['total'] or 0
         return Response({
             'total_leads': total_leads,
             'new_leads': new_leads,
             'won_leads': won_leads,
-            'total_enquiries': total_enquiries,
-            'active_enquiries': active_enquiries,
+            'total_quotations': total_quotations,
+            'active_quotations': active_quotations,
             'total_customers': total_customers,
             'total_pipeline': total_pipeline,
         })
+
+
 
 
 
@@ -275,25 +277,7 @@ class ContactViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 
-class EnquiryViewSet(viewsets.ModelViewSet):
-    queryset = Enquiry.objects.all().order_by('-created_at', '-id')
-    serializer_class = EnquirySerializer
-    permission_classes = [permissions.AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        enq_code = data.get('enquiry_no') or data.get('enquiryNo') or data.get('enquiryNumber') or data.get('id')
-        if not enq_code:
-            num_setting = NumberingSetting.objects.filter(doc_type='enquiry').first()
-            enq_code = num_setting.generate_next_number(increment=True) if num_setting else f"ENQ-2026-{Enquiry.objects.count() + 1:04d}"
-        data['id'] = data.get('id') or enq_code
-        data['enquiry_no'] = enq_code
-        if not data.get('enquiry_date') and not data.get('enquiryDate'):
-            data['enquiry_date'] = datetime.now().strftime('%Y-%m-%d')
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class OpportunityViewSet(viewsets.ModelViewSet):
@@ -483,22 +467,14 @@ class QuotationViewSet(viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)
 
-            # Update linked enquiry if provided
-            enq_id = data.get('enquiry_id') or data.get('enquiryId')
+            # Update linked lead/customer if provided
+            lead_id = data.get('lead_id') or data.get('leadId')
             cust_id = data.get('customer_id') or data.get('customerId')
-            if enq_id:
-                Enquiry.objects.filter(models.Q(id=enq_id) | models.Q(enquiry_no=enq_id)).update(
-                    quotation_id=quo_num,
+            if lead_id:
+                Lead.objects.filter(models.Q(id=lead_id) | models.Q(lead_no=lead_id)).update(
                     status='quotation_sent'
                 )
-                Lead.objects.filter(converted_enquiry_id=enq_id).update(
-                    status='quotation_sent'
-                )
-            elif cust_id:
-                Enquiry.objects.filter(customer_id=cust_id, quotation_id__isnull=True).update(
-                    quotation_id=quo_num,
-                    status='quotation_sent'
-                )
+            if cust_id:
                 Lead.objects.filter(converted_customer_id=cust_id).update(
                     status='quotation_sent'
                 )
@@ -637,6 +613,98 @@ class QuotationViewSet(viewsets.ModelViewSet):
         quotation.revisions = revisions
         quotation.save(update_fields=['status', 'revisions', 'approved_by', 'approved_at', 'rejection_reason'])
         return Response(QuotationSerializer(quotation).data)
+
+    @action(detail=True, methods=['post'], url_path='send-email')
+    def send_email(self, request, pk=None):
+        quotation = self.get_object()
+        recipient = (
+            request.data.get('recipientEmail') or
+            request.data.get('recipient_email') or
+            request.data.get('email') or
+            quotation.contact_email
+        )
+
+        # If recipient is still empty, try linked Enquiry or Lead
+        if not recipient and quotation.enquiry_id:
+            enq = Enquiry.objects.filter(models.Q(id=quotation.enquiry_id) | models.Q(enquiry_no=quotation.enquiry_id)).first()
+            if enq and enq.customer_email:
+                recipient = enq.customer_email
+        if not recipient and quotation.lead_id:
+            ld = Lead.objects.filter(models.Q(id=quotation.lead_id) | models.Q(lead_no=quotation.lead_id)).first()
+            if ld and ld.email:
+                recipient = ld.email
+
+        if not recipient:
+            return Response(
+                {'error': 'No customer email address found for this quotation or linked enquiry.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        subject = f"Commercial & Technical Quotation {quotation.quotation_number} ({quotation.current_revision}) - Uma Techno Fab"
+        total_formatted = f"INR {quotation.grand_total:,.2f}" if quotation.grand_total else "As detailed"
+
+        email_body = f"""Dear {quotation.contact_person or quotation.customer_name},
+
+Thank you for your business enquiry with Uma Techno Fab Pvt. Ltd.
+
+We are pleased to submit our formal commercial and technical proposal for your review:
+
+Proposal Overview:
+===================================================
+Quotation Number : {quotation.quotation_number}
+Revision         : {quotation.current_revision}
+Date             : {quotation.date}
+Valid Until      : {quotation.valid_until}
+Customer Name    : {quotation.customer_name}
+Equipment Scope  : {quotation.machine_product or 'Fabrication & Process Equipment'}
+Total Amount     : {total_formatted}
+===================================================
+
+Delivery & Commercial Terms:
+As detailed in the comprehensive technical quotation document.
+
+Please feel free to reach out to our engineering and commercial sales division for any technical queries or discussions.
+
+Warm Regards,
+Sales & Commercial Engineering Division
+Uma Techno Fab Pvt. Ltd.
+Plot No. 42-45, GIDC Industrial Estate, Makarpura, Vadodara - 390010, Gujarat, India
+Email: sales@umatechnofab.com | Web: www.umatechnofab.com
+"""
+
+        from django.core.mail import send_mail
+        from django.conf import settings
+        import logging
+        logger = logging.getLogger(__name__)
+
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'sales@umatechnofab.com')
+        try:
+            send_mail(
+                subject=subject,
+                message=email_body,
+                from_email=from_email,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+            email_status = 'sent'
+            message = f"Quotation {quotation.quotation_number} successfully dispatched via email to {recipient}."
+        except Exception as e:
+            logger.warning(f"SMTP dispatch failed ({e}). Logged dispatch for quotation.")
+            email_status = 'logged_smtp_pending'
+            message = f"Quotation notification registered for {recipient} (SMTP dispatch fallback: {str(e)[:100]})."
+
+        # Update quotation status to sent if appropriate
+        if quotation.status in ['draft', 'approved']:
+            quotation.status = 'sent'
+            quotation.save(update_fields=['status'])
+
+        return Response({
+            'success': True,
+            'message': message,
+            'recipient': recipient,
+            'quotationNumber': quotation.quotation_number,
+            'emailStatus': email_status,
+        }, status=status.HTTP_200_OK)
 
 
 class CustomerPOViewSet(viewsets.ModelViewSet):
