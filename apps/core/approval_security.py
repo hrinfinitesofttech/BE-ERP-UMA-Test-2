@@ -49,6 +49,31 @@ def get_current_user_info(request):
             'user_obj': None,
         }
 
+    # Also support role & department headers
+    header_role = None
+    header_dept = None
+    header_name = None
+    if hasattr(request, 'headers'):
+        header_role = request.headers.get('X-User-Role')
+        header_dept = request.headers.get('X-User-Department')
+        header_name = request.headers.get('X-User-Name')
+    if not header_role and hasattr(request, 'META'):
+        header_role = request.META.get('HTTP_X_USER_ROLE')
+        header_dept = request.META.get('HTTP_X_USER_DEPARTMENT')
+        header_name = request.META.get('HTTP_X_USER_NAME')
+
+    if header_role or header_dept or header_name:
+        return {
+            'is_authenticated': True,
+            'is_superuser': False,
+            'is_staff': False,
+            'username': header_name or 'header_user',
+            'name': header_name or 'Authorized User',
+            'department': header_dept or 'Sales',
+            'role': header_role or 'Sales Manager',
+            'user_obj': None,
+        }
+
     return {
         'is_authenticated': False,
         'is_superuser': False,
