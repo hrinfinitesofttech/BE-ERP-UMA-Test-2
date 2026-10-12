@@ -9,8 +9,12 @@ class Department(models.Model):
     manager_id = models.CharField(max_length=64, blank=True, null=True)
     manager_name = models.CharField(max_length=150, blank=True, null=True)
     description = models.TextField(blank=True, default='')
+    parent_department_id = models.CharField(max_length=64, blank=True, null=True)
+    assigned_modules = models.JSONField(default=list, blank=True)
+    default_permissions = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=20, default='active')
     employee_count = models.IntegerField(default=0)
+    created_by = models.CharField(max_length=150, blank=True, default='Super Admin')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -19,7 +23,7 @@ class Department(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.id:
-            self.id = f"dept-{self.code.lower()}"
+            self.id = f"dept-{self.code.lower().replace(' ', '-').replace('&', 'and')}"
         super().save(*args, **kwargs)
 
 

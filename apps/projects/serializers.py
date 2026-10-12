@@ -213,12 +213,21 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'department',
+            'assigned_by_name',
             'assigned_to_id',
             'assigned_to_name',
+            'category',
             'status',
             'priority',
+            'progress_percent',
+            'estimated_hours',
+            'actual_hours',
+            'checklist',
             'due_date',
             'completion_date',
+            'remarks',
+            'created_at',
+            'updated_at',
         ]
 
     def to_internal_value(self, data):
@@ -229,10 +238,22 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             data['task_number'] = data.pop('taskNumber')
         if 'taskName' in data and 'title' not in data:
             data['title'] = data.pop('taskName')
+        if 'assignedByName' in data and 'assigned_by_name' not in data:
+            data['assigned_by_name'] = data.pop('assignedByName')
+        if 'assignedToId' in data and 'assigned_to_id' not in data:
+            data['assigned_to_id'] = data.pop('assignedToId')
         if 'assignedToName' in data and 'assigned_to_name' not in data:
             data['assigned_to_name'] = data.pop('assignedToName')
         elif 'assignedEmployee' in data and 'assigned_to_name' not in data:
             data['assigned_to_name'] = data.pop('assignedEmployee')
+        if 'progressPercent' in data and 'progress_percent' not in data:
+            data['progress_percent'] = data.pop('progressPercent')
+        elif 'progress' in data and 'progress_percent' not in data:
+            data['progress_percent'] = data.pop('progress')
+        if 'estimatedHours' in data and 'estimated_hours' not in data:
+            data['estimated_hours'] = data.pop('estimatedHours')
+        if 'actualHours' in data and 'actual_hours' not in data:
+            data['actual_hours'] = data.pop('actualHours')
         if 'dueDate' in data and 'due_date' not in data:
             data['due_date'] = data.pop('dueDate')
         return super().to_internal_value(data)
@@ -244,9 +265,16 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             'projectId': ret.get('project_id', ''),
             'taskNumber': ret.get('task_number', ''),
             'taskName': ret.get('title', ''),
+            'assignedByName': ret.get('assigned_by_name', ''),
+            'assignedToId': ret.get('assigned_to_id', ''),
             'assignedToName': ret.get('assigned_to_name', ''),
             'assignedEmployee': ret.get('assigned_to_name', ''),
+            'progressPercent': ret.get('progress_percent', 0),
+            'progress': ret.get('progress_percent', 0),
+            'estimatedHours': ret.get('estimated_hours', 0.0),
+            'actualHours': ret.get('actual_hours', 0.0),
             'dueDate': ret.get('due_date', ''),
+            'completionDate': ret.get('completion_date', ''),
         }
 
 

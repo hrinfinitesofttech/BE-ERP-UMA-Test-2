@@ -143,3 +143,67 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             'message': f'Password for {user.username} has been reset successfully',
             'username': user.username
         })
+
+    @action(detail=True, methods=['get', 'patch', 'post'], url_path='permissions')
+    def manage_permissions(self, request, pk=None):
+        user = self.get_object()
+        if request.method == 'GET':
+            return Response({
+                'id': user.id,
+                'name': user.name,
+                'username': user.username,
+                'department_id': user.department_id,
+                'department_name': user.department_name,
+                'role_type': user.role_type,
+                'data_scope': user.data_scope,
+                'assigned_modules': user.assigned_modules,
+                'custom_permissions': user.custom_permissions,
+                'can_assign_tasks': user.can_assign_tasks,
+                'can_approve_leaves': user.can_approve_leaves,
+                'can_manage_attendance': user.can_manage_attendance,
+                'can_export_data': user.can_export_data,
+            })
+
+        data = request.data
+        if 'role_type' in data:
+            user.role_type = data['role_type']
+        if 'data_scope' in data:
+            user.data_scope = data['data_scope']
+        if 'assigned_modules' in data:
+            user.assigned_modules = data['assigned_modules']
+        if 'custom_permissions' in data:
+            user.custom_permissions = data['custom_permissions']
+        if 'can_assign_tasks' in data:
+            user.can_assign_tasks = bool(data['can_assign_tasks'])
+        if 'can_approve_leaves' in data:
+            user.can_approve_leaves = bool(data['can_approve_leaves'])
+        if 'can_manage_attendance' in data:
+            user.can_manage_attendance = bool(data['can_manage_attendance'])
+        if 'can_export_data' in data:
+            user.can_export_data = bool(data['can_export_data'])
+
+        user.save()
+
+        # Audit log entry
+        try:
+            from apps.core.models import AuditLog
+            admin_name = getattr(request.user, 'name', 'Super Admin') or 'Super Admin'
+            AuditLog.objects.create(
+                user_id=getattr(request.user, 'id', 'admin'),
+                user_name=admin_name,
+                role=getattr(request.user, 'role_type', 'super_admin'),
+                department=getattr(request.user, 'department_name', 'Management'),
+                action='UPDATE',
+                module='Access Control & Security',
+                page='Manage Employee Permissions',
+                record_id=user.id,
+                notes=f"Updated permissions and scope for employee {user.name} ({user.id})",
+            )
+        except Exception:
+            pass
+
+        return Response({
+            'success': True,
+            'message': f"Permissions updated successfully for {user.name}",
+            'user': UserSerializer(user).data
+        })

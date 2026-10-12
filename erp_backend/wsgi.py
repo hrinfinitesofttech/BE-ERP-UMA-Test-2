@@ -18,6 +18,10 @@ application = get_wsgi_application()
 try:
     from django.core.management import call_command
     call_command('migrate')
+    try:
+        import init_departments_rbac
+    except Exception as e:
+        print('init_departments_rbac in wsgi:', e)
 except Exception as e:
     print('Migrate exception in wsgi:', e)
 

@@ -77,9 +77,36 @@ class ShiftMasterSerializer(serializers.ModelSerializer):
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    shiftName = serializers.CharField(source='shift_name', required=False, allow_blank=True)
+    checkIn = serializers.CharField(source='check_in', required=False, allow_blank=True)
+    checkOut = serializers.CharField(source='check_out', required=False, allow_blank=True)
+    totalHours = serializers.DecimalField(source='total_hours', max_digits=5, decimal_places=2, required=False)
+    lateMinutes = serializers.IntegerField(source='late_minutes', required=False)
+    earlyCheckoutMinutes = serializers.IntegerField(source='early_checkout_minutes', required=False)
+    overtimeHours = serializers.DecimalField(source='overtime_hours', max_digits=5, decimal_places=2, required=False)
+
     class Meta:
         model = AttendanceRecord
         fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        for camel, snake in [
+            ('employeeId', 'employee_id'),
+            ('employeeName', 'employee_name'),
+            ('shiftName', 'shift_name'),
+            ('checkIn', 'check_in'),
+            ('checkOut', 'check_out'),
+            ('totalHours', 'total_hours'),
+            ('lateMinutes', 'late_minutes'),
+            ('earlyCheckoutMinutes', 'early_checkout_minutes'),
+            ('overtimeHours', 'overtime_hours')
+        ]:
+            if camel in data:
+                ret[snake] = data[camel]
+        return ret
 
 
 class LeaveRequestSerializer(serializers.ModelSerializer):
@@ -97,6 +124,8 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     appliedDate = serializers.DateField(source='applied_date', required=False)
     approvedBy = serializers.CharField(source='approved_by', required=False, allow_blank=True)
     approvedDate = serializers.DateField(source='approved_date', required=False, allow_null=True)
+    managerRemarks = serializers.CharField(source='manager_remarks', required=False, allow_blank=True)
+    adminRemarks = serializers.CharField(source='admin_remarks', required=False, allow_blank=True)
 
     class Meta:
         model = LeaveRequest
@@ -128,6 +157,10 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             ret['reporting_manager'] = data['reportingManager']
         if 'appliedDate' in data:
             ret['applied_date'] = data['appliedDate']
+        if 'managerRemarks' in data:
+            ret['manager_remarks'] = data['managerRemarks']
+        if 'adminRemarks' in data:
+            ret['admin_remarks'] = data['adminRemarks']
         return ret
 
     def validate(self, data):

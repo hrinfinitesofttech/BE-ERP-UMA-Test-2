@@ -15,9 +15,16 @@ class DepartmentSerializer(serializers.ModelSerializer):
             'manager_id',
             'manager_name',
             'description',
+            'parent_department_id',
+            'assigned_modules',
+            'default_permissions',
             'status',
             'employee_count',
+            'created_by',
+            'created_at',
+            'updated_at',
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate_name(self, value):
         import re

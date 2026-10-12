@@ -286,20 +286,36 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
     serializer_class = ProjectTaskSerializer
     permission_classes = [permissions.AllowAny]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        emp_id = self.request.GET.get('assigned_to_id') or self.request.GET.get('assignedToId')
+        dept = self.request.GET.get('department')
+        status_val = self.request.GET.get('status')
+        if emp_id:
+            qs = qs.filter(assigned_to_id=emp_id)
+        if dept and dept != 'ALL':
+            qs = qs.filter(department__iexact=dept)
+        if status_val and status_val != 'ALL':
+            qs = qs.filter(status__iexact=status_val)
+        return qs
+
     def create(self, request, *args, **kwargs):
+        import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"TSK-2026-{ProjectTask.objects.count() + 1:03d}"
+            data['id'] = f"TSK-{uuid.uuid4().hex[:10].upper()}"
         if 'title' not in data:
-            data['title'] = data.get('task_name') or data.get('taskName') or 'Project Task'
+            data['title'] = data.get('task_name') or data.get('taskName') or 'Department Task'
         if 'project_id' not in data:
-            data['project_id'] = data.get('projectId') or 'PRJ-2026-0001'
+            data['project_id'] = data.get('projectId') or ''
         if 'task_number' not in data:
-            data['task_number'] = data.get('taskNumber') or data['id']
+            data['task_number'] = data.get('taskNumber') or f"TSK-2026-{ProjectTask.objects.count() + 1:03d}"
         if 'department' not in data:
-            data['department'] = data.get('department') or 'production'
+            data['department'] = data.get('department') or 'General'
         if 'assigned_to_name' not in data:
-            data['assigned_to_name'] = data.get('assignedTo') or data.get('assigned_to') or 'Bhavin Shah'
+            data['assigned_to_name'] = data.get('assignedTo') or data.get('assigned_to') or ''
+        if 'assigned_to_id' not in data:
+            data['assigned_to_id'] = data.get('assignedToId') or ''
         if 'due_date' not in data:
             data['due_date'] = data.get('dueDate') or data.get('due_date') or ''
 
@@ -307,6 +323,35 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch', 'post'], url_path='progress')
+    def update_progress(self, request, pk=None):
+        from django.utils import timezone
+        task = self.get_object()
+        data = request.data
+        if 'progress_percent' in data:
+            task.progress_percent = int(data['progress_percent'])
+        elif 'progressPercent' in data:
+            task.progress_percent = int(data['progressPercent'])
+        elif 'progress' in data:
+            task.progress_percent = int(data['progress'])
+
+        if 'status' in data:
+            task.status = data['status']
+            if task.status in ['Completed', 'completed']:
+                task.progress_percent = 100
+                task.completion_date = timezone.now().strftime('%Y-%m-%d')
+        if 'actual_hours' in data:
+            task.actual_hours = float(data['actual_hours'])
+        elif 'actualHours' in data:
+            task.actual_hours = float(data['actualHours'])
+        if 'checklist' in data:
+            task.checklist = data['checklist']
+        if 'remarks' in data:
+            task.remarks = data['remarks']
+
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
 
 
 class ProjectDocumentViewSet(viewsets.ModelViewSet):

@@ -54,6 +54,97 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
     search_fields = ['employee_name', 'department']
     filterset_fields = ['status', 'employee_id', 'date']
 
+    @action(detail=False, methods=['post'], url_path='check-in')
+    def check_in(self, request):
+        from datetime import datetime, date
+        data = request.data
+        emp_id = data.get('employee_id') or data.get('employeeId') or (request.user.id if request.user.is_authenticated else 'EMP-001')
+        emp_name = data.get('employee_name') or data.get('employeeName') or (getattr(request.user, 'name', '') or 'Employee')
+        dept = data.get('department') or getattr(request.user, 'department_name', '') or 'General'
+        shift = data.get('shift_name') or data.get('shiftName') or 'General Day Shift (09:00 - 18:00)'
+
+        today = date.today()
+        now_time = datetime.now().strftime('%H:%M')
+
+        record = AttendanceRecord.objects.filter(employee_id=emp_id, date=today).first()
+        if not record:
+            import uuid
+            record = AttendanceRecord.objects.create(
+                id=f"ATT-{uuid.uuid4().hex[:10].upper()}",
+                employee_id=emp_id,
+                employee_name=emp_name,
+                department=dept,
+                date=today,
+                shift_name=shift,
+                check_in=now_time,
+                status='Present',
+                source='Web Punch Portal',
+                remarks='Web Punch Check-In'
+            )
+        else:
+            if not record.check_in:
+                record.check_in = now_time
+                record.status = 'Present'
+                record.save()
+
+        return Response({
+            'success': True,
+            'message': f"Checked in successfully at {record.check_in}",
+            'record': AttendanceRecordSerializer(record).data
+        })
+
+    @action(detail=False, methods=['post'], url_path='check-out')
+    def check_out(self, request):
+        from datetime import datetime, date
+        data = request.data
+        emp_id = data.get('employee_id') or data.get('employeeId') or (request.user.id if request.user.is_authenticated else 'EMP-001')
+        today = date.today()
+        now_time = datetime.now().strftime('%H:%M')
+
+        record = AttendanceRecord.objects.filter(employee_id=emp_id, date=today).first()
+        if not record:
+            emp_name = data.get('employee_name') or data.get('employeeName') or 'Employee'
+            dept = data.get('department') or 'General'
+            import uuid
+            record = AttendanceRecord.objects.create(
+                id=f"ATT-{uuid.uuid4().hex[:10].upper()}",
+                employee_id=emp_id,
+                employee_name=emp_name,
+                department=dept,
+                date=today,
+                check_in=now_time,
+                check_out=now_time,
+                total_hours=0.0,
+                status='Present',
+                source='Web Punch Portal'
+            )
+        else:
+            record.check_out = now_time
+            if record.check_in:
+                try:
+                    t_in = datetime.strptime(record.check_in, '%H:%M')
+                    t_out = datetime.strptime(now_time, '%H:%M')
+                    diff = (t_out - t_in).total_seconds() / 3600.0
+                    if diff > 0:
+                        record.total_hours = round(diff, 2)
+                except Exception:
+                    pass
+            record.save()
+
+        return Response({
+            'success': True,
+            'message': f"Checked out successfully at {record.check_out}. Total hours: {record.total_hours}",
+            'record': AttendanceRecordSerializer(record).data
+        })
+
+    @action(detail=False, methods=['get'], url_path='my-history')
+    def my_history(self, request):
+        emp_id = request.GET.get('employee_id') or request.GET.get('employeeId') or (request.user.id if request.user.is_authenticated else '')
+        if not emp_id:
+            emp_id = 'EMP-001'
+        records = AttendanceRecord.objects.filter(employee_id=emp_id).order_by('-date')
+        return Response(AttendanceRecordSerializer(records, many=True).data)
+
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all()

@@ -10,23 +10,25 @@ REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
 
 TARGET_FILES = [
-    'apps/production/models.py',
-    'apps/production/serializers.py',
-    'apps/production/views.py',
+    'apps/core/base_serializers.py',
+    'apps/organization/models.py',
+    'apps/organization/serializers.py',
+    'apps/organization/views.py',
+    'apps/authentication/models.py',
+    'apps/authentication/serializers.py',
+    'apps/authentication/views.py',
+    'apps/hr/models.py',
     'apps/hr/serializers.py',
     'apps/hr/views.py',
-    'apps/hr/models.py',
-    'apps/crm/serializers.py',
-    'apps/crm/views.py',
-    'apps/designer/models.py',
-    'apps/designer/serializers.py',
-    'apps/designer/views.py',
-    'apps/purchase/serializers.py',
-    'apps/purchase/views.py',
+    'apps/projects/models.py',
     'apps/projects/serializers.py',
     'apps/projects/views.py',
-    'apps/store/serializers.py',
-    'apps/store/views.py',
+    'apps/authentication/migrations/0003_user_assigned_modules_user_can_approve_leaves_and_more.py',
+    'apps/hr/migrations/0005_leaverequest_admin_remarks_and_more.py',
+    'apps/organization/migrations/0002_department_assigned_modules_department_created_by_and_more.py',
+    'apps/projects/migrations/0006_projecttask_actual_hours_and_more.py',
+    'init_departments_rbac.py',
+    'erp_backend/wsgi.py',
 ]
 
 def upload_file(session, rel_path, headers):

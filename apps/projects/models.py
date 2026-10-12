@@ -87,20 +87,37 @@ class ProjectMilestone(models.Model):
 
 class ProjectTask(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
-    project_id = models.CharField(max_length=64)
+    project_id = models.CharField(max_length=64, blank=True, default='')
     task_number = models.CharField(max_length=64, blank=True, default='')
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, default='')
     department = models.CharField(max_length=50)
+    assigned_by_name = models.CharField(max_length=150, blank=True, default='Department Manager')
     assigned_to_id = models.CharField(max_length=64, blank=True, default='')
     assigned_to_name = models.CharField(max_length=150, blank=True, default='')
-    status = models.CharField(max_length=30, default='pending') # pending, in_progress, completed, blocked
+    category = models.CharField(max_length=100, blank=True, default='Operations')
+    status = models.CharField(max_length=50, default='Assigned') # Assigned, Accepted, In Progress, On Hold, Submitted for Review, Completed, Cancelled
     priority = models.CharField(max_length=30, default='medium')
+    progress_percent = models.IntegerField(default=0)
+    estimated_hours = models.FloatField(default=0.0)
+    actual_hours = models.FloatField(default=0.0)
+    checklist = models.JSONField(default=list, blank=True)
     due_date = models.CharField(max_length=50, blank=True, default='')
     completion_date = models.CharField(max_length=50, blank=True, null=True)
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"{self.task_number} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        import uuid
+        if not self.id:
+            self.id = f"TSK-{uuid.uuid4().hex[:10].upper()}"
+        if not self.task_number:
+            self.task_number = f"TSK-2026-{uuid.uuid4().hex[:6].upper()}"
+        super().save(*args, **kwargs)
 
 
 class DepartmentAssignment(models.Model):

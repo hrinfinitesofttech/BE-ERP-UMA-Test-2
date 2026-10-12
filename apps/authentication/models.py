@@ -36,6 +36,35 @@ class User(AbstractUser):
     joining_date = models.CharField(max_length=30, blank=True, default='')
     employment_type = models.CharField(max_length=50, default='full_time')
     status = models.CharField(max_length=30, default='active')
+    role_type = models.CharField(
+        max_length=30,
+        default='employee',
+        choices=[
+            ('super_admin', 'Super Admin'),
+            ('admin', 'Admin'),
+            ('department_manager', 'Department Manager'),
+            ('employee', 'Department Employee'),
+        ]
+    )
+    data_scope = models.CharField(
+        max_length=30,
+        default='own',
+        choices=[
+            ('own', 'Own Records'),
+            ('assigned', 'Assigned Records'),
+            ('department', 'Department Records'),
+            ('all', 'All Company Records'),
+        ]
+    )
+    assigned_modules = models.JSONField(default=list, blank=True)
+    custom_permissions = models.JSONField(default=dict, blank=True)
+    can_assign_tasks = models.BooleanField(default=False)
+    can_approve_leaves = models.BooleanField(default=False)
+    can_manage_attendance = models.BooleanField(default=False)
+    can_export_data = models.BooleanField(default=False)
+    force_password_change = models.BooleanField(default=False)
+    work_location = models.CharField(max_length=150, default='Makarpura Plant, Vadodara', blank=True)
+    emergency_contact = models.CharField(max_length=100, blank=True, default='')
     last_login_str = models.CharField(max_length=60, blank=True, default='')
     is_family_member = models.BooleanField(default=False)
     profile_photo = models.CharField(max_length=255, blank=True, default='')

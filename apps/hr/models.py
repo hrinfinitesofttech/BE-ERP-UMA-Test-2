@@ -74,6 +74,12 @@ class AttendanceRecord(models.Model):
     def __str__(self):
         return f"{self.date} - {self.employee_name} ({self.status})"
 
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"ATT-{uuid.uuid4().hex[:10].upper()}"
+        super().save(*args, **kwargs)
+
 
 class LeaveRequest(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
@@ -94,12 +100,25 @@ class LeaveRequest(models.Model):
     applied_date = models.DateField()
     approved_by = models.CharField(max_length=128, blank=True)
     approved_date = models.DateField(null=True, blank=True)
+    manager_remarks = models.TextField(blank=True, default='')
+    admin_remarks = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['-applied_date']
 
     def __str__(self):
         return f"{self.leave_number} - {self.employee_name} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        import uuid
+        from django.utils import timezone
+        if not self.id:
+            self.id = f"LV-{uuid.uuid4().hex[:10].upper()}"
+        if not self.leave_number:
+            self.leave_number = f"LR-2026-{uuid.uuid4().hex[:6].upper()}"
+        if not self.applied_date:
+            self.applied_date = timezone.now().date()
+        super().save(*args, **kwargs)
 
 
 class WFHRequest(models.Model):

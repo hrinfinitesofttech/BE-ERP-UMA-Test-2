@@ -1,5 +1,6 @@
 import requests
 import time
+import re
 
 USERNAME = 'umaERP'
 PASSWORD = 'AAaa@123456@'
@@ -36,15 +37,20 @@ try:
     from django.core.management import call_command
     call_command('migrate')
     print("Auto-migration successful on webapp reload!")
+    try:
+        import init_departments_rbac
+        print("Auto-init departments successful on webapp reload!")
+    except Exception as e:
+        print("init_departments_rbac warning:", e)
 except Exception as e:
     print("Auto-migration error:", e)
 """
 
-if "call_command('migrate')" not in original_wsgi:
-    new_wsgi = original_wsgi + "\n" + migrate_code
-    # Upload updated wsgi file
-    r_up = session.post(f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/files/path{wsgi_path}", files={"content": new_wsgi}, headers=headers)
-    print("WSGI file update status:", r_up.status_code)
+# Force update WSGI to ensure migrate runs
+clean_wsgi = re.sub(r'try:\s+from django\.core\.management import call_command.*?print\("Auto-migration error:", e\)\s*"""?', '', original_wsgi, flags=re.DOTALL)
+new_wsgi = clean_wsgi.strip() + "\n" + migrate_code
+r_up = session.post(f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/files/path{wsgi_path}", files={"content": new_wsgi}, headers=headers)
+print("WSGI file update status:", r_up.status_code)
 
 # Reload webapp
 reload_url = f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/webapps/{DOMAIN}/reload/"
