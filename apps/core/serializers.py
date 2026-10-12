@@ -1,3 +1,4 @@
+import uuid
 from rest_framework import serializers
 from .models import (
     CompanySetting,
@@ -58,6 +59,9 @@ class NumberingSettingSerializer(serializers.ModelSerializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False, allow_blank=True)
+    timestamp = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = AuditLog
         fields = [
@@ -79,6 +83,8 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('id'):
+            data['id'] = f"aud-{uuid.uuid4().hex[:10]}"
         mappings = {
             'userId': 'user_id',
             'userName': 'user_name',
@@ -104,6 +110,9 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False, allow_blank=True)
+    timestamp = serializers.DateTimeField(read_only=True)
+
     class Meta:
         model = Notification
         fields = [
@@ -120,6 +129,8 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('id'):
+            data['id'] = f"notif-{uuid.uuid4().hex[:10]}"
         mappings = {
             'linkUrl': 'link_url',
             'isRead': 'is_read',
