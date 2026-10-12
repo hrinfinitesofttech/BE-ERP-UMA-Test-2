@@ -42,6 +42,37 @@ class CompanySettingSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        mappings = {
+            'companyName': 'company_name',
+            'logoUrl': 'logo_url',
+            'financialYear': 'financial_year',
+            'bankName': 'bank_name',
+            'bankAccountNo': 'bank_account_no',
+            'bankAccountNumber': 'bank_account_no',
+            'bankIfsc': 'bank_ifsc',
+            'bankIfscCode': 'bank_ifsc',
+            'bankBranch': 'bank_branch',
+        }
+        for camel, snake in mappings.items():
+            if camel in data and snake not in data:
+                data[snake] = data[camel]
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['companyName'] = ret.get('company_name')
+        ret['logoUrl'] = ret.get('logo_url')
+        ret['financialYear'] = ret.get('financial_year')
+        ret['bankName'] = ret.get('bank_name')
+        ret['bankAccountNo'] = ret.get('bank_account_no')
+        ret['bankAccountNumber'] = ret.get('bank_account_no')
+        ret['bankIfsc'] = ret.get('bank_ifsc')
+        ret['bankIfscCode'] = ret.get('bank_ifsc')
+        ret['bankBranch'] = ret.get('bank_branch')
+        return ret
+
 
 class NumberingSettingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,6 +87,27 @@ class NumberingSettingSerializer(serializers.ModelSerializer):
             'digit_count',
             'sample_preview',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        mappings = {
+            'docType': 'doc_type',
+            'currentNumber': 'current_number',
+            'digitCount': 'digit_count',
+            'samplePreview': 'sample_preview',
+        }
+        for camel, snake in mappings.items():
+            if camel in data and snake not in data:
+                data[snake] = data[camel]
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['docType'] = ret.get('doc_type')
+        ret['currentNumber'] = ret.get('current_number')
+        ret['digitCount'] = ret.get('digit_count')
+        ret['samplePreview'] = ret.get('sample_preview')
+        return ret
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
