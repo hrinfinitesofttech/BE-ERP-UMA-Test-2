@@ -4,6 +4,7 @@ from .views import (
     LeadViewSet,
     CustomerViewSet,
     ContactViewSet,
+    EnquiryViewSet,
     OpportunityViewSet,
     FollowUpViewSet,
     SiteVisitViewSet,
@@ -18,6 +19,7 @@ router = DefaultRouter()
 router.register(r'leads', LeadViewSet, basename='lead')
 router.register(r'customers', CustomerViewSet, basename='customer')
 router.register(r'contacts', ContactViewSet, basename='contact')
+router.register(r'enquiries', EnquiryViewSet, basename='enquiry')
 router.register(r'opportunities', OpportunityViewSet, basename='opportunity')
 router.register(r'followups', FollowUpViewSet, basename='followup')
 router.register(r'visits', SiteVisitViewSet, basename='visit')
