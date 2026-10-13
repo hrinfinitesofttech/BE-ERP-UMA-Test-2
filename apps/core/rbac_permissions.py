@@ -147,19 +147,17 @@ def compute_effective_permissions(user):
         can_attendance = not check_explicit_restriction(user, 'attendance', 'manage_settings')
         can_export = not check_explicit_restriction(user, '*', 'export')
     else:
-        # 1. Base from Department
+        # 1. Base modules: Explicit User assigned_modules strictly override department defaults
         dept = getattr(user, 'department', None)
         dept_modules = list(getattr(dept, 'assigned_modules', []) or []) if dept else []
         dept_defaults = dict(getattr(dept, 'default_permissions', {}) or {}) if dept else {}
 
-        # 2. Add User's assigned modules
+        # 2. Check User's assigned modules
         user_modules = list(getattr(user, 'assigned_modules', []) or [])
-        combined_modules = list(set(dept_modules + user_modules))
-
-        # Core modules always accessible for authenticated staff (self profile / tasks / holidays)
-        for base_mod in ['employees', 'hr']:
-            if base_mod not in combined_modules:
-                combined_modules.append(base_mod)
+        if user_modules:
+            combined_modules = list(user_modules)
+        else:
+            combined_modules = list(dept_modules)
 
         custom_perms = dict(getattr(user, 'custom_permissions', {}) or {})
 
