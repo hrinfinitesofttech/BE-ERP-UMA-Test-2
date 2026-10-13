@@ -111,3 +111,12 @@ class RoleViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [permissions.IsAuthenticated()]
         return [IsAdminOrSuperAdmin()]
+
+    def destroy(self, request, *args, **kwargs):
+        role = self.get_object()
+        if getattr(role, 'is_system', False) or role.id in ['role-superadmin', 'role-admin-family', 'role-crm-manager', 'role-crm-employee', 'role-super_admin']:
+            return Response(
+                {'error': 'System defined core roles cannot be deleted.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().destroy(request, *args, **kwargs)

@@ -45,6 +45,8 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False)
+
     class Meta:
         model = Role
         fields = [
