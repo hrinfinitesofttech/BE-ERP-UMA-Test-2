@@ -2,14 +2,15 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     DesignationViewSet, EmployeeDocumentViewSet, ShiftMasterViewSet,
-    AttendanceRecordViewSet, LeaveRequestViewSet, WFHRequestViewSet,
+    AttendanceRecordViewSet, LeaveTypeViewSet, LeaveBalanceViewSet,
+    LeaveRequestViewSet, WFHRequestViewSet,
     MissedPunchRequestViewSet, AttendanceRegularizationViewSet,
     OvertimeRecordViewSet, EarlyCheckoutRequestViewSet,
     SalaryComponentViewSet, SalaryStructureViewSet, PayrollRecordViewSet,
     EmployeeAdvanceLoanViewSet, ReimbursementExpenseViewSet,
     EmployeeOnboardingViewSet, EmployeeTransferViewSet,
     EmployeePromotionViewSet, EmployeeExitViewSet, HolidayViewSet,
-    EmployeeAppraisalViewSet
+    EmployeeAppraisalViewSet, EmployeeDashboardView
 )
 
 router = DefaultRouter()
@@ -17,6 +18,8 @@ router.register('designations', DesignationViewSet, basename='designation')
 router.register('employee-documents', EmployeeDocumentViewSet, basename='employee-document')
 router.register('shifts', ShiftMasterViewSet, basename='shift')
 router.register('attendance-records', AttendanceRecordViewSet, basename='attendance-record')
+router.register('leave-types', LeaveTypeViewSet, basename='leave-type')
+router.register('leave-balances', LeaveBalanceViewSet, basename='leave-balance')
 router.register('leave-requests', LeaveRequestViewSet, basename='leave-request')
 router.register('wfh-requests', WFHRequestViewSet, basename='wfh-request')
 router.register('missed-punches', MissedPunchRequestViewSet, basename='missed-punch')
@@ -36,6 +39,7 @@ router.register('holidays', HolidayViewSet, basename='holiday')
 router.register('employee-appraisals', EmployeeAppraisalViewSet, basename='employee-appraisal')
 
 urlpatterns = [
+    path('employee-dashboard/', EmployeeDashboardView.as_view(), name='employee-dashboard'),
     path('', include(router.urls)),
 ]
 

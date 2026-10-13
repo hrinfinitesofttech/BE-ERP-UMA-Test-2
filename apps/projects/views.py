@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 
 from apps.core.models import NumberingSetting
+from apps.core.rbac_permissions import is_super_admin, is_admin, is_department_manager
+from apps.authentication.models import User
 from .models import (
     ProjectJobMaster,
     ProjectPlanningStage,
@@ -284,23 +286,49 @@ class ProjectMilestoneViewSet(viewsets.ModelViewSet):
 class ProjectTaskViewSet(viewsets.ModelViewSet):
     queryset = ProjectTask.objects.all().order_by('-id')
     serializer_class = ProjectTaskSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        user = self.request.user
+        qs = ProjectTask.objects.all().order_by('-id')
+        if not user or not user.is_authenticated:
+            return ProjectTask.objects.none()
+
+        if not (is_super_admin(user) or is_admin(user)):
+            if is_department_manager(user):
+                dept_name = getattr(user, 'department_name', '')
+                if dept_name:
+                    qs = qs.filter(department__iexact=dept_name)
+                else:
+                    qs = qs.filter(assigned_to_id=user.id)
+            else:
+                qs = qs.filter(assigned_to_id=user.id)
+
         emp_id = self.request.GET.get('assigned_to_id') or self.request.GET.get('assignedToId')
         dept = self.request.GET.get('department')
         status_val = self.request.GET.get('status')
+        project_id = self.request.GET.get('project_id') or self.request.GET.get('projectId')
+
         if emp_id:
             qs = qs.filter(assigned_to_id=emp_id)
-        if dept and dept != 'ALL':
+        if dept and dept not in ['ALL', 'all']:
             qs = qs.filter(department__iexact=dept)
-        if status_val and status_val != 'ALL':
+        if status_val and status_val not in ['ALL', 'all']:
             qs = qs.filter(status__iexact=status_val)
+        if project_id and project_id not in ['ALL', 'all']:
+            qs = qs.filter(project_id=project_id)
         return qs
 
     def create(self, request, *args, **kwargs):
         import uuid
+        user = request.user
+        if not user or not user.is_authenticated:
+            return Response({'error': 'Authentication credentials were not provided.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Only managers, admins, super admins, or users with can_assign_tasks capability can create/assign tasks
+        if not (is_super_admin(user) or is_admin(user) or is_department_manager(user) or getattr(user, 'can_assign_tasks', False)):
+            return Response({'error': 'You do not have permission to create or assign tasks.'}, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
             data['id'] = f"TSK-{uuid.uuid4().hex[:10].upper()}"
@@ -311,23 +339,75 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
         if 'task_number' not in data:
             data['task_number'] = data.get('taskNumber') or f"TSK-2026-{ProjectTask.objects.count() + 1:03d}"
         if 'department' not in data:
-            data['department'] = data.get('department') or 'General'
+            data['department'] = data.get('department') or getattr(user, 'department_name', '') or 'General'
+        if 'assigned_by_name' not in data:
+            data['assigned_by_name'] = user.name or f"{user.first_name} {user.last_name}".strip() or user.username
         if 'assigned_to_name' not in data:
             data['assigned_to_name'] = data.get('assignedTo') or data.get('assigned_to') or ''
         if 'assigned_to_id' not in data:
             data['assigned_to_id'] = data.get('assignedToId') or ''
         if 'due_date' not in data:
             data['due_date'] = data.get('dueDate') or data.get('due_date') or ''
+        if 'status' not in data:
+            data['status'] = 'Assigned'
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+        task = self.get_object()
+
+        # Regular employees cannot modify restricted fields (assignees, deadlines, priority)
+        if not (is_super_admin(user) or is_admin(user) or is_department_manager(user) or getattr(user, 'can_assign_tasks', False)):
+            restricted_modified = any(k in data for k in ['assigned_to_id', 'assignedToId', 'due_date', 'dueDate', 'priority', 'department'])
+            if restricted_modified:
+                return Response({'error': 'Only authorized managers can modify assignees, deadlines, department, or priority.'}, status=status.HTTP_403_FORBIDDEN)
+
+        return super().update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['post'], url_path='accept')
+    def accept_task(self, request, pk=None):
+        task = self.get_object()
+        user = request.user
+
+        # Task can be accepted by assignee or authorized manager
+        if task.assigned_to_id and task.assigned_to_id != user.id and not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'You can only accept tasks assigned to you.'}, status=status.HTTP_403_FORBIDDEN)
+
+        task.status = 'Accepted'
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='start')
+    def start_task(self, request, pk=None):
+        from datetime import date
+        task = self.get_object()
+        user = request.user
+
+        if task.assigned_to_id and task.assigned_to_id != user.id and not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'You can only start tasks assigned to you.'}, status=status.HTTP_403_FORBIDDEN)
+
+        task.status = 'In Progress'
+        if not task.start_date:
+            task.start_date = date.today().isoformat()
+        if task.progress_percent == 0:
+            task.progress_percent = 10
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
     @action(detail=True, methods=['patch', 'post'], url_path='progress')
     def update_progress(self, request, pk=None):
         from django.utils import timezone
         task = self.get_object()
+        user = request.user
+
+        if task.assigned_to_id and task.assigned_to_id != user.id and not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'You can only update progress on tasks assigned to you.'}, status=status.HTTP_403_FORBIDDEN)
+
         data = request.data
         if 'progress_percent' in data:
             task.progress_percent = int(data['progress_percent'])
@@ -352,6 +432,105 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
 
         task.save()
         return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='submit-for-review')
+    def submit_for_review(self, request, pk=None):
+        task = self.get_object()
+        user = request.user
+
+        if task.assigned_to_id and task.assigned_to_id != user.id and not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'You can only submit tasks assigned to you.'}, status=status.HTTP_403_FORBIDDEN)
+
+        task.status = 'Submitted for Review'
+        task.progress_percent = 100
+        remarks = request.data.get('remarks') or request.data.get('comment') or ''
+        if remarks:
+            task.remarks = remarks
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='review')
+    def review_task(self, request, pk=None):
+        from django.utils import timezone
+        task = self.get_object()
+        user = request.user
+
+        # Only authorized managers or admins can review
+        if not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'Only authorized managers can review tasks.'}, status=status.HTTP_403_FORBIDDEN)
+
+        data = request.data
+        action_val = data.get('action') or data.get('reviewAction') or 'approve'
+        notes = data.get('reviewNotes') or data.get('review_notes') or data.get('feedback') or ''
+
+        if action_val in ['approve', 'complete', 'Approved']:
+            task.status = 'Completed'
+            task.progress_percent = 100
+            task.completion_date = timezone.now().strftime('%Y-%m-%d')
+            if notes:
+                task.review_notes = notes
+        elif action_val in ['request_revision', 'revision_required', 'Revision Required']:
+            task.status = 'Revision Required'
+            task.review_notes = notes or 'Revision required. Please review manager feedback.'
+            # Keep progress at current or adjust
+            if task.progress_percent == 100:
+                task.progress_percent = 80
+        elif action_val in ['hold', 'On Hold']:
+            task.status = 'On Hold'
+            if notes:
+                task.review_notes = notes
+
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='hold')
+    def hold_task(self, request, pk=None):
+        task = self.get_object()
+        task.status = 'On Hold'
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel_task(self, request, pk=None):
+        user = request.user
+        if not (is_super_admin(user) or is_admin(user) or is_department_manager(user)):
+            return Response({'error': 'Only authorized managers can cancel tasks.'}, status=status.HTTP_403_FORBIDDEN)
+        task = self.get_object()
+        task.status = 'Cancelled'
+        task.save()
+        return Response(ProjectTaskSerializer(task).data)
+
+    @action(detail=False, methods=['get'], url_path='metrics')
+    def metrics(self, request):
+        from datetime import date
+        qs = self.get_queryset()
+        today_str = date.today().isoformat()
+
+        total = qs.count()
+        assigned = qs.filter(status='Assigned').count()
+        accepted = qs.filter(status='Accepted').count()
+        in_progress = qs.filter(status__in=['In Progress', 'in_progress']).count()
+        submitted = qs.filter(status__in=['Submitted for Review', 'submitted_for_review']).count()
+        revision = qs.filter(status='Revision Required').count()
+        completed = qs.filter(status__in=['Completed', 'completed']).count()
+        on_hold = qs.filter(status='On Hold').count()
+        cancelled = qs.filter(status='Cancelled').count()
+        due_today = qs.filter(due_date=today_str).exclude(status__in=['Completed', 'completed', 'Cancelled']).count()
+        overdue = qs.filter(due_date__lt=today_str).exclude(due_date='').exclude(status__in=['Completed', 'completed', 'Cancelled']).count()
+
+        return Response({
+            'total': total,
+            'assigned': assigned,
+            'accepted': accepted,
+            'inProgress': in_progress,
+            'submittedForReview': submitted,
+            'revisionRequired': revision,
+            'completed': completed,
+            'onHold': on_hold,
+            'cancelled': cancelled,
+            'dueToday': due_today,
+            'overdue': overdue,
+        })
 
 
 class ProjectDocumentViewSet(viewsets.ModelViewSet):

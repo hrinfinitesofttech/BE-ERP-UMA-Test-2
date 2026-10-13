@@ -81,6 +81,48 @@ class AttendanceRecord(models.Model):
         super().save(*args, **kwargs)
 
 
+class LeaveType(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    leave_code = models.CharField(max_length=32, unique=True)
+    leave_name = models.CharField(max_length=128)
+    annual_quota = models.DecimalField(max_digits=5, decimal_places=1, default=12.0)
+    monthly_accrual = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
+    carry_forward_allowed = models.BooleanField(default=False)
+    max_consecutive_days = models.IntegerField(default=5)
+    half_day_allowed = models.BooleanField(default=True)
+    attachment_required = models.BooleanField(default=False)
+    status = models.CharField(max_length=32, default='Active')
+
+    def __str__(self):
+        return f"{self.leave_name} ({self.leave_code})"
+
+
+class LeaveBalance(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    employee_id = models.CharField(max_length=64)
+    employee_name = models.CharField(max_length=128)
+    department = models.CharField(max_length=128, blank=True)
+    leave_type_id = models.CharField(max_length=64)
+    leave_code = models.CharField(max_length=32)
+    leave_name = models.CharField(max_length=128)
+    financial_year = models.CharField(max_length=32, default='2026-2027')
+    total_credited = models.DecimalField(max_digits=5, decimal_places=1, default=12.0)
+    used = models.DecimalField(max_digits=5, decimal_places=1, default=0.0)
+    pending_approval = models.DecimalField(max_digits=5, decimal_places=1, default=0.0)
+    available_balance = models.DecimalField(max_digits=5, decimal_places=1, default=12.0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('employee_id', 'leave_type_id', 'financial_year')
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.leave_code}: {self.available_balance} days"
+
+    def recalculate(self):
+        self.available_balance = max(0.0, float(self.total_credited) - float(self.used) - float(self.pending_approval))
+        self.save()
+
+
 class LeaveRequest(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     leave_number = models.CharField(max_length=64, unique=True)

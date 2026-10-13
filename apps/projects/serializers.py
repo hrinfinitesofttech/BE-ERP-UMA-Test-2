@@ -223,8 +223,10 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             'estimated_hours',
             'actual_hours',
             'checklist',
+            'start_date',
             'due_date',
             'completion_date',
+            'review_notes',
             'remarks',
             'created_at',
             'updated_at',
@@ -254,8 +256,12 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             data['estimated_hours'] = data.pop('estimatedHours')
         if 'actualHours' in data and 'actual_hours' not in data:
             data['actual_hours'] = data.pop('actualHours')
+        if 'startDate' in data and 'start_date' not in data:
+            data['start_date'] = data.pop('startDate')
         if 'dueDate' in data and 'due_date' not in data:
             data['due_date'] = data.pop('dueDate')
+        if 'reviewNotes' in data and 'review_notes' not in data:
+            data['review_notes'] = data.pop('reviewNotes')
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -273,8 +279,10 @@ class ProjectTaskSerializer(serializers.ModelSerializer):
             'progress': ret.get('progress_percent', 0),
             'estimatedHours': ret.get('estimated_hours', 0.0),
             'actualHours': ret.get('actual_hours', 0.0),
+            'startDate': ret.get('start_date', ''),
             'dueDate': ret.get('due_date', ''),
             'completionDate': ret.get('completion_date', ''),
+            'reviewNotes': ret.get('review_notes', ''),
         }
 
 

@@ -122,6 +122,8 @@ from apps.hr.views import (
     EmployeeDocumentViewSet,
     ShiftMasterViewSet,
     AttendanceRecordViewSet,
+    LeaveTypeViewSet,
+    LeaveBalanceViewSet,
     LeaveRequestViewSet,
     WFHRequestViewSet,
     MissedPunchRequestViewSet,
@@ -139,6 +141,7 @@ from apps.hr.views import (
     EmployeePromotionViewSet,
     EmployeeExitViewSet,
     EmployeeAppraisalViewSet,
+    EmployeeDashboardView,
 )
 from apps.accounting.views import (
     FinancialYearViewSet,
@@ -220,7 +223,6 @@ api_router.register(r'design-documents', TechnicalDocumentItemViewSet, basename=
 api_router.register(r'material-requirements', MaterialRequirementViewSet, basename='material-requirement')
 api_router.register(r'mrp', MaterialRequirementViewSet, basename='mrp')
 api_router.register(r'suppliers', SupplierViewSet, basename='supplier')
-api_router.register(r'supplier-contacts', SupplierContactViewSet, basename='supplier-contact')
 api_router.register(r'purchase-requisitions', PurchaseRequisitionViewSet, basename='purchase-requisition')
 api_router.register(r'indents', PurchaseRequisitionViewSet, basename='indent')
 api_router.register(r'rfqs', RequestForQuotationViewSet, basename='rfq')
@@ -233,18 +235,10 @@ api_router.register(r'purchase-returns', PurchaseReturnViewSet, basename='purcha
 api_router.register(r'item-categories', ItemCategoryViewSet, basename='item-category')
 api_router.register(r'uoms', UOMMasterViewSet, basename='uom')
 api_router.register(r'items', ItemMasterViewSet, basename='item')
-api_router.register(r'warehouses', WarehouseViewSet, basename='warehouse')
-api_router.register(r'warehouse-locations', WarehouseLocationViewSet, basename='warehouse-location')
 api_router.register(r'grns', GoodsReceiptNoteViewSet, basename='grn')
 api_router.register(r'goods-receipt-notes', GoodsReceiptNoteViewSet, basename='goods-receipt-note')
-api_router.register(r'qc-inspections', QCInspectionViewSet, basename='qc-inspection')
-api_router.register(r'stock', StockBalanceViewSet, basename='stock-balance')
-api_router.register(r'stock-reservations', StockReservationViewSet, basename='stock-reservation')
 api_router.register(r'material-issues', MaterialIssueViewSet, basename='material-issue')
 api_router.register(r'material-returns', MaterialReturnViewSet, basename='material-return')
-api_router.register(r'stock-transfers', StockTransferViewSet, basename='stock-transfer')
-api_router.register(r'stock-adjustments', StockAdjustmentViewSet, basename='stock-adjustment')
-api_router.register(r'stock-ledger', StockLedgerEntryViewSet, basename='stock-ledger')
 api_router.register(r'scrap', ScrapEntryViewSet, basename='scrap')
 
 # Production & Shopfloor
@@ -290,6 +284,8 @@ api_router.register(r'designations', DesignationViewSet, basename='designation')
 api_router.register(r'employee-documents', EmployeeDocumentViewSet, basename='employee-document')
 api_router.register(r'shifts', ShiftMasterViewSet, basename='shift')
 api_router.register(r'attendance-records', AttendanceRecordViewSet, basename='attendance-record')
+api_router.register(r'leave-types', LeaveTypeViewSet, basename='leave-type')
+api_router.register(r'leave-balances', LeaveBalanceViewSet, basename='leave-balance')
 api_router.register(r'leave-requests', LeaveRequestViewSet, basename='leave-request')
 api_router.register(r'wfh-requests', WFHRequestViewSet, basename='wfh-request')
 api_router.register(r'missed-punches', MissedPunchRequestViewSet, basename='missed-punch')
@@ -351,6 +347,8 @@ urlpatterns = [
     path('api/system/clear-all-data/', SystemClearDataView.as_view(), name='api-system-clear-all-data'),
     path('api/job-360/<str:job_number>/', Job360APIView.as_view(), name='api-job-360-detail'),
     path('api/job-360/', Job360APIView.as_view(), name='api-job-360-query'),
+    path('api/hr/employee-dashboard/', EmployeeDashboardView.as_view(), name='api-hr-employee-dashboard'),
+    path('api/employee-dashboard/', EmployeeDashboardView.as_view(), name='api-employee-dashboard'),
 
     # Modular Namespaced URLs (mounted before the root convenience router so
     # that prefixes like api/projects/* are not swallowed by its <pk> routes)

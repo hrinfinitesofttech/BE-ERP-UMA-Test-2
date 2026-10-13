@@ -43,6 +43,10 @@ class UserSerializer(serializers.ModelSerializer):
             'joining_date',
             'employment_type',
             'status',
+            'is_active',
+            'explicit_restrictions',
+            'permissions_review_required',
+            'previous_department_name',
             'last_login_str',
             'is_family_member',
             'profile_photo',
@@ -148,6 +152,9 @@ class UserSerializer(serializers.ModelSerializer):
             'emergencyContact': 'emergency_contact',
             'reportingManagerId': 'reporting_manager_id',
             'reportingManagerName': 'reporting_manager_name',
+            'explicitRestrictions': 'explicit_restrictions',
+            'permissionsReviewRequired': 'permissions_review_required',
+            'isActive': 'is_active',
         }
         for camel, snake in camel_to_snake.items():
             if camel in data and snake not in data:
@@ -203,5 +210,13 @@ class UserSerializer(serializers.ModelSerializer):
         ret['joiningDate'] = ret.get('joining_date') or ''
         ret['employmentType'] = ret.get('employment_type') or 'full_time'
         ret['isFamilyMember'] = bool(ret.get('is_family_member', False))
+        ret['explicitRestrictions'] = ret.get('explicit_restrictions') or []
+        ret['explicit_restrictions'] = ret.get('explicit_restrictions') or []
+        ret['permissionsReviewRequired'] = bool(ret.get('permissions_review_required', False))
+        ret['permissions_review_required'] = bool(ret.get('permissions_review_required', False))
+        ret['previousDepartmentName'] = ret.get('previous_department_name') or ''
+        ret['previous_department_name'] = ret.get('previous_department_name') or ''
+        ret['isActive'] = bool(instance.is_active)
+        ret['is_active'] = bool(instance.is_active)
 
         return ret

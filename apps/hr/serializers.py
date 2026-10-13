@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Designation, EmployeeDocument, ShiftMaster, AttendanceRecord,
-    LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
+    LeaveType, LeaveBalance, LeaveRequest, WFHRequest, MissedPunchRequest, AttendanceRegularization,
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
     EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
@@ -109,6 +109,71 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         return ret
 
 
+class LeaveTypeSerializer(serializers.ModelSerializer):
+    leaveCode = serializers.CharField(source='leave_code', required=False)
+    leaveName = serializers.CharField(source='leave_name', required=False)
+    annualQuota = serializers.DecimalField(source='annual_quota', max_digits=5, decimal_places=1, required=False)
+    monthlyAccrual = serializers.DecimalField(source='monthly_accrual', max_digits=5, decimal_places=2, required=False)
+    carryForwardAllowed = serializers.BooleanField(source='carry_forward_allowed', required=False)
+    maxConsecutiveDays = serializers.IntegerField(source='max_consecutive_days', required=False)
+    halfDayAllowed = serializers.BooleanField(source='half_day_allowed', required=False)
+    attachmentRequired = serializers.BooleanField(source='attachment_required', required=False)
+
+    class Meta:
+        model = LeaveType
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        for camel, snake in [
+            ('leaveCode', 'leave_code'),
+            ('leaveName', 'leave_name'),
+            ('annualQuota', 'annual_quota'),
+            ('monthlyAccrual', 'monthly_accrual'),
+            ('carryForwardAllowed', 'carry_forward_allowed'),
+            ('maxConsecutiveDays', 'max_consecutive_days'),
+            ('halfDayAllowed', 'half_day_allowed'),
+            ('attachmentRequired', 'attachment_required'),
+        ]:
+            if camel in data:
+                ret[snake] = data[camel]
+        return ret
+
+
+class LeaveBalanceSerializer(serializers.ModelSerializer):
+    employeeId = serializers.CharField(source='employee_id', required=False)
+    employeeName = serializers.CharField(source='employee_name', required=False)
+    leaveTypeId = serializers.CharField(source='leave_type_id', required=False)
+    leaveCode = serializers.CharField(source='leave_code', required=False)
+    leaveName = serializers.CharField(source='leave_name', required=False)
+    financialYear = serializers.CharField(source='financial_year', required=False)
+    totalCredited = serializers.DecimalField(source='total_credited', max_digits=5, decimal_places=1, required=False)
+    pendingApproval = serializers.DecimalField(source='pending_approval', max_digits=5, decimal_places=1, required=False)
+    availableBalance = serializers.DecimalField(source='available_balance', max_digits=5, decimal_places=1, required=False)
+    updatedAt = serializers.DateTimeField(source='updated_at', required=False)
+
+    class Meta:
+        model = LeaveBalance
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        for camel, snake in [
+            ('employeeId', 'employee_id'),
+            ('employeeName', 'employee_name'),
+            ('leaveTypeId', 'leave_type_id'),
+            ('leaveCode', 'leave_code'),
+            ('leaveName', 'leave_name'),
+            ('financialYear', 'financial_year'),
+            ('totalCredited', 'total_credited'),
+            ('pendingApproval', 'pending_approval'),
+            ('availableBalance', 'available_balance'),
+        ]:
+            if camel in data:
+                ret[snake] = data[camel]
+        return ret
+
+
 class LeaveRequestSerializer(serializers.ModelSerializer):
     leaveNumber = serializers.CharField(source='leave_number', required=False)
     employeeId = serializers.CharField(source='employee_id', required=False)
@@ -130,38 +195,42 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
         fields = '__all__'
+        read_only_fields = ['id', 'leave_number', 'applied_date']
+        extra_kwargs = {
+            'id': {'required': False, 'read_only': True},
+            'leave_number': {'required': False, 'read_only': True},
+            'applied_date': {'required': False, 'read_only': True},
+            'department': {'required': False},
+            'reason': {'required': False},
+            'from_date': {'required': False},
+            'to_date': {'required': False},
+            'number_of_days': {'required': False},
+            'employee_id': {'required': False},
+            'employee_name': {'required': False},
+            'leave_name': {'required': False},
+        }
 
     def to_internal_value(self, data):
-        ret = super().to_internal_value(data)
-        if 'leaveNumber' in data:
-            ret['leave_number'] = data['leaveNumber']
-        if 'employeeId' in data:
-            ret['employee_id'] = data['employeeId']
-        if 'employeeName' in data:
-            ret['employee_name'] = data['employeeName']
-        if 'leaveTypeId' in data:
-            ret['leave_type_id'] = data['leaveTypeId']
-        if 'leaveName' in data:
-            ret['leave_name'] = data['leaveName']
-        if 'fromDate' in data:
-            ret['from_date'] = data['fromDate']
-        if 'toDate' in data:
-            ret['to_date'] = data['toDate']
-        if 'numberOfDays' in data:
-            ret['number_of_days'] = data['numberOfDays']
-        if 'isHalfDay' in data:
-            ret['is_half_day'] = data['isHalfDay']
-        if 'attachmentUrl' in data:
-            ret['attachment_url'] = data['attachmentUrl']
-        if 'reportingManager' in data:
-            ret['reporting_manager'] = data['reportingManager']
-        if 'appliedDate' in data:
-            ret['applied_date'] = data['appliedDate']
-        if 'managerRemarks' in data:
-            ret['manager_remarks'] = data['managerRemarks']
-        if 'adminRemarks' in data:
-            ret['admin_remarks'] = data['adminRemarks']
-        return ret
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        for camel, snake in [
+            ('leaveNumber', 'leave_number'),
+            ('employeeId', 'employee_id'),
+            ('employeeName', 'employee_name'),
+            ('leaveTypeId', 'leave_type_id'),
+            ('leaveName', 'leave_name'),
+            ('fromDate', 'from_date'),
+            ('toDate', 'to_date'),
+            ('numberOfDays', 'number_of_days'),
+            ('isHalfDay', 'is_half_day'),
+            ('attachmentUrl', 'attachment_url'),
+            ('reportingManager', 'reporting_manager'),
+            ('appliedDate', 'applied_date'),
+            ('managerRemarks', 'manager_remarks'),
+            ('adminRemarks', 'admin_remarks'),
+        ]:
+            if camel in data and snake not in data:
+                data[snake] = data[camel]
+        return super().to_internal_value(data)
 
     def validate(self, data):
         if not data.get('employee_id') and not self.instance:
