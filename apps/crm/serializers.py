@@ -18,6 +18,8 @@ from .models import (
 
 
 class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    product_name = serializers.CharField(required=False, allow_blank=True, default='')
+
     class Meta:
         model = Lead
         fields = [
@@ -237,6 +239,9 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
 
 
 class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    machine_product = serializers.CharField(required=False, allow_blank=True, default='')
+    requirement = serializers.CharField(required=False, allow_blank=True, default='')
+
     class Meta:
         model = Enquiry
         fields = [
@@ -414,8 +419,17 @@ class FollowUpSerializer(serializers.ModelSerializer):
         ]
 
 
-class SiteVisitSerializer(serializers.ModelSerializer):
+class SiteVisitSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     customer_id = serializers.CharField(required=False, allow_blank=True, default='')
+    customer_name = serializers.CharField(required=False, allow_blank=True, default='')
+    contact_person = serializers.CharField(required=False, allow_blank=True, default='')
+    contact_mobile = serializers.CharField(required=False, allow_blank=True, default='')
+    visit_date = serializers.CharField(required=False, allow_blank=True, default='')
+    location = serializers.CharField(required=False, allow_blank=True, default='')
+    purpose = serializers.CharField(required=False, allow_blank=True, default='')
+    discussion_notes = serializers.CharField(required=False, allow_blank=True, default='')
+    requirement_details = serializers.CharField(required=False, allow_blank=True, default='')
+    outcome = serializers.CharField(required=False, allow_blank=True, default='positive')
 
     class Meta:
         model = SiteVisit
@@ -445,6 +459,76 @@ class SiteVisitSerializer(serializers.ModelSerializer):
             'next_action',
             'next_follow_up_date',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'visitNo': 'visit_no',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'leadId': 'lead_id',
+            'enquiryId': 'enquiry_id',
+            'contactPerson': 'contact_person',
+            'contactMobile': 'contact_mobile',
+            'visitDate': 'visit_date',
+            'employeeId': 'employee_id',
+            'employeeName': 'employee_name',
+            'discussionNotes': 'discussion_notes',
+            'discussionSummary': 'discussion_notes',
+            'requirementDetails': 'requirement_details',
+            'siteMeasurements': 'site_measurements',
+            'operatingConditions': 'operating_conditions',
+            'technicalObservations': 'technical_observations',
+            'pendingClarifications': 'pending_clarifications',
+            'nextAction': 'next_action',
+            'nextFollowUpDate': 'next_follow_up_date',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+
+        if data.get('lead_id'):
+            try:
+                from .models import Lead
+                lead = Lead.objects.filter(id=data['lead_id']).first()
+                if lead:
+                    if not data.get('customer_name'):
+                        data['customer_name'] = lead.company_name
+                    if not data.get('customer_id'):
+                        data['customer_id'] = lead.id
+                    if not data.get('contact_person'):
+                        data['contact_person'] = lead.contact_person or 'Client Lead'
+                    if not data.get('contact_mobile'):
+                        data['contact_mobile'] = lead.mobile or ''
+                    if not data.get('location'):
+                        data['location'] = lead.address or lead.city or 'Client Site'
+            except Exception:
+                pass
+
+        if not data.get('customer_name'):
+            data['customer_name'] = 'Valued Client'
+        if not data.get('customer_id'):
+            data['customer_id'] = data.get('lead_id') or 'LEAD-PROSPECT'
+        if not data.get('contact_person'):
+            data['contact_person'] = 'Representative'
+        if not data.get('contact_mobile'):
+            data['contact_mobile'] = ''
+        if not data.get('visit_date'):
+            data['visit_date'] = datetime.now().strftime('%Y-%m-%d')
+        if not data.get('location'):
+            data['location'] = 'Client Site'
+
+        inst = getattr(self, 'instance', None)
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if not data.get('visit_no'):
+                data['visit_no'] = data.get('id') or f"VST-2026-{int(datetime.now().timestamp())}"
+            if not data.get('id'):
+                data['id'] = data['visit_no']
+
+        return super().to_internal_value(data)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

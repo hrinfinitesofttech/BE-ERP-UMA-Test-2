@@ -20,7 +20,7 @@ class Lead(models.Model):
     alt_mobile = models.CharField(max_length=30, blank=True, default='')
     email = models.EmailField(blank=True, default='')
     whatsapp = models.CharField(max_length=30, blank=True, default='')
-    product_name = models.CharField(max_length=200)
+    product_name = models.CharField(max_length=200, blank=True, default='')
     machine_type = models.CharField(max_length=100, blank=True, default='')
     quantity = models.IntegerField(default=1)
     capacity = models.CharField(max_length=100, blank=True, default='')
