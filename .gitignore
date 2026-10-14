@@ -16,6 +16,8 @@ scratch/
 local_settings.py
 staticfiles/
 deployment_history.json
+*.local_bak
+live_pa_db.sqlite3
 
 # IDE
 .vscode/

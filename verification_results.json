@@ -1,0 +1,161 @@
+{
+  "proof_results": {
+    "Proof 1: User A Create & Persist": {
+      "status": "PASS",
+      "record_id": "LEAD-2026-0005",
+      "http_code": 201,
+      "detail": "Record created with ID LEAD-2026-0005 and stored in DB"
+    },
+    "Proof 2: User B Cross-User Read": {
+      "status": "PASS",
+      "record_id": "LEAD-2026-0005",
+      "http_code": 200,
+      "detail": "User B successfully fetched User A's record LEAD-2026-0005 from shared DB"
+    },
+    "Proof 3: Cross-User Update Persistence": {
+      "status": "PASS",
+      "record_id": "LEAD-2026-0005",
+      "updated_status": "contacted",
+      "updated_budget": 850000.0,
+      "detail": "User B update immediately reflected to User A via shared DB"
+    },
+    "Proof 4: RBAC & Scope Isolation": {
+      "status": "PASS",
+      "super_admin_employee_count": 6,
+      "own_scope_employee_count": 1,
+      "shared_leads_count": 5,
+      "detail": "Data scope correctly preserved: Super Admin sees all 6 employees; 'own' scope user restricted to own profile but accesses shared business leads"
+    }
+  },
+  "module_matrix": [
+    {
+      "module": "CRM Leads",
+      "endpoint": "/leads/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 5,
+      "user_b_count": 5,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Customers",
+      "endpoint": "/customers/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 2,
+      "user_b_count": 2,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Contacts",
+      "endpoint": "/contacts/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 0,
+      "user_b_count": 0,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Enquiries",
+      "endpoint": "/enquiries/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 2,
+      "user_b_count": 2,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Quotations",
+      "endpoint": "/quotations/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Customer POs",
+      "endpoint": "/customer-pos/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "CRM Sales Orders",
+      "endpoint": "/sales-orders/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Item Master",
+      "endpoint": "/items/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Purchase Orders",
+      "endpoint": "/purchase-orders/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Goods Receipt (GRN)",
+      "endpoint": "/grns/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 1,
+      "user_b_count": 1,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Employees Master",
+      "endpoint": "/employees/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 6,
+      "user_b_count": 6,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Departments",
+      "endpoint": "/departments/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 14,
+      "user_b_count": 14,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Roles Master",
+      "endpoint": "/roles/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 4,
+      "user_b_count": 4,
+      "outcome": "PASS"
+    },
+    {
+      "module": "Work Orders",
+      "endpoint": "/work-orders/",
+      "user_a_status": 200,
+      "user_b_status": 200,
+      "user_a_count": 2,
+      "user_b_count": 2,
+      "outcome": "PASS"
+    }
+  ],
+  "all_proofs_passed": true,
+  "module_pass_count": 14,
+  "module_total_count": 14
+}
