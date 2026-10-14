@@ -52,7 +52,7 @@ class ProductionPlanViewSet(viewsets.ModelViewSet):
 
 
 class WorkCenterViewSet(viewsets.ModelViewSet):
-    queryset = WorkCenter.objects.all()
+    queryset = WorkCenter.objects.all().order_by('-id')
     serializer_class = WorkCenterSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['work_center_code', 'work_center_name', 'machine_name']
@@ -60,7 +60,7 @@ class WorkCenterViewSet(viewsets.ModelViewSet):
 
 
 class RoutingOperationViewSet(viewsets.ModelViewSet):
-    queryset = RoutingOperation.objects.all().order_by('sequence')
+    queryset = RoutingOperation.objects.all().order_by('-id')
     serializer_class = RoutingOperationSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['operation_name', 'work_center_name']

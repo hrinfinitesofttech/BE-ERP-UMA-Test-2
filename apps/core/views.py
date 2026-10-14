@@ -89,7 +89,7 @@ class CompanySettingView(APIView):
 
 
 class NumberingSettingViewSet(viewsets.ModelViewSet):
-    queryset = NumberingSetting.objects.all().order_by('id')
+    queryset = NumberingSetting.objects.all().order_by('-id')
     serializer_class = NumberingSettingSerializer
     permission_classes = [permissions.AllowAny]
 

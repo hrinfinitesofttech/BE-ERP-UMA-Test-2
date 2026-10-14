@@ -41,7 +41,7 @@ from .serializers import (
 
 
 class ItemCategoryViewSet(viewsets.ModelViewSet):
-    queryset = ItemCategory.objects.all().order_by('name')
+    queryset = ItemCategory.objects.all().order_by('-id')
     serializer_class = ItemCategorySerializer
     permission_classes = [permissions.AllowAny]
 
@@ -62,7 +62,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
 
 
 class UOMMasterViewSet(viewsets.ModelViewSet):
-    queryset = UOMMaster.objects.all().order_by('code')
+    queryset = UOMMaster.objects.all().order_by('-id')
     serializer_class = UOMMasterSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -83,7 +83,7 @@ class UOMMasterViewSet(viewsets.ModelViewSet):
 
 
 class ItemMasterViewSet(viewsets.ModelViewSet):
-    queryset = ItemMaster.objects.all().order_by('item_code')
+    queryset = ItemMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ItemMasterSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -127,13 +127,13 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
 
 
 class WarehouseViewSet(viewsets.ModelViewSet):
-    queryset = Warehouse.objects.all().order_by('warehouse_code')
+    queryset = Warehouse.objects.all().order_by('-id')
     serializer_class = WarehouseSerializer
     permission_classes = [permissions.AllowAny]
 
 
 class WarehouseLocationViewSet(viewsets.ModelViewSet):
-    queryset = WarehouseLocation.objects.all().order_by('code')
+    queryset = WarehouseLocation.objects.all().order_by('-id')
     serializer_class = WarehouseLocationSerializer
     permission_classes = [permissions.AllowAny]
 

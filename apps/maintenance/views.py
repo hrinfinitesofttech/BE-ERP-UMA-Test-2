@@ -18,7 +18,7 @@ from .serializers import (
 
 
 class InternalAssetViewSet(viewsets.ModelViewSet):
-    queryset = InternalAsset.objects.all()
+    queryset = InternalAsset.objects.all().order_by('-id')
     serializer_class = InternalAssetSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['asset_code', 'asset_name', 'model', 'manufacturer', 'serial_number']
@@ -26,7 +26,7 @@ class InternalAssetViewSet(viewsets.ModelViewSet):
 
 
 class CustomerMachineViewSet(viewsets.ModelViewSet):
-    queryset = CustomerMachine.objects.all()
+    queryset = CustomerMachine.objects.all().order_by('-id')
     serializer_class = CustomerMachineSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['customer_machine_id', 'machine_name', 'customer_name', 'serial_number']
@@ -34,7 +34,7 @@ class CustomerMachineViewSet(viewsets.ModelViewSet):
 
 
 class ServiceRequestViewSet(viewsets.ModelViewSet):
-    queryset = ServiceRequest.objects.all().order_by('-request_date')
+    queryset = ServiceRequest.objects.all().order_by('-request_date', '-id')
     serializer_class = ServiceRequestSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['request_number', 'customer_name', 'machine_name', 'serial_number']
@@ -73,7 +73,7 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
 
 
 class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
-    queryset = PreventiveMaintenancePlan.objects.all()
+    queryset = PreventiveMaintenancePlan.objects.all().order_by('-id')
     serializer_class = PreventiveMaintenancePlanSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['plan_number', 'asset_name', 'customer_name']
@@ -81,7 +81,7 @@ class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
 
 
 class BreakdownRecordViewSet(viewsets.ModelViewSet):
-    queryset = BreakdownRecord.objects.all().order_by('-breakdown_date')
+    queryset = BreakdownRecord.objects.all().order_by('-breakdown_date', '-id')
     serializer_class = BreakdownRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['breakdown_number', 'asset_name', 'customer_name', 'serial_number']
@@ -96,7 +96,7 @@ class BreakdownRecordViewSet(viewsets.ModelViewSet):
 
 
 class ServiceVisitViewSet(viewsets.ModelViewSet):
-    queryset = ServiceVisit.objects.all().order_by('-visit_date')
+    queryset = ServiceVisit.objects.all().order_by('-visit_date', '-id')
     serializer_class = ServiceVisitSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['visit_number', 'customer_name', 'machine_name', 'technician_name']
@@ -104,7 +104,7 @@ class ServiceVisitViewSet(viewsets.ModelViewSet):
 
 
 class AMCContractViewSet(viewsets.ModelViewSet):
-    queryset = AMCContract.objects.all()
+    queryset = AMCContract.objects.all().order_by('-id')
     serializer_class = AMCContractSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['amc_number', 'customer_name', 'machine_name', 'serial_number']
@@ -123,7 +123,7 @@ class AMCContractViewSet(viewsets.ModelViewSet):
 
 
 class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
-    queryset = ServiceWorkOrder.objects.all().order_by('-created_at')
+    queryset = ServiceWorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceWorkOrderSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['work_order_number', 'customer_name', 'machine_name', 'technician_name']
@@ -131,7 +131,7 @@ class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
 
 
 class ServicePartIssueViewSet(viewsets.ModelViewSet):
-    queryset = ServicePartIssue.objects.all().order_by('-created_at')
+    queryset = ServicePartIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartIssueSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['issue_number', 'customer_name', 'work_order_number', 'technician_name']
@@ -139,7 +139,7 @@ class ServicePartIssueViewSet(viewsets.ModelViewSet):
 
 
 class ServicePartReturnViewSet(viewsets.ModelViewSet):
-    queryset = ServicePartReturn.objects.all().order_by('-created_at')
+    queryset = ServicePartReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartReturnSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['return_number', 'work_order_number', 'original_issue_number', 'returned_by']
@@ -147,7 +147,7 @@ class ServicePartReturnViewSet(viewsets.ModelViewSet):
 
 
 class ServiceReportViewSet(viewsets.ModelViewSet):
-    queryset = ServiceReport.objects.all().order_by('-created_at')
+    queryset = ServiceReport.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceReportSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['report_number', 'customer_name', 'machine_name', 'technician_name', 'serial_number']
@@ -155,7 +155,7 @@ class ServiceReportViewSet(viewsets.ModelViewSet):
 
 
 class WarrantyRecordViewSet(viewsets.ModelViewSet):
-    queryset = WarrantyRecord.objects.all()
+    queryset = WarrantyRecord.objects.all().order_by('-id')
     serializer_class = WarrantyRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['serial_number', 'customer_name', 'machine_name']
@@ -163,7 +163,7 @@ class WarrantyRecordViewSet(viewsets.ModelViewSet):
 
 
 class ServiceContractViewSet(viewsets.ModelViewSet):
-    queryset = ServiceContract.objects.all()
+    queryset = ServiceContract.objects.all().order_by('-id')
     serializer_class = ServiceContractSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['contract_number', 'customer_name', 'machine_name']
@@ -171,7 +171,7 @@ class ServiceContractViewSet(viewsets.ModelViewSet):
 
 
 class DowntimeRecordViewSet(viewsets.ModelViewSet):
-    queryset = DowntimeRecord.objects.all().order_by('-start_time')
+    queryset = DowntimeRecord.objects.all().order_by('-start_time', '-id')
     serializer_class = DowntimeRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['downtime_number', 'asset_name', 'technician_name']

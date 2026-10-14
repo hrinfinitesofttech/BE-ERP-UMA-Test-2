@@ -45,6 +45,7 @@ from .serializers import (
 
 
 class LeadViewSet(viewsets.ModelViewSet):
+    queryset = Lead.objects.all().order_by('-created_at', '-id')
     serializer_class = LeadSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -251,6 +252,10 @@ class LeadViewSet(viewsets.ModelViewSet):
             'opportunity': OpportunitySerializer(opportunity).data,
         })
 
+    @action(detail=True, methods=['post'], url_path='convert-to-customer')
+    def convert_to_customer_alias(self, request, pk=None):
+        return self.convert_to_customer(request, pk)
+
     @action(detail=True, methods=['post'], url_path='convert-to-enquiry')
     def convert_to_enquiry(self, request, pk=None):
         lead = self.get_object()
@@ -289,6 +294,10 @@ class LeadViewSet(viewsets.ModelViewSet):
             enquiry_date=datetime.now().strftime('%Y-%m-%d'),
             requirement=lead.requirement_description or f"Enquiry for {lead.product_name}",
             machine_product=lead.product_name,
+            machine_type=lead.machine_type or '',
+            application=lead.application or '',
+            capacity=lead.capacity or '',
+            budget=lead.budget or 0,
             quantity=lead.quantity or 1,
             specification=lead.capacity or '',
             expected_delivery=lead.expected_delivery or '',
@@ -366,7 +375,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 class ContactViewSet(viewsets.ModelViewSet):
-    queryset = Contact.objects.all().order_by('name')
+    queryset = Contact.objects.all().order_by('-id')
     serializer_class = ContactSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -424,6 +433,14 @@ class EnquiryViewSet(viewsets.ModelViewSet):
                     data['contact_mobile'] = ld.mobile
                 if not data.get('machine_product') and not data.get('machineProduct'):
                     data['machine_product'] = ld.product_name
+                if not data.get('machine_type') and not data.get('machineType'):
+                    data['machine_type'] = ld.machine_type
+                if not data.get('application'):
+                    data['application'] = ld.application
+                if not data.get('capacity'):
+                    data['capacity'] = ld.capacity
+                if not data.get('budget'):
+                    data['budget'] = ld.budget
                 if not data.get('quantity'):
                     data['quantity'] = ld.quantity
 
@@ -479,6 +496,14 @@ class FollowUpViewSet(viewsets.ModelViewSet):
             data['lead_or_customer_name'] = data['leadOrCustomerName']
         if 'entityType' in data and not data.get('entity_type'):
             data['entity_type'] = data['entityType']
+        if 'enquiryId' in data and not data.get('enquiry_id'):
+            data['enquiry_id'] = data['enquiryId']
+        if 'quotationId' in data and not data.get('quotation_id'):
+            data['quotation_id'] = data['quotationId']
+        if 'outcome' in data and not data.get('outcome'):
+            data['outcome'] = data['outcome']
+        if 'customerResponse' in data and not data.get('customer_response'):
+            data['customer_response'] = data['customerResponse']
         if 'assignedToId' in data and not data.get('assigned_to_id'):
             data['assigned_to_id'] = data['assignedToId']
         if 'assignedToName' in data and not data.get('assigned_to_name'):
@@ -536,6 +561,21 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
             data['next_action'] = data['nextAction']
         if 'nextFollowUpDate' in data and 'next_follow_up_date' not in data:
             data['next_follow_up_date'] = data['nextFollowUpDate']
+        if 'leadId' in data and 'lead_id' not in data:
+            data['lead_id'] = data['leadId']
+        if 'enquiryId' in data and 'enquiry_id' not in data:
+            data['enquiry_id'] = data['enquiryId']
+        if 'siteMeasurements' in data and 'site_measurements' not in data:
+            data['site_measurements'] = data['siteMeasurements']
+        if 'operatingConditions' in data and 'operating_conditions' not in data:
+            data['operating_conditions'] = data['operatingConditions']
+        if 'technicalObservations' in data and 'technical_observations' not in data:
+            data['technical_observations'] = data['technicalObservations']
+        if 'pendingClarifications' in data and 'pending_clarifications' not in data:
+            data['pending_clarifications'] = data['pendingClarifications']
+
+        if not data.get('customer_id'):
+            data['customer_id'] = data.get('customerId') or data.get('lead_id') or data.get('enquiry_id') or 'LEAD-PROSPECT'
 
         if not data.get('id'):
             data['id'] = data.get('visit_no') or data.get('visitNo')
@@ -579,6 +619,10 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
             data['quotations_sent'] = data['quotationsSent']
         if 'convertedCustomers' in data and 'converted_customers' not in data:
             data['converted_customers'] = data['convertedCustomers']
+        if 'participationStatus' in data and 'participation_status' not in data:
+            data['participation_status'] = data['participationStatus']
+        if 'actualExpenses' in data and 'actual_expenses' not in data:
+            data['actual_expenses'] = data['actualExpenses']
 
         if not data.get('id'):
             code = f"EXPO-2026-{Exhibition.objects.count() + 1:02d}"
@@ -1008,6 +1052,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
 
 
 class SalesOrderViewSet(viewsets.ModelViewSet):
+    queryset = SalesOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = SalesOrderSerializer
     permission_classes = [permissions.AllowAny]
 

@@ -50,13 +50,13 @@ class MaterialRequirementViewSet(viewsets.ModelViewSet):
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
-    queryset = Supplier.objects.all().order_by('name')
+    queryset = Supplier.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierSerializer
     permission_classes = [permissions.AllowAny]
 
 
 class SupplierContactViewSet(viewsets.ModelViewSet):
-    queryset = SupplierContact.objects.all().order_by('name')
+    queryset = SupplierContact.objects.all().order_by('-id')
     serializer_class = SupplierContactSerializer
     permission_classes = [permissions.AllowAny]
 

@@ -313,6 +313,7 @@ class BankAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = BankAccount
         fields = '__all__'
+        extra_kwargs = {'id': {'required': False}}
 
 
 class ContraVoucherSerializer(serializers.ModelSerializer):

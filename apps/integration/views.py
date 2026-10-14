@@ -44,7 +44,7 @@ from apps.accounting.models import SalesInvoice, CustomerReceipt, JobCostingSumm
 
 
 class ApprovalItemViewSet(viewsets.ModelViewSet):
-    queryset = ApprovalItem.objects.all()
+    queryset = ApprovalItem.objects.all().order_by('-created_at', '-id')
     serializer_class = ApprovalItemSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['title', 'record_number', 'requester_name', 'related_job_number']
@@ -66,7 +66,7 @@ class ApprovalItemViewSet(viewsets.ModelViewSet):
 
 
 class ERPAlertItemViewSet(viewsets.ModelViewSet):
-    queryset = ERPAlertItem.objects.all()
+    queryset = ERPAlertItem.objects.all().order_by('-timestamp', '-id')
     serializer_class = ERPAlertItemSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['title', 'description', 'module']

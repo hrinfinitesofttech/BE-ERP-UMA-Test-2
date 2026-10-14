@@ -612,11 +612,12 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
 
 
 class BOMHeaderViewSet(viewsets.ModelViewSet):
+    queryset = BOMHeader.objects.all().order_by('-created_at', '-id')
     serializer_class = BOMHeaderSerializer
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        return BOMHeader.objects.all().order_by('-created_at')
+        return BOMHeader.objects.all().order_by('-created_at', '-id')
 
     def get_object(self):
         pk = self.kwargs.get('pk')

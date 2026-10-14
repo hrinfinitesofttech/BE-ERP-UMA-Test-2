@@ -9,7 +9,7 @@ from apps.core.rbac_permissions import is_admin, is_super_admin, IsAdminOrSuperA
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all().order_by('code')
+    queryset = Department.objects.all().order_by('-created_at', '-id')
     serializer_class = DepartmentSerializer
 
     def get_permissions(self):
@@ -104,7 +104,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 
 class RoleViewSet(viewsets.ModelViewSet):
-    queryset = Role.objects.all().order_by('name')
+    queryset = Role.objects.all().order_by('-created_at', '-id')
     serializer_class = RoleSerializer
 
     def get_permissions(self):

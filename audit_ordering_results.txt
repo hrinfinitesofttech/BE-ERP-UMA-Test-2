@@ -1,0 +1,4 @@
+Total viewsets audited: 142
+Viewsets needing ordering fix: 2
+/planning-stages                | Model: ProjectPlanningStage      | Current: ('stage_number',)         -> Recommended: ('-id',)
+/project-milestones             | Model: ProjectMilestone          | Current: ('planned_date', 'target_date') -> Recommended: ('-id',)

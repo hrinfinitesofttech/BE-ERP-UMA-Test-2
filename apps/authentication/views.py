@@ -27,9 +27,9 @@ class LoginView(APIView):
         username = request.data.get('username', '').strip()
         password = request.data.get('password', '').strip()
 
-        if not username:
+        if not username or not password:
             return Response(
-                {'error': 'Username is required'},
+                {'error': 'Username and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -42,26 +42,19 @@ class LoginView(APIView):
 
         if not user:
             return Response(
-                {'error': 'Invalid credentials. User not found.'},
+                {'error': 'Invalid username or password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        if not user.is_active:
+        if not user.is_active or getattr(user, 'status', 'active') == 'inactive':
             return Response(
                 {'error': 'This employee account has been deactivated. Please contact your system administrator.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Authenticate user with password or standard enterprise fallback
-        authenticated_user = None
-        if password:
-            if user.has_usable_password():
-                authenticated_user = authenticate(username=user.username, password=password)
-            if not authenticated_user and password in ('Admin@123456', 'admin123', 'password123', 'Uma@123456'):
-                user.set_password(password)
-                user.save(update_fields=['password'])
-                authenticated_user = user
-        elif not user.has_usable_password():
+        # Authenticate user strictly with password
+        authenticated_user = authenticate(username=user.username, password=password)
+        if not authenticated_user and user.check_password(password):
             authenticated_user = user
 
         if not authenticated_user:
@@ -77,14 +70,10 @@ class LoginView(APIView):
             try:
                 from django.db import connection
                 with connection.cursor() as cursor:
-                    cursor.execute("PRAGMA foreign_keys = OFF;")
                     cursor.execute("UPDATE authentication_user SET id = %s WHERE id = '' AND username = %s;", [safe_id, user.username])
-                    cursor.execute("PRAGMA foreign_keys = ON;")
                 user.refresh_from_db()
             except Exception:
-                fallback = User.objects.filter(is_superuser=True).exclude(id='').first()
-                if fallback:
-                    user = fallback
+                pass
 
         # Update last login
         now_str = datetime.now().strftime('%Y-%m-%d %I:%M %p')
@@ -96,12 +85,66 @@ class LoginView(APIView):
         user_data = UserSerializer(user).data
         user_data['effective_permissions'] = compute_effective_permissions(user)
 
+        # Audit log for login
+        try:
+            from apps.core.models import AuditLog
+            admin_name = getattr(user, 'name', user.username)
+            AuditLog.objects.create(
+                user_id=user.id,
+                user_name=admin_name,
+                action='LOGIN',
+                module='Authentication',
+                description=f"User {user.username} logged in successfully.",
+                metadata={'ip': request.META.get('REMOTE_ADDR')},
+            )
+        except Exception:
+            pass
+
         return Response({
             'success': True,
             'user': user_data,
             'access': str(refresh.access_token),
             'refresh': str(refresh),
         }, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    """
+    Secure server-side logout:
+    - Blacklists the refresh token in SimpleJWT token_blacklist
+    - Records an audit log entry
+    - Returns 200 OK
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get('refresh') or request.data.get('refresh_token')
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                # Token may be expired or already blacklisted
+                pass
+
+        user = getattr(request, 'user', None)
+        if user and user.is_authenticated:
+            try:
+                from apps.core.models import AuditLog
+                user_name = getattr(user, 'name', user.username)
+                AuditLog.objects.create(
+                    user_id=user.id,
+                    user_name=user_name,
+                    action='LOGOUT',
+                    module='Authentication',
+                    description=f"User {user.username} logged out.",
+                    metadata={'ip': request.META.get('REMOTE_ADDR')},
+                )
+            except Exception:
+                pass
+
+        return Response({'success': True, 'message': 'Logged out successfully.'}, status=status.HTTP_200_OK)
+
 
 
 class CurrentUserView(APIView):
@@ -162,7 +205,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     Enforces scope isolation, prevents self-escalation, bounds admin privileges,
     and returns 401 unauthenticated / 403 unauthorized.
     """
-    queryset = User.objects.all().order_by('id')
+    queryset = User.objects.all().order_by('-date_joined', '-id')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -172,30 +215,30 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return User.objects.none()
 
         if is_super_admin(user):
-            return User.objects.all().order_by('id')
+            return User.objects.all().order_by('-date_joined', '-id')
 
         role_type = getattr(user, 'role_type', 'employee')
         data_scope = getattr(user, 'data_scope', 'own')
 
         if role_type == 'admin':
             if data_scope == 'all':
-                return User.objects.all().order_by('id')
+                return User.objects.all().order_by('-date_joined', '-id')
             if data_scope == 'department':
-                return User.objects.filter(department_id=user.department_id).order_by('id')
-            return User.objects.filter(id=user.id).order_by('id')
+                return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
+            return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
 
         if role_type == 'department_manager':
             # Department managers view employees in their own department
             if user.department_id:
-                return User.objects.filter(department_id=user.department_id).order_by('id')
-            return User.objects.filter(id=user.id).order_by('id')
+                return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
+            return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
 
         # Normal Employee
         if data_scope == 'department' and user.department_id:
-            return User.objects.filter(department_id=user.department_id).order_by('id')
+            return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
 
         # Default own scope
-        return User.objects.filter(id=user.id).order_by('id')
+        return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
 
     def get_object(self):
         pk = self.kwargs.get('pk')

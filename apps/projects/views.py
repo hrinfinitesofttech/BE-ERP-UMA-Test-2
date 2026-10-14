@@ -569,7 +569,7 @@ class ProjectDocumentViewSet(viewsets.ModelViewSet):
 
 
 class DepartmentAssignmentViewSet(viewsets.ModelViewSet):
-    queryset = DepartmentAssignment.objects.all().order_by('department')
+    queryset = DepartmentAssignment.objects.all().order_by('-id')
     serializer_class = DepartmentAssignmentSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -639,7 +639,7 @@ class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
 
 
 class ProjectCostViewSet(viewsets.ModelViewSet):
-    queryset = ProjectCost.objects.all().order_by('category')
+    queryset = ProjectCost.objects.all().order_by('-id')
     serializer_class = ProjectCostSerializer
     permission_classes = [permissions.AllowAny]
 

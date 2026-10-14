@@ -102,13 +102,20 @@ def check_explicit_restriction(user, module, action):
 def compute_effective_permissions(user):
     """
     Computes and returns the complete, resolved permissions matrix for a user.
-    Resolution Order:
-    1. Super Admin: full access to all system modules and actions, minus explicit restrictions.
-    2. Department Defaults: base modules & actions from user.department.
-    3. User Custom Permissions: additions or overrides.
-    4. Explicit Restrictions: overrides and revokes any matched grant.
+    Authoritative Resolution Order (6-tier policy):
+    1. Account inactive or disabled -> deny authentication / return empty permissions.
+    2. Explicit user-level denial (explicit_restrictions) -> strictly overrides all grants.
+    3. Role-level permissions (role_profile.permissions) -> base grants.
+    4. Department defaults (department.default_permissions) -> baseline suggestions.
+    5. Explicit user-level grants (assigned_modules & custom_permissions) -> custom grants.
+    6. Missing, invalid, or ambiguous configuration -> deny by default.
     """
-    if not user or not user.is_authenticated:
+    if (
+        not user
+        or not user.is_authenticated
+        or not getattr(user, 'is_active', True)
+        or getattr(user, 'status', 'active') in ('inactive', 'suspended', 'deactivated')
+    ):
         return {
             'role_type': 'anonymous',
             'data_scope': 'none',
@@ -139,34 +146,64 @@ def compute_effective_permissions(user):
     if is_super_admin(user):
         allowed_modules = list(all_modules)
         for mod in allowed_modules:
-            actions = [act for act in ALL_ACTIONS if not check_explicit_restriction(user, mod, act)]
-            permissions_matrix[mod] = actions
+            mod_acts = [act for act in ALL_ACTIONS if not check_explicit_restriction(user, mod, act)]
+            permissions_matrix[mod] = mod_acts
         scope = 'all'
         can_assign = not check_explicit_restriction(user, 'tasks', 'assign')
         can_approve = not check_explicit_restriction(user, 'leaves', 'approve')
         can_attendance = not check_explicit_restriction(user, 'attendance', 'manage_settings')
         can_export = not check_explicit_restriction(user, '*', 'export')
     else:
-        # 1. Base modules: Explicit User assigned_modules strictly override department defaults
+        # Base Role permissions
+        role_obj = getattr(user, 'role_profile', None)
+        if not role_obj and getattr(user, 'role_id', None):
+            try:
+                from apps.organization.models import Role
+                role_obj = Role.objects.filter(id=user.role_id).first()
+            except Exception:
+                role_obj = None
+
+        raw_role_perms = getattr(role_obj, 'permissions', None) if role_obj else None
+        role_perms = {}
+        if isinstance(raw_role_perms, dict):
+            role_perms = raw_role_perms
+        elif isinstance(raw_role_perms, (list, tuple, set)):
+            for item in raw_role_perms:
+                item_str = str(item)
+                if '.' in item_str:
+                    m, a = item_str.split('.', 1)
+                    role_perms.setdefault(m, []).append(a)
+                elif ':' in item_str:
+                    m, a = item_str.split(':', 1)
+                    role_perms.setdefault(m, []).append(a)
+                else:
+                    role_perms.setdefault(item_str, []).append('view')
+
+        # Department defaults
         dept = getattr(user, 'department', None)
         dept_modules = list(getattr(dept, 'assigned_modules', []) or []) if dept else []
-        dept_defaults = dict(getattr(dept, 'default_permissions', {}) or {}) if dept else {}
+        raw_dept_defaults = getattr(dept, 'default_permissions', {}) if dept else {}
+        dept_defaults = raw_dept_defaults if isinstance(raw_dept_defaults, dict) else {}
 
-        # 2. Check User's assigned modules
+        # User's explicit assigned modules & custom permissions
         user_modules = list(getattr(user, 'assigned_modules', []) or [])
+        custom_perms = dict(getattr(user, 'custom_permissions', {}) or {})
+
         if user_modules:
             combined_modules = list(user_modules)
         else:
-            combined_modules = list(dept_modules)
-
-        custom_perms = dict(getattr(user, 'custom_permissions', {}) or {})
+            combined_set = set(dept_modules)
+            combined_set.update(role_perms.keys())
+            combined_modules = list(combined_set)
 
         allowed_modules = []
         for mod in combined_modules:
             mod_actions = set()
-            # Department defaults
+            # 1. Department defaults
             mod_actions.update(dept_defaults.get(mod, []))
-            # Custom additions
+            # 2. Role permissions
+            mod_actions.update(role_perms.get(mod, []))
+            # 3. Custom additions
             mod_actions.update(custom_perms.get(mod, []))
 
             # Default view action for assigned modules
@@ -178,7 +215,7 @@ def compute_effective_permissions(user):
             elif role_type == 'admin':
                 mod_actions.update(['create', 'edit', 'delete', 'approve', 'assign', 'update_status', 'export'])
 
-            # Filter out explicit restrictions
+            # 4. Filter out explicit restrictions (overrides all grants)
             final_actions = [
                 act for act in mod_actions
                 if act in ALL_ACTIONS and not check_explicit_restriction(user, mod, act)
@@ -204,6 +241,8 @@ def compute_effective_permissions(user):
         if check_explicit_restriction(user, '*', 'export'):
             can_export = False
 
+    actions = {f"{mod}:{act}": True for mod, acts in permissions_matrix.items() for act in acts}
+
     return {
         'user_id': user.id,
         'username': user.username,
@@ -213,6 +252,7 @@ def compute_effective_permissions(user):
         'department_name': getattr(user, 'department_name', ''),
         'allowed_modules': allowed_modules,
         'permissions_matrix': permissions_matrix,
+        'actions': actions,
         'explicit_restrictions': explicit_restrictions,
         'permissions_review_required': getattr(user, 'permissions_review_required', False),
         'capabilities': {

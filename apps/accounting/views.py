@@ -21,7 +21,7 @@ from .serializers import (
 
 
 class FinancialYearViewSet(viewsets.ModelViewSet):
-    queryset = FinancialYear.objects.all()
+    queryset = FinancialYear.objects.all().order_by('-id')
     serializer_class = FinancialYearSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['name', 'fy_code']
@@ -29,7 +29,7 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
 
 
 class ChartOfAccountViewSet(viewsets.ModelViewSet):
-    queryset = ChartOfAccount.objects.all()
+    queryset = ChartOfAccount.objects.all().order_by('-id')
     serializer_class = ChartOfAccountSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['account_code', 'account_name']
@@ -37,7 +37,7 @@ class ChartOfAccountViewSet(viewsets.ModelViewSet):
 
 
 class TaxMasterViewSet(viewsets.ModelViewSet):
-    queryset = TaxMaster.objects.all()
+    queryset = TaxMaster.objects.all().order_by('-id')
     serializer_class = TaxMasterSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['tax_code', 'tax_name']
@@ -45,7 +45,7 @@ class TaxMasterViewSet(viewsets.ModelViewSet):
 
 
 class CostCenterViewSet(viewsets.ModelViewSet):
-    queryset = CostCenter.objects.all()
+    queryset = CostCenter.objects.all().order_by('-id')
     serializer_class = CostCenterSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['cost_center_code', 'cost_center_name', 'department']
@@ -53,7 +53,7 @@ class CostCenterViewSet(viewsets.ModelViewSet):
 
 
 class SalesInvoiceViewSet(viewsets.ModelViewSet):
-    queryset = SalesInvoice.objects.all()
+    queryset = SalesInvoice.objects.all().order_by('-created_at', '-id')
     serializer_class = SalesInvoiceSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['invoice_number', 'customer_name', 'job_number', 'sales_order_number']
@@ -152,7 +152,7 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
 
 
 class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
-    queryset = PurchaseInvoice.objects.all()
+    queryset = PurchaseInvoice.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseInvoiceSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['invoice_number', 'supplier_name', 'po_number', 'grn_number']
@@ -199,7 +199,7 @@ class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
 
 
 class CustomerReceiptViewSet(viewsets.ModelViewSet):
-    queryset = CustomerReceipt.objects.all()
+    queryset = CustomerReceipt.objects.all().order_by('-id')
     serializer_class = CustomerReceiptSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['receipt_number', 'customer_name', 'sales_invoice_number']
@@ -207,7 +207,7 @@ class CustomerReceiptViewSet(viewsets.ModelViewSet):
 
 
 class SupplierPaymentViewSet(viewsets.ModelViewSet):
-    queryset = SupplierPayment.objects.all()
+    queryset = SupplierPayment.objects.all().order_by('-id')
     serializer_class = SupplierPaymentSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['payment_number', 'supplier_name', 'purchase_invoice_number']
@@ -215,7 +215,7 @@ class SupplierPaymentViewSet(viewsets.ModelViewSet):
 
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
-    queryset = JournalEntry.objects.all()
+    queryset = JournalEntry.objects.all().order_by('-id')
     serializer_class = JournalEntrySerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['journal_number', 'narration']
@@ -223,14 +223,14 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
 
 
 class JobCostingSummaryViewSet(viewsets.ModelViewSet):
-    queryset = JobCostingSummary.objects.all()
+    queryset = JobCostingSummary.objects.all().order_by('-id')
     serializer_class = JobCostingSummarySerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['job_number', 'product_name', 'customer_name']
 
 
 class CreditNoteViewSet(viewsets.ModelViewSet):
-    queryset = CreditNote.objects.all()
+    queryset = CreditNote.objects.all().order_by('-created_at', '-id')
     serializer_class = CreditNoteSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['credit_note_number', 'customer_name', 'original_invoice_number']
@@ -238,7 +238,7 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
 
 
 class DebitNoteViewSet(viewsets.ModelViewSet):
-    queryset = DebitNote.objects.all()
+    queryset = DebitNote.objects.all().order_by('-created_at', '-id')
     serializer_class = DebitNoteSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['debit_note_number', 'supplier_name', 'original_invoice_number']
@@ -246,7 +246,7 @@ class DebitNoteViewSet(viewsets.ModelViewSet):
 
 
 class BankAccountViewSet(viewsets.ModelViewSet):
-    queryset = BankAccount.objects.all()
+    queryset = BankAccount.objects.all().order_by('-created_at', '-id')
     serializer_class = BankAccountSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['bank_name', 'account_name', 'account_number', 'ifsc_code']
@@ -271,7 +271,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
 
 
 class ContraVoucherViewSet(viewsets.ModelViewSet):
-    queryset = ContraVoucher.objects.all()
+    queryset = ContraVoucher.objects.all().order_by('-created_at', '-id')
     serializer_class = ContraVoucherSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['contra_number', 'from_account_name', 'to_account_name', 'reference_number', 'narration']
@@ -279,7 +279,7 @@ class ContraVoucherViewSet(viewsets.ModelViewSet):
 
 
 class ExpenseEntryViewSet(viewsets.ModelViewSet):
-    queryset = ExpenseEntry.objects.all()
+    queryset = ExpenseEntry.objects.all().order_by('-created_at', '-id')
     serializer_class = ExpenseEntrySerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['expense_number', 'category', 'claimed_by', 'vendor_name', 'description']
@@ -295,7 +295,7 @@ class ExpenseEntryViewSet(viewsets.ModelViewSet):
 
 
 class FixedAssetViewSet(viewsets.ModelViewSet):
-    queryset = FixedAsset.objects.all()
+    queryset = FixedAsset.objects.all().order_by('-created_at', '-id')
     serializer_class = FixedAssetSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['asset_code', 'asset_name', 'category', 'location']

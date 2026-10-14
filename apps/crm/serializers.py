@@ -48,6 +48,8 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             'budget',
             'priority',
             'source',
+            'exhibition_id',
+            'exhibition_name',
             'assigned_sales_person_id',
             'assigned_sales_person_name',
             'status',
@@ -78,6 +80,8 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             'convertedCustomerId': 'converted_customer_id',
             'convertedEnquiryId': 'converted_enquiry_id',
             'convertedOpportunityId': 'converted_opportunity_id',
+            'exhibitionId': 'exhibition_id',
+            'exhibitionName': 'exhibition_name',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
@@ -118,6 +122,8 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
         rep['convertedCustomerId'] = instance.converted_customer_id
         rep['convertedEnquiryId'] = instance.converted_enquiry_id
         rep['convertedOpportunityId'] = instance.converted_opportunity_id
+        rep['exhibitionId'] = instance.exhibition_id
+        rep['exhibitionName'] = instance.exhibition_name
         return rep
 
 
@@ -244,8 +250,18 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             'enquiry_date',
             'requirement',
             'machine_product',
+            'machine_type',
+            'application',
+            'capacity',
+            'material_grade',
             'quantity',
+            'unit_of_measure',
+            'operating_conditions',
+            'budget',
             'specification',
+            'technical_clarifications',
+            'attachments',
+            'remarks',
             'expected_delivery',
             'assigned_person_id',
             'assigned_person_name',
@@ -272,6 +288,11 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             'phone': 'contact_mobile',
             'enquiryDate': 'enquiry_date',
             'machineProduct': 'machine_product',
+            'machineType': 'machine_type',
+            'materialGrade': 'material_grade',
+            'unitOfMeasure': 'unit_of_measure',
+            'operatingConditions': 'operating_conditions',
+            'technicalClarifications': 'technical_clarifications',
             'expectedDelivery': 'expected_delivery',
             'assignedPersonId': 'assigned_person_id',
             'assignedPersonName': 'assigned_person_name',
@@ -326,6 +347,17 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         rep['contactMobile'] = instance.contact_mobile
         rep['enquiryDate'] = str(instance.enquiry_date) if instance.enquiry_date else ''
         rep['machineProduct'] = instance.machine_product
+        rep['machineType'] = instance.machine_type
+        rep['application'] = instance.application
+        rep['capacity'] = instance.capacity
+        rep['materialGrade'] = instance.material_grade
+        rep['unitOfMeasure'] = instance.unit_of_measure
+        rep['operatingConditions'] = instance.operating_conditions
+        rep['budget'] = instance.budget
+        rep['specification'] = instance.specification
+        rep['technicalClarifications'] = instance.technical_clarifications
+        rep['attachments'] = instance.attachments
+        rep['remarks'] = instance.remarks
         rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''
         rep['assignedPersonId'] = instance.assigned_person_id
         rep['assignedPersonName'] = instance.assigned_person_name
@@ -363,6 +395,8 @@ class FollowUpSerializer(serializers.ModelSerializer):
             'lead_or_customer_id',
             'lead_or_customer_name',
             'entity_type',
+            'enquiry_id',
+            'quotation_id',
             'type',
             'assigned_to_id',
             'assigned_to_name',
@@ -373,11 +407,15 @@ class FollowUpSerializer(serializers.ModelSerializer):
             'notes',
             'next_follow_up_date',
             'status',
+            'outcome',
+            'customer_response',
             'completed_notes',
         ]
 
 
 class SiteVisitSerializer(serializers.ModelSerializer):
+    customer_id = serializers.CharField(required=False, allow_blank=True, default='')
+
     class Meta:
         model = SiteVisit
         fields = [
@@ -385,6 +423,8 @@ class SiteVisitSerializer(serializers.ModelSerializer):
             'visit_no',
             'customer_id',
             'customer_name',
+            'lead_id',
+            'enquiry_id',
             'contact_person',
             'contact_mobile',
             'visit_date',
@@ -394,10 +434,38 @@ class SiteVisitSerializer(serializers.ModelSerializer):
             'purpose',
             'discussion_notes',
             'requirement_details',
+            'site_measurements',
+            'operating_conditions',
+            'technical_observations',
+            'pending_clarifications',
+            'attachments',
+            'status',
             'outcome',
             'next_action',
             'next_follow_up_date',
         ]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['visitNo'] = ret.get('visit_no')
+        ret['customerId'] = ret.get('customer_id')
+        ret['customerName'] = ret.get('customer_name')
+        ret['leadId'] = ret.get('lead_id')
+        ret['enquiryId'] = ret.get('enquiry_id')
+        ret['contactPerson'] = ret.get('contact_person')
+        ret['contactMobile'] = ret.get('contact_mobile')
+        ret['visitDate'] = ret.get('visit_date')
+        ret['employeeId'] = ret.get('employee_id')
+        ret['employeeName'] = ret.get('employee_name')
+        ret['discussionNotes'] = ret.get('discussion_notes')
+        ret['requirementDetails'] = ret.get('requirement_details')
+        ret['siteMeasurements'] = ret.get('site_measurements')
+        ret['operatingConditions'] = ret.get('operating_conditions')
+        ret['technicalObservations'] = ret.get('technical_observations')
+        ret['pendingClarifications'] = ret.get('pending_clarifications')
+        ret['nextAction'] = ret.get('next_action')
+        ret['nextFollowUpDate'] = ret.get('next_follow_up_date')
+        return ret
 
 
 class ExhibitionSerializer(serializers.ModelSerializer):
@@ -408,11 +476,16 @@ class ExhibitionSerializer(serializers.ModelSerializer):
             'expo_name',
             'organizer',
             'location',
+            'venue',
+            'city',
+            'country',
+            'participation_status',
             'start_date',
             'end_date',
             'stall_number',
             'contact_person',
             'budget',
+            'actual_expenses',
             'assigned_team',
             'products_displayed',
             'notes',
@@ -421,6 +494,21 @@ class ExhibitionSerializer(serializers.ModelSerializer):
             'quotations_sent',
             'converted_customers',
         ]
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['expoName'] = ret.get('expo_name')
+        ret['startDate'] = ret.get('start_date')
+        ret['endDate'] = ret.get('end_date')
+        ret['stallNumber'] = ret.get('stall_number')
+        ret['contactPerson'] = ret.get('contact_person')
+        ret['participationStatus'] = ret.get('participation_status')
+        ret['productsDisplayed'] = ret.get('products_displayed')
+        ret['totalContacts'] = ret.get('total_contacts')
+        ret['qualifiedLeads'] = ret.get('qualified_leads')
+        ret['quotationsSent'] = ret.get('quotations_sent')
+        ret['convertedCustomers'] = ret.get('converted_customers')
+        return ret
 
 
 class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):

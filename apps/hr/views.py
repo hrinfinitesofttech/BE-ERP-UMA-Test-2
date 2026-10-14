@@ -33,7 +33,7 @@ from .serializers import (
 
 
 class DesignationViewSet(viewsets.ModelViewSet):
-    queryset = Designation.objects.all()
+    queryset = Designation.objects.all().order_by('-id')
     serializer_class = DesignationSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['designation_code', 'designation_name', 'department']
@@ -41,7 +41,7 @@ class DesignationViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeDocumentViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeDocument.objects.all()
+    queryset = EmployeeDocument.objects.all().order_by('-id')
     serializer_class = EmployeeDocumentSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['employee_name', 'document_type', 'document_number']
@@ -49,7 +49,7 @@ class EmployeeDocumentViewSet(viewsets.ModelViewSet):
 
 
 class ShiftMasterViewSet(viewsets.ModelViewSet):
-    queryset = ShiftMaster.objects.all()
+    queryset = ShiftMaster.objects.all().order_by('-id')
     serializer_class = ShiftMasterSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['shift_name']
@@ -57,7 +57,7 @@ class ShiftMasterViewSet(viewsets.ModelViewSet):
 
 
 class LeaveTypeViewSet(viewsets.ModelViewSet):
-    queryset = LeaveType.objects.all()
+    queryset = LeaveType.objects.all().order_by('-id')
     serializer_class = LeaveTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['leave_code', 'leave_name']
@@ -65,7 +65,7 @@ class LeaveTypeViewSet(viewsets.ModelViewSet):
 
 
 class LeaveBalanceViewSet(viewsets.ModelViewSet):
-    queryset = LeaveBalance.objects.all()
+    queryset = LeaveBalance.objects.all().order_by('-id')
     serializer_class = LeaveBalanceSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'leave_code', 'leave_name']
@@ -76,15 +76,15 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return LeaveBalance.objects.none()
         if is_super_admin(user) or is_admin(user):
-            return LeaveBalance.objects.all()
+            return LeaveBalance.objects.all().order_by('-id')
         if is_department_manager(user):
             dept_name = getattr(user, 'department_name', '')
-            return LeaveBalance.objects.filter(department__iexact=dept_name) if dept_name else LeaveBalance.objects.filter(employee_id=user.id)
-        return LeaveBalance.objects.filter(employee_id=user.id)
+            return (LeaveBalance.objects.filter(department__iexact=dept_name) if dept_name else LeaveBalance.objects.filter(employee_id=user.id)).order_by('-id')
+        return LeaveBalance.objects.filter(employee_id=user.id).order_by('-id')
 
 
 class AttendanceRecordViewSet(viewsets.ModelViewSet):
-    queryset = AttendanceRecord.objects.all()
+    queryset = AttendanceRecord.objects.all().order_by('-date', '-id')
     serializer_class = AttendanceRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'department']
@@ -116,7 +116,7 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(employee_id=user.id)
             else:
                 return AttendanceRecord.objects.none()
-        return qs
+        return qs.order_by('-date', '-id')
 
     @action(detail=False, methods=['post'], url_path='check-in')
     def check_in(self, request):
@@ -389,7 +389,7 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
 
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
-    queryset = LeaveRequest.objects.all()
+    queryset = LeaveRequest.objects.all().order_by('-id')
     serializer_class = LeaveRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['leave_number', 'employee_name', 'department', 'leave_name']
@@ -400,11 +400,11 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return LeaveRequest.objects.none()
         if is_super_admin(user) or is_admin(user):
-            return LeaveRequest.objects.all()
+            return LeaveRequest.objects.all().order_by('-id')
         if is_department_manager(user):
             dept_name = getattr(user, 'department_name', '')
-            return LeaveRequest.objects.filter(department__iexact=dept_name) if dept_name else LeaveRequest.objects.filter(employee_id=user.id)
-        return LeaveRequest.objects.filter(employee_id=user.id)
+            return (LeaveRequest.objects.filter(department__iexact=dept_name) if dept_name else LeaveRequest.objects.filter(employee_id=user.id)).order_by('-id')
+        return LeaveRequest.objects.filter(employee_id=user.id).order_by('-id')
 
     def get_object(self):
         lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
@@ -612,7 +612,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
 
 class WFHRequestViewSet(viewsets.ModelViewSet):
-    queryset = WFHRequest.objects.all()
+    queryset = WFHRequest.objects.all().order_by('-id')
     serializer_class = WFHRequestSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['wfh_number', 'employee_name']
@@ -634,7 +634,7 @@ class WFHRequestViewSet(viewsets.ModelViewSet):
 
 
 class MissedPunchRequestViewSet(viewsets.ModelViewSet):
-    queryset = MissedPunchRequest.objects.all()
+    queryset = MissedPunchRequest.objects.all().order_by('-id')
     serializer_class = MissedPunchRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['request_number', 'employee_name']
@@ -645,11 +645,11 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return MissedPunchRequest.objects.none()
         if is_super_admin(user) or is_admin(user):
-            return MissedPunchRequest.objects.all()
+            return MissedPunchRequest.objects.all().order_by('-id')
         if is_department_manager(user):
             dept_name = getattr(user, 'department_name', '')
-            return MissedPunchRequest.objects.filter(employee_id__in=User.objects.filter(department_name__iexact=dept_name).values_list('id', flat=True)) if dept_name else MissedPunchRequest.objects.filter(employee_id=user.id)
-        return MissedPunchRequest.objects.filter(employee_id=user.id)
+            return (MissedPunchRequest.objects.filter(employee_id__in=User.objects.filter(department_name__iexact=dept_name).values_list('id', flat=True)) if dept_name else MissedPunchRequest.objects.filter(employee_id=user.id)).order_by('-id')
+        return MissedPunchRequest.objects.filter(employee_id=user.id).order_by('-id')
 
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_missed_punch(self, request, pk=None):
@@ -703,7 +703,7 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
 
 
 class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
-    queryset = AttendanceRegularization.objects.all()
+    queryset = AttendanceRegularization.objects.all().order_by('-id')
     serializer_class = AttendanceRegularizationSerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['regularization_no', 'employee_name']
@@ -714,11 +714,11 @@ class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
         if not user or not user.is_authenticated:
             return AttendanceRegularization.objects.none()
         if is_super_admin(user) or is_admin(user):
-            return AttendanceRegularization.objects.all()
+            return AttendanceRegularization.objects.all().order_by('-id')
         if is_department_manager(user):
             dept_name = getattr(user, 'department_name', '')
-            return AttendanceRegularization.objects.filter(employee_id__in=User.objects.filter(department_name__iexact=dept_name).values_list('id', flat=True)) if dept_name else AttendanceRegularization.objects.filter(employee_id=user.id)
-        return AttendanceRegularization.objects.filter(employee_id=user.id)
+            return (AttendanceRegularization.objects.filter(employee_id__in=User.objects.filter(department_name__iexact=dept_name).values_list('id', flat=True)) if dept_name else AttendanceRegularization.objects.filter(employee_id=user.id)).order_by('-id')
+        return AttendanceRegularization.objects.filter(employee_id=user.id).order_by('-id')
 
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_regularization(self, request, pk=None):
@@ -765,7 +765,7 @@ class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
 
 
 class OvertimeRecordViewSet(viewsets.ModelViewSet):
-    queryset = OvertimeRecord.objects.all()
+    queryset = OvertimeRecord.objects.all().order_by('-id')
     serializer_class = OvertimeRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['overtime_no', 'employee_name']
@@ -788,7 +788,7 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
 
 
 class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
-    queryset = EarlyCheckoutRequest.objects.all()
+    queryset = EarlyCheckoutRequest.objects.all().order_by('-id')
     serializer_class = EarlyCheckoutRequestSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['request_number', 'employee_name']
@@ -810,7 +810,7 @@ class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
 
 
 class SalaryComponentViewSet(viewsets.ModelViewSet):
-    queryset = SalaryComponent.objects.all()
+    queryset = SalaryComponent.objects.all().order_by('-id')
     serializer_class = SalaryComponentSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['component_code', 'component_name']
@@ -818,7 +818,7 @@ class SalaryComponentViewSet(viewsets.ModelViewSet):
 
 
 class SalaryStructureViewSet(viewsets.ModelViewSet):
-    queryset = SalaryStructure.objects.all()
+    queryset = SalaryStructure.objects.all().order_by('-id')
     serializer_class = SalaryStructureSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['structure_name', 'employee_name']
@@ -826,7 +826,7 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
 
 
 class PayrollRecordViewSet(viewsets.ModelViewSet):
-    queryset = PayrollRecord.objects.all()
+    queryset = PayrollRecord.objects.all().order_by('-id')
     serializer_class = PayrollRecordSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['payroll_number', 'employee_name', 'department', 'month_year']
@@ -890,7 +890,7 @@ class PayrollRecordViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeAdvanceLoan.objects.all()
+    queryset = EmployeeAdvanceLoan.objects.all().order_by('-id')
     serializer_class = EmployeeAdvanceLoanSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['loan_number', 'employee_name', 'department']
@@ -898,7 +898,7 @@ class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
 
 
 class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
-    queryset = ReimbursementExpense.objects.all()
+    queryset = ReimbursementExpense.objects.all().order_by('-id')
     serializer_class = ReimbursementExpenseSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['reimbursement_no', 'employee_name', 'category']
@@ -906,7 +906,7 @@ class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeOnboarding.objects.all()
+    queryset = EmployeeOnboarding.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeOnboardingSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['candidate_name', 'email', 'mobile', 'department', 'designation']
@@ -921,7 +921,7 @@ class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeTransferViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeTransfer.objects.all()
+    queryset = EmployeeTransfer.objects.all().order_by('-id')
     serializer_class = EmployeeTransferSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['employee_name', 'from_department', 'to_department']
@@ -929,7 +929,7 @@ class EmployeeTransferViewSet(viewsets.ModelViewSet):
 
 
 class EmployeePromotionViewSet(viewsets.ModelViewSet):
-    queryset = EmployeePromotion.objects.all()
+    queryset = EmployeePromotion.objects.all().order_by('-id')
     serializer_class = EmployeePromotionSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['employee_name', 'old_designation', 'new_designation']
@@ -937,7 +937,7 @@ class EmployeePromotionViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeExitViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeExit.objects.all()
+    queryset = EmployeeExit.objects.all().order_by('-id')
     serializer_class = EmployeeExitSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['employee_name', 'department', 'designation']
@@ -945,7 +945,7 @@ class EmployeeExitViewSet(viewsets.ModelViewSet):
 
 
 class HolidayViewSet(viewsets.ModelViewSet):
-    queryset = Holiday.objects.all()
+    queryset = Holiday.objects.all().order_by('-created_at', '-id')
     serializer_class = HolidaySerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['holiday_name', 'holiday_type', 'financial_year']
@@ -960,7 +960,7 @@ class HolidayViewSet(viewsets.ModelViewSet):
 
 
 class EmployeeAppraisalViewSet(viewsets.ModelViewSet):
-    queryset = EmployeeAppraisal.objects.all()
+    queryset = EmployeeAppraisal.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeAppraisalSerializer
     permission_classes = [permissions.AllowAny]
     search_fields = ['appraisal_number', 'employee_id', 'employee_name', 'department', 'cycle_period']
