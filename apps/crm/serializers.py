@@ -86,17 +86,18 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
-        if 'phone' in data and 'mobile' not in data:
-            data['mobile'] = data.pop('phone')
-        if not data.get('mobile'):
-            data['mobile'] = '9999999999'
-        if not data.get('product_name'):
-            data['product_name'] = data.get('productName') or data.get('notes') or data.get('requirement_description') or 'Industrial Process Equipment'
         inst = getattr(self, 'instance', None)
         if inst:
-            if 'id' in data:
-                data.pop('id', None)
+            # During updates (PUT/PATCH), never override user data with dummy defaults!
+            # Pop id and lead_no to prevent primary key modification or unique constraint violation
+            data.pop('id', None)
+            data.pop('lead_no', None)
+            data.pop('leadNo', None)
         else:
+            if not data.get('mobile'):
+                data['mobile'] = '9999999999'
+            if not data.get('product_name'):
+                data['product_name'] = data.get('productName') or data.get('notes') or data.get('requirement_description') or 'Industrial Process Equipment'
             if not data.get('lead_no'):
                 data['lead_no'] = data.get('leadNumber') or data.get('id') or f"LEAD-{int(datetime.now().timestamp())}"
             if not data.get('id'):

@@ -50,7 +50,13 @@ class LeadViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        queryset = Lead.objects.all().order_by('-created_at', '-id')
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM crm_lead WHERE id = '' OR lead_no = '' OR id IS NULL OR lead_no IS NULL")
+        except Exception:
+            pass
+        queryset = Lead.objects.exclude(id='').exclude(lead_no='').exclude(id__isnull=True).order_by('-created_at', '-id')
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(
@@ -63,6 +69,77 @@ class LeadViewSet(viewsets.ModelViewSet):
         if status_param:
             queryset = queryset.filter(status__iexact=status_param)
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        valid_items = []
+        for obj in queryset:
+            clean_id = str(getattr(obj, 'id', '') or '').strip()
+            clean_lead_no = str(getattr(obj, 'lead_no', '') or '').strip()
+            if clean_id and clean_lead_no:
+                valid_items.append(obj)
+            else:
+                try:
+                    obj.delete()
+                except Exception:
+                    pass
+        serializer = self.get_serializer(valid_items, many=True)
+        return Response(serializer.data)
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        val = str(self.kwargs.get(lookup_url_kwarg, '')).strip()
+        import urllib.parse
+        decoded = urllib.parse.unquote(val).strip()
+
+        # 1. Direct match by id or lead_no
+        obj = (
+            queryset.filter(id=val).first() or
+            queryset.filter(lead_no=val).first() or
+            queryset.filter(id=decoded).first() or
+            queryset.filter(lead_no=decoded).first() or
+            queryset.filter(id__iexact=decoded).first() or
+            queryset.filter(lead_no__iexact=decoded).first()
+        )
+
+        # 2. Resilient slug / substring match if legacy composite key passed
+        if not obj and decoded:
+            clean_decoded = decoded.lower().replace('-', ' ').replace('_', ' ')
+            for cand in queryset:
+                cand_str = f"{cand.company_name} {cand.product_name}".lower()
+                if clean_decoded in cand_str or cand_str in clean_decoded:
+                    obj = cand
+                    break
+
+        if not obj:
+            from rest_framework.exceptions import NotFound
+            raise NotFound(f"No lead found matching '{val}'.")
+
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        # Never allow primary key or unique lead_no overwrite on update
+        data.pop('id', None)
+        data.pop('lead_no', None)
+        data.pop('leadNo', None)
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def create(self, request, *args, **kwargs):
         import threading
