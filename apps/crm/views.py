@@ -1065,16 +1065,22 @@ class QuotationViewSet(viewsets.ModelViewSet):
             rate = float(itm.get('rate', 0))
             amt = float(itm.get('amount', 0))
             items_text += f"  {idx}. {p_name} | Qty: {qty} {unit} | Rate: INR {rate:,.2f} | Total: INR {amt:,.2f}\n"
+            desc_html = f'<div style="font-size: 11px; color: #6b7280; margin: 3px 0 0 0; line-height: 1.4;" class="sub-text">{p_desc}</div>' if p_desc else ''
             items_rows_html += f"""
-            <tr>
-              <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: center; font-size: 12px;">{idx}</td>
-              <td style="padding: 8px 10px; border: 1px solid #e0d7ce; font-size: 12px;">
-                <strong>{p_name}</strong>
-                {f'<br><span style="color: #666; font-size: 11px;">{p_desc}</span>' if p_desc else ''}
+            <tr style="border-bottom: 1px solid #f0e6dd;" class="item-row-border">
+              <td style="padding: 10px 6px; vertical-align: top;">
+                <div style="font-weight: 700; font-size: 13px; color: #1f2937; line-height: 1.4;" class="title-text">
+                  <span style="display: inline-block; background-color: #faf0e6; color: #75401f; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px; margin-right: 4px;">#{idx}</span>
+                  {p_name}
+                </div>
+                {desc_html}
+                <div style="font-size: 11px; color: #8c7a6e; margin-top: 4px;" class="sub-text">
+                  Qty: <strong style="color: #374151;" class="title-text">{qty} {unit}</strong> &nbsp;•&nbsp; Rate: <strong style="color: #374151;" class="title-text">INR {rate:,.2f}</strong>
+                </div>
               </td>
-              <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: center; font-size: 12px;">{qty} {unit}</td>
-              <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px;">INR {rate:,.2f}</td>
-              <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px; font-weight: bold; color: #1f2937;">INR {amt:,.2f}</td>
+              <td align="right" style="padding: 10px 6px; vertical-align: top; white-space: nowrap;">
+                <span style="font-size: 13px; font-weight: 700; color: #75401f;">INR {amt:,.2f}</span>
+              </td>
             </tr>
             """
 
@@ -1100,6 +1106,11 @@ Taxable Subtotal : INR {quotation.subtotal:,.2f}
 Applicable GST   : INR {quotation.tax_amount:,.2f}
 Grand Total      : {total_formatted}
 
+Commercial Terms:
+- Payment Terms: As mutually agreed upon Purchase Order.
+- Validity: 30 days from proposal date.
+- Inspection & Quality: Strictly compliant with standard industrial fabrication norms.
+
 Please feel free to contact us for any technical or commercial clarifications.
 
 Warm Regards,
@@ -1109,107 +1120,214 @@ Plot No. 48/B, GIDC Industrial Estate, Makarpura, Vadodara - 390010, Gujarat, In
 Web: www.umatechnofab.com
 """
 
-        email_html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; background-color: #f7f5f2; margin: 0; padding: 24px; color: #211b17;">
-  <div style="max-width: 680px; margin: 0 auto; background: #ffffff; border: 1px solid #e7ded5; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-    <div style="background-color: #75401f; padding: 24px; color: #ffffff;">
-      <h2 style="margin: 0; font-size: 22px; letter-spacing: 0.5px;">UMA TECHNO FAB PVT. LTD.</h2>
-      <p style="margin: 4px 0 0; font-size: 12px; opacity: 0.9;">Plot No. 48/B, GIDC Industrial Estate, Makarpura, Vadodara - 390010, Gujarat, India</p>
-    </div>
+        from django.conf import settings
+        import re
+        from_email_setting = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'UMA TECHNO FAB <hrinfinitesofttech@gmail.com>'
+        email_match = re.search(r'<([^>]+)>', str(from_email_setting))
+        reply_to_addr = email_match.group(1).strip() if email_match else str(from_email_setting).strip()
 
-    <div style="padding: 24px;">
-      <div style="border-bottom: 2px solid #f3ece4; padding-bottom: 16px; margin-bottom: 20px;">
-        <table style="width: 100%;">
+        email_html = f"""<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="supported-color-schemes" content="light dark" />
+  <title>{subject}</title>
+  <style type="text/css">
+    body, table, td, p, a, li, blockquote {{
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }}
+    table, td {{
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }}
+    img {{
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }}
+    body {{
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      background-color: #f6f3ee;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }}
+    @media (prefers-color-scheme: dark) {{
+      .email-bg {{ background-color: #121212 !important; }}
+      .card-box {{ background-color: #1e1e1e !important; border-color: #333333 !important; }}
+      .meta-pill-box {{ background-color: #27221e !important; border-color: #42352b !important; }}
+      .title-text {{ color: #ffffff !important; }}
+      .body-text {{ color: #e0e0e0 !important; }}
+      .sub-text {{ color: #a0a0a0 !important; }}
+      .item-row-border {{ border-bottom-color: #333333 !important; }}
+      .total-box {{ background-color: #2c2018 !important; border-color: #4f3422 !important; }}
+      .terms-callout {{ background-color: #22201d !important; border-left-color: #8c5229 !important; color: #cccccc !important; }}
+      .footer-section {{ border-top-color: #333333 !important; }}
+    }}
+    @media only screen and (max-width: 600px) {{
+      .container-table {{ width: 100% !important; max-width: 100% !important; }}
+      .mobile-padding {{ padding: 14px 12px !important; }}
+      .mobile-header-padding {{ padding: 18px 14px !important; }}
+      .mobile-stack {{ display: block !important; width: 100% !important; box-sizing: border-box !important; }}
+      .mobile-text-left {{ text-align: left !important; }}
+      .mobile-margin-top {{ margin-top: 10px !important; }}
+    }}
+  </style>
+</head>
+<body class="email-bg" style="margin: 0; padding: 16px 8px; background-color: #f6f3ee;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="email-bg" style="background-color: #f6f3ee;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="container-table card-box" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e7ded5; border-radius: 12px; overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,0.06);">
+          
+          <!-- Brand Header Banner -->
           <tr>
-            <td>
-              <span style="font-size: 11px; text-transform: uppercase; color: #8c7a6e; font-weight: bold;">Quotation Addressed To:</span><br>
-              <strong style="font-size: 16px; color: #211b17;">{quotation.customer_name}</strong><br>
-              <span style="font-size: 13px; color: #544b45;">Attn: {quotation.contact_person}</span><br>
-              <span style="font-size: 12px; color: #8c7a6e;">{recipient}</span>
+            <td style="background-color: #75401f; padding: 22px 24px; color: #ffffff;" class="mobile-header-padding">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td>
+                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.9; font-weight: 700; color: #f2dfd3;">COMMERCIAL PROPOSAL</div>
+                    <h1 style="margin: 4px 0 0 0; font-size: 20px; font-weight: 800; color: #ffffff; letter-spacing: 0.3px; line-height: 1.3;">UMA TECHNO FAB PVT. LTD.</h1>
+                    <p style="margin: 4px 0 0 0; font-size: 11px; color: #ebdcd2; line-height: 1.4;">Plot No. 48/B, GIDC Industrial Estate, Makarpura, Vadodara - 390010, Gujarat, India</p>
+                  </td>
+                </tr>
+              </table>
             </td>
-            <td style="text-align: right; vertical-align: top;">
-              <span style="background-color: #f5e6d8; color: #8c5229; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 13px; font-family: monospace;">{quotation.quotation_number}</span><br>
-              <span style="display: inline-block; margin-top: 6px; font-size: 12px; font-weight: bold; color: #75401f;">{quotation.current_revision}</span><br>
-              <span style="font-size: 11px; color: #8c7a6e;">Date: {quotation.date}</span><br>
-              <span style="font-size: 11px; color: #8c7a6e;">Valid Until: {quotation.valid_until}</span>
+          </tr>
+
+          <!-- Main Content Body -->
+          <tr>
+            <td style="padding: 24px;" class="mobile-padding">
+
+              <!-- Quotation Meta Pill Box (Reference & Validity) -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="meta-pill-box" style="background-color: #faf5f0; border: 1px solid #eedfd3; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 12px 14px;" class="mobile-stack">
+                    <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #8c7a6e; font-weight: 700; display: block;">QUOTATION REFERENCE</span>
+                    <div style="margin-top: 3px;">
+                      <span style="font-size: 15px; font-weight: 800; color: #75401f; font-family: monospace, Courier, sans-serif;">{quotation.quotation_number}</span>
+                      <span style="display: inline-block; background-color: #75401f; color: #ffffff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; vertical-align: middle; margin-left: 6px;">{quotation.current_revision}</span>
+                    </div>
+                  </td>
+                  <td style="padding: 12px 14px; text-align: right;" class="mobile-stack mobile-text-left mobile-margin-top">
+                    <div style="font-size: 11px; color: #6b7280; line-height: 1.5;">
+                      Date: <strong style="color: #211b17;" class="title-text">{quotation.date}</strong><br>
+                      Valid Until: <strong style="color: #211b17;" class="title-text">{quotation.valid_until}</strong>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Client Details Box -->
+              <div style="border-bottom: 1px solid #f0e6dd; padding-bottom: 16px; margin-bottom: 18px;" class="item-row-border">
+                <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #8c7a6e; font-weight: 700; display: block; margin-bottom: 4px;">PROPOSAL ADDRESSED TO</span>
+                <div style="font-size: 17px; font-weight: 800; color: #1f2937; line-height: 1.3;" class="title-text">{quotation.customer_name}</div>
+                <div style="font-size: 13px; color: #4b5563; margin-top: 4px;" class="body-text">
+                  Attn: <strong style="color: #1f2937;" class="title-text">{quotation.contact_person or quotation.customer_name}</strong>
+                </div>
+                <div style="font-size: 12px; color: #6b7280; margin-top: 2px;" class="sub-text">
+                  Recipient Email: <a href="mailto:{recipient}" style="color: #75401f; text-decoration: none; font-weight: 600;">{recipient}</a>
+                </div>
+              </div>
+
+              <!-- Greeting & Intro -->
+              <p style="font-size: 13px; line-height: 1.6; color: #374151; margin: 0 0 16px 0;" class="body-text">
+                Dear <strong>{quotation.contact_person or quotation.customer_name}</strong>,<br>
+                Thank you for your business enquiry. We are pleased to submit our formal commercial and technical proposal for your valued review:
+              </p>
+
+              <!-- Bill of Quantities / Items List (Responsive Card-based Table) -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #e7ded5;" class="item-row-border">
+                    <th align="left" style="padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8c7a6e; font-weight: 700;">Equipment / Description</th>
+                    <th align="right" style="padding: 8px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #8c7a6e; font-weight: 700; white-space: nowrap;">Amount (INR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items_rows_html}
+                </tbody>
+              </table>
+
+              <!-- Financial Summary (Totals) -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-top: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td align="right" style="padding: 6px 10px; font-size: 12px; color: #6b7280;" class="sub-text">Taxable Subtotal:</td>
+                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {quotation.subtotal:,.2f}</td>
+                </tr>
+                <tr>
+                  <td align="right" style="padding: 6px 10px; font-size: 12px; color: #6b7280;" class="sub-text">Applicable GST:</td>
+                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {quotation.tax_amount:,.2f}</td>
+                </tr>
+                <tr class="total-box" style="background-color: #faf0e6;">
+                  <td align="right" style="padding: 12px 10px; font-size: 14px; font-weight: 800; color: #75401f; border-top: 1px solid #ebd8c8; border-bottom: 1px solid #ebd8c8;">Grand Total:</td>
+                  <td align="right" width="130" style="padding: 12px 10px; font-size: 16px; font-weight: 900; color: #059669; border-top: 1px solid #ebd8c8; border-bottom: 1px solid #ebd8c8; white-space: nowrap;">{total_formatted}</td>
+                </tr>
+              </table>
+
+              <!-- Terms & Conditions Note -->
+              <div class="terms-callout" style="background-color: #faf7f2; border-left: 4px solid #75401f; border-radius: 4px; padding: 12px 14px; margin-top: 16px; font-size: 12px; color: #544b45; line-height: 1.6;">
+                <strong style="color: #75401f; display: block; margin-bottom: 4px;">Commercial Terms:</strong>
+                • Payment Terms: As mutually agreed upon Purchase Order.<br>
+                • Validity: 30 days from proposal date.<br>
+                • Inspection & Quality: Strictly compliant with standard industrial fabrication norms.
+              </div>
+
+              <!-- Reassurance message -->
+              <p style="font-size: 12px; color: #6b7280; margin: 18px 0 0 0; line-height: 1.5;" class="sub-text">
+                Please feel free to reach out to our engineering and sales division for any technical clarifications or adjustments to the scope.
+              </p>
+
+              <!-- Footer & Signature (CAN-SPAM Compliant) -->
+              <div class="footer-section" style="margin-top: 24px; padding-top: 18px; border-top: 1px solid #e5ded5; font-size: 11px; color: #70665f; line-height: 1.5;">
+                <strong style="font-size: 12px; color: #211b17;" class="title-text">UMA TECHNO FAB PVT. LTD.</strong><br>
+                Sales & Commercial Division • Makarpura GIDC, Vadodara - 390010<br>
+                Phone: +91 265 264 0000 • Email: <a href="mailto:{reply_to_addr}" style="color: #75401f; text-decoration: none; font-weight: 600;">{reply_to_addr}</a><br>
+                Website: <a href="https://www.umatechnofab.com" style="color: #75401f; text-decoration: none; font-weight: 600;">www.umatechnofab.com</a>
+                <p style="margin: 10px 0 0 0; font-size: 10px; color: #9ca3af; line-height: 1.4;">
+                  This commercial quotation proposal was generated automatically by UMA ERP on behalf of UMA TECHNO FAB PVT. LTD. for {quotation.customer_name}.
+                </p>
+              </div>
+
             </td>
           </tr>
         </table>
-      </div>
-
-      <p style="font-size: 13px; line-height: 1.6; color: #374151;">
-        Dear <strong>{quotation.contact_person or quotation.customer_name}</strong>,<br>
-        Thank you for your business enquiry. We are pleased to submit our formal commercial and technical proposal for your review:
-      </p>
-
-      <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 16px;">
-        <thead>
-          <tr style="background-color: #faf7f2; color: #544b45;">
-            <th style="padding: 10px; border: 1px solid #e0d7ce; font-size: 11px; text-align: center;">#</th>
-            <th style="padding: 10px; border: 1px solid #e0d7ce; font-size: 11px; text-align: left;">Equipment / Description</th>
-            <th style="padding: 10px; border: 1px solid #e0d7ce; font-size: 11px; text-align: center;">Qty</th>
-            <th style="padding: 10px; border: 1px solid #e0d7ce; font-size: 11px; text-align: right;">Unit Rate (₹)</th>
-            <th style="padding: 10px; border: 1px solid #e0d7ce; font-size: 11px; text-align: right;">Total Amount (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items_rows_html}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4" style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px; font-weight: bold;">Subtotal:</td>
-            <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px; font-weight: bold;">INR {quotation.subtotal:,.2f}</td>
-          </tr>
-          <tr>
-            <td colspan="4" style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px; font-weight: bold;">GST Taxes:</td>
-            <td style="padding: 8px 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 12px; font-weight: bold;">INR {quotation.tax_amount:,.2f}</td>
-          </tr>
-          <tr style="background-color: #faf0e6;">
-            <td colspan="4" style="padding: 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 14px; font-weight: 900; color: #75401f;">Grand Total:</td>
-            <td style="padding: 10px; border: 1px solid #e0d7ce; text-align: right; font-size: 14px; font-weight: 900; color: #059669;">{total_formatted}</td>
-          </tr>
-        </tfoot>
-      </table>
-
-      <div style="background-color: #faf7f2; border-left: 4px solid #75401f; padding: 12px; margin-top: 20px; font-size: 12px; color: #544b45;">
-        <strong>Terms & Conditions:</strong><br>
-        • Payment Terms: As mutually agreed.<br>
-        • Validity: 30 days from proposal date.<br>
-        • Inspection & Quality: Compliant with standard industrial fabrication norms.
-      </div>
-
-      <p style="font-size: 12px; color: #6b7280; margin-top: 24px; line-height: 1.5;">
-        Please feel free to reach out to our engineering and sales division for any technical queries or discussions.
-      </p>
-
-      <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5ded5; font-size: 12px; color: #70665f;">
-        <strong>UMA TECHNO FAB PVT. LTD.</strong><br>
-        Sales & Commercial Division • Makarpura GIDC, Vadodara<br>
-        Web: <a href="https://www.umatechnofab.com" style="color: #75401f;">www.umatechnofab.com</a>
-      </div>
-    </div>
-  </div>
+        <!-- End Card Table -->
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 """
 
-        from django.core.mail import send_mail
-        from django.conf import settings
+        from django.core.mail import EmailMultiAlternatives
         import logging
         logger = logging.getLogger(__name__)
 
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'sales@umatechnofab.com'
         try:
-            send_mail(
+            email_msg = EmailMultiAlternatives(
                 subject=subject,
-                message=email_text,
-                from_email=from_email,
-                recipient_list=[recipient],
-                html_message=email_html,
-                fail_silently=False,
+                body=email_text,
+                from_email=from_email_setting,
+                to=[recipient],
+                reply_to=[reply_to_addr],
+                headers={
+                    'X-Mailer': 'UMA ERP Commercial Proposal System',
+                    'X-Entity-Ref-ID': f"QT-{quotation.quotation_number}",
+                    'Auto-Submitted': 'auto-generated',
+                }
             )
+            email_msg.attach_alternative(email_html, "text/html")
+            email_msg.send(fail_silently=False)
+
             email_status = 'sent'
             message = f"Quotation {quotation.quotation_number} ({quotation.current_revision}) successfully dispatched via email to {recipient}."
 
