@@ -224,6 +224,11 @@ class LeadViewSet(viewsets.ModelViewSet):
             if not data.get('created_date'):
                 data['created_date'] = datetime.now().strftime('%Y-%m-%d')
 
+            if data.get('expected_delivery') is None:
+                data['expected_delivery'] = ''
+            if data.get('next_follow_up_date') is None:
+                data['next_follow_up_date'] = ''
+
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)
             self.perform_create(serializer)

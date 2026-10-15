@@ -19,6 +19,9 @@ from .models import (
 
 class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     product_name = serializers.CharField(required=False, allow_blank=True, default='')
+    expected_delivery = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    next_follow_up_date = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    country = serializers.CharField(required=False, allow_blank=True, default='India')
 
     class Meta:
         model = Lead
@@ -88,6 +91,16 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+
+        # Convert None to empty string for all text fields to avoid DRF null validation errors
+        for str_field in [
+            'expected_delivery', 'next_follow_up_date', 'remarks', 'address', 'city', 'state',
+            'country', 'pincode', 'industry', 'website', 'gstin', 'designation', 'alt_mobile',
+            'whatsapp', 'machine_type', 'capacity', 'application', 'requirement_description',
+            'exhibition_id', 'exhibition_name', 'assigned_sales_person_id', 'assigned_sales_person_name'
+        ]:
+            if data.get(str_field) is None:
+                data[str_field] = ''
         inst = getattr(self, 'instance', None)
         if inst:
             # During updates (PUT/PATCH), never override user data with dummy defaults!
@@ -106,6 +119,8 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
                 data['id'] = data['lead_no']
             if not data.get('created_date'):
                 data['created_date'] = datetime.now().date().isoformat()
+            if not data.get('country'):
+                data['country'] = 'India'
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
