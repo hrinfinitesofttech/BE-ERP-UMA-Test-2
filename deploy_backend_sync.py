@@ -84,14 +84,24 @@ def get_pa_deployed_commit_via_file():
     return "UNKNOWN"
 
 
-def reload_pa_webapp():
-    """Reloads the PythonAnywhere web application via REST API."""
+def reload_pa_webapp(retries=4):
+    """Reloads the PythonAnywhere web application via REST API with 409 retry."""
     url = f"{PA_BASE_URL}/webapps/{PA_DOMAIN}/reload/"
-    try:
-        r = requests.post(url, headers=PA_HEADERS, timeout=30)
-        return r.status_code == 200, r.status_code, r.text
-    except Exception as e:
-        return False, 500, str(e)
+    for i in range(retries):
+        try:
+            r = requests.post(url, headers=PA_HEADERS, timeout=30)
+            if r.status_code == 200:
+                return True, 200, r.text
+            elif r.status_code == 409 and i < retries - 1:
+                time.sleep(5)
+                continue
+            return False, r.status_code, r.text
+        except Exception as e:
+            if i < retries - 1:
+                time.sleep(3)
+                continue
+            return False, 500, str(e)
+    return False, 500, "Reload retries exhausted"
 
 
 def deploy_via_webhook(target_commit=None, force_pip=False):
@@ -120,7 +130,7 @@ def deploy_via_pa_bootstrap(target_commit=None):
     uses PythonAnywhere WSGI hook to run git pull/checkout and migrations safely.
     """
     log("Tier 1 Webhook not reachable. Engaging Tier 2 PA Bootstrap Engine...")
-    cmd_git = f"git checkout {target_commit}" if target_commit else "git checkout main && git pull origin main"
+    cmd_git = f"git fetch origin && git checkout {target_commit}" if target_commit else "git fetch origin && git checkout main && git pull origin main"
     
     bootstrap_wsgi = f"""import os
 import sys
@@ -164,16 +174,18 @@ application = get_wsgi_application()
         
     # 2. Reload to trigger bootstrap
     reload_pa_webapp()
-    time.sleep(3)
+    time.sleep(8)
     try:
-        requests.get(f"{LIVE_BASE_URL}/api/", timeout=15)
+        requests.get(f"{LIVE_BASE_URL}/api/", timeout=20)
     except Exception:
         pass
+    time.sleep(4)
         
     # 3. Restore clean WSGI
     requests.post(wsgi_url, headers=PA_HEADERS, files={'content': clean_wsgi})
+    time.sleep(3)
     reload_pa_webapp()
-    time.sleep(2)
+    time.sleep(5)
     return True, "Bootstrap deployment executed successfully"
 
 
