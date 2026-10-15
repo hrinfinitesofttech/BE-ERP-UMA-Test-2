@@ -201,12 +201,25 @@ class LeadViewSet(viewsets.ModelViewSet):
                 data['id'] = code
                 data['lead_no'] = code
 
-            # 2. Check if lead with this exact ID or lead_no already exists in database
+            # 2. If lead with this exact ID or lead_no already exists in database, auto-assign next free number
             target_id = data.get('id')
-            if is_explicit_id and target_id and not request.data.get('allow_existing'):
+            if target_id:
                 existing = Lead.objects.filter(id=target_id).first() or Lead.objects.filter(lead_no=target_id).first()
                 if existing:
-                    return Response({'error': f"Lead with number '{target_id}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+                    import re
+                    all_ids = list(Lead.objects.values_list('id', flat=True)) + list(Lead.objects.values_list('lead_no', flat=True))
+                    max_num = 0
+                    for lid in all_ids:
+                        m = re.search(r'(\d+)$', str(lid))
+                        if m:
+                            max_num = max(max_num, int(m.group(1)))
+                    num = max(max_num + 1, Lead.objects.count() + 1)
+                    code = f"LEAD-2026-{num:04d}"
+                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                        num += 1
+                        code = f"LEAD-2026-{num:04d}"
+                    data['id'] = code
+                    data['lead_no'] = code
 
             if not data.get('created_date'):
                 data['created_date'] = datetime.now().strftime('%Y-%m-%d')

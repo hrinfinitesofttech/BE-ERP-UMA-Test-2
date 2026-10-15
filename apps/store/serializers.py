@@ -81,6 +81,30 @@ class ItemMasterSerializer(serializers.ModelSerializer):
             'status',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        mapping = {
+            'itemCode': 'item_code',
+            'itemName': 'item_name',
+            'itemType': 'item_type',
+            'hsnSac': 'hsn_sac',
+            'gstRate': 'gst_rate',
+            'unitCost': 'unit_cost',
+            'standardRate': 'unit_cost',
+            'standardCost': 'unit_cost',
+            'minimumStock': 'minimum_stock',
+            'maximumStock': 'maximum_stock',
+            'reorderLevel': 'reorder_level',
+            'drawingNumber': 'drawing_number',
+            'brandMake': 'brand_make',
+        }
+        for camel, snake in mapping.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('id') and data.get('item_code'):
+            data['id'] = data['item_code']
+        return super().to_internal_value(data)
+
 
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:

@@ -109,14 +109,20 @@ class SalesInvoiceSerializer(UniversalModelSerializerMixin, serializers.ModelSer
                 pass
         if not data.get('customer_name'):
             data['customer_name'] = data.get('customerName') or data.get('company_name') or 'Valued Customer'
-        if not data.get('invoice_number'):
-            data['invoice_number'] = data.get('id') or f"SINV-{int(datetime.now().timestamp())}"
-        if not data.get('id'):
-            data['id'] = data['invoice_number']
-        if not data.get('invoice_date'):
-            data['invoice_date'] = data.get('date') or datetime.now().date().isoformat()
-        if not data.get('due_date'):
-            data['due_date'] = (datetime.now().date() + timedelta(days=30)).isoformat()
+        if not self.instance:
+            if not data.get('invoice_number'):
+                data['invoice_number'] = data.get('id') or f"SINV-{int(datetime.now().timestamp())}"
+            if not data.get('id'):
+                data['id'] = data['invoice_number']
+            if not data.get('invoice_date'):
+                data['invoice_date'] = data.get('date') or datetime.now().date().isoformat()
+            if not data.get('due_date'):
+                data['due_date'] = (datetime.now().date() + timedelta(days=30)).isoformat()
+        else:
+            if not data.get('id'):
+                data['id'] = self.instance.id
+            if not data.get('invoice_number'):
+                data['invoice_number'] = self.instance.invoice_number
         if not data.get('grand_total') and data.get('totalAmount'):
             data['grand_total'] = data.get('totalAmount')
         return super().to_internal_value(data)
