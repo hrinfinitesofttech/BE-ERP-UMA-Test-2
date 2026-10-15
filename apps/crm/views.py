@@ -1012,7 +1012,6 @@ class QuotationViewSet(viewsets.ModelViewSet):
                     status='sent',
                     enquiry_id=None,
                     lead_id=None,
-                    customer_id=None,
                     save=lambda *args, **kwargs: None
                 )
 
