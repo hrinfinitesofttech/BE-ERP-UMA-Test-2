@@ -744,10 +744,22 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         if not active_rev and revs and isinstance(revs[-1], dict):
             active_rev = revs[-1]
 
-        items = instance.items or (active_rev.get('items') if active_rev else []) or []
-        subtotal = float(instance.subtotal or (active_rev.get('subTotal') or active_rev.get('subtotal') or 0) if active_rev else (instance.subtotal or 0))
-        tax_amount = float(instance.tax_amount or (active_rev.get('taxAmount') or active_rev.get('tax_amount') or 0) if active_rev else (instance.tax_amount or 0))
-        grand_total = float(instance.grand_total or instance.total_amount or (active_rev.get('grandTotal') or active_rev.get('grand_total') or 0) if active_rev else (instance.grand_total or instance.total_amount or 0))
+        items = (active_rev.get('items') if active_rev and active_rev.get('items') else None) or instance.items or []
+
+        if active_rev and (active_rev.get('subTotal') is not None or active_rev.get('subtotal') is not None):
+            subtotal = float(active_rev.get('subTotal') if active_rev.get('subTotal') is not None else active_rev.get('subtotal'))
+        else:
+            subtotal = float(instance.subtotal or 0)
+
+        if active_rev and (active_rev.get('taxAmount') is not None or active_rev.get('tax_amount') is not None):
+            tax_amount = float(active_rev.get('taxAmount') if active_rev.get('taxAmount') is not None else active_rev.get('tax_amount'))
+        else:
+            tax_amount = float(instance.tax_amount or 0)
+
+        if active_rev and (active_rev.get('grandTotal') is not None or active_rev.get('grand_total') is not None):
+            grand_total = float(active_rev.get('grandTotal') if active_rev.get('grandTotal') is not None else active_rev.get('grand_total'))
+        else:
+            grand_total = float(instance.grand_total or instance.total_amount or 0)
 
         first_item = (items or [{}])[0]
         machine_prod = instance.machine_product or first_item.get('productName') or first_item.get('product_name') or 'Process Equipment'

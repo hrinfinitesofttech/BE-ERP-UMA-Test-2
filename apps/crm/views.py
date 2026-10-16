@@ -1052,16 +1052,29 @@ class QuotationViewSet(viewsets.ModelViewSet):
                 pass
 
         # Extract active revision and ensure items and financial totals are populated
-        cur_rev_num = getattr(quotation, 'current_revision', 'Rev-00') or 'Rev-00'
+        import json
+        cur_rev_num = str(getattr(quotation, 'current_revision', 'Rev-00') or 'Rev-00').strip()
         revs = getattr(quotation, 'revisions', []) or []
+        if isinstance(revs, str):
+            try:
+                revs = json.loads(revs)
+            except Exception:
+                revs = []
+
         quo_payload = request.data.get('quotation') or {}
         payload_revs = quo_payload.get('revisions') or []
+        if isinstance(payload_revs, str):
+            try:
+                payload_revs = json.loads(payload_revs)
+            except Exception:
+                payload_revs = []
+
         if payload_revs and not revs:
             revs = payload_revs
 
         active_rev = None
         for r in revs:
-            if isinstance(r, dict) and r.get('revisionNumber') == cur_rev_num:
+            if isinstance(r, dict) and str(r.get('revisionNumber') or '').strip().lower() == cur_rev_num.lower():
                 active_rev = r
                 break
         if not active_rev and revs and isinstance(revs[-1], dict):
@@ -1069,39 +1082,83 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
         # Extract items
         items = getattr(quotation, 'items', []) or []
+        if isinstance(items, str):
+            try:
+                items = json.loads(items)
+            except Exception:
+                items = []
+
         if not items and active_rev:
-            items = active_rev.get('items') or []
+            active_items = active_rev.get('items') or []
+            if isinstance(active_items, str):
+                try:
+                    active_items = json.loads(active_items)
+                except Exception:
+                    active_items = []
+            items = active_items
+
         if not items and quo_payload.get('items'):
             items = quo_payload.get('items') or []
         if not items and payload_revs and isinstance(payload_revs[-1], dict):
             items = payload_revs[-1].get('items') or []
 
-        # Extract financial amounts
-        subtotal = float(getattr(quotation, 'subtotal', 0) or 0)
-        if subtotal == 0 and active_rev:
-            subtotal = float(active_rev.get('subTotal') or active_rev.get('subtotal') or 0)
+        # Extract financial amounts - prioritizing active revision values
+        subtotal = 0.0
+        if active_rev and (active_rev.get('subTotal') is not None or active_rev.get('subtotal') is not None):
+            try:
+                val = active_rev.get('subTotal') if active_rev.get('subTotal') is not None else active_rev.get('subtotal')
+                subtotal = float(val)
+            except (ValueError, TypeError):
+                subtotal = 0.0
+
         if subtotal == 0 and quo_payload:
-            subtotal = float(quo_payload.get('subtotal') or quo_payload.get('subTotal') or 0)
+            try:
+                subtotal = float(quo_payload.get('subtotal') or quo_payload.get('subTotal') or 0)
+            except (ValueError, TypeError):
+                subtotal = 0.0
 
-        tax_amount = float(getattr(quotation, 'tax_amount', 0) or 0)
-        if tax_amount == 0 and active_rev:
-            tax_amount = float(active_rev.get('taxAmount') or active_rev.get('tax_amount') or 0)
+        if subtotal == 0 and getattr(quotation, 'subtotal', None):
+            subtotal = float(quotation.subtotal or 0)
+
+        tax_amount = 0.0
+        if active_rev and (active_rev.get('taxAmount') is not None or active_rev.get('tax_amount') is not None):
+            try:
+                val = active_rev.get('taxAmount') if active_rev.get('taxAmount') is not None else active_rev.get('tax_amount')
+                tax_amount = float(val)
+            except (ValueError, TypeError):
+                tax_amount = 0.0
+
         if tax_amount == 0 and quo_payload:
-            tax_amount = float(quo_payload.get('taxAmount') or quo_payload.get('tax_amount') or 0)
+            try:
+                tax_amount = float(quo_payload.get('taxAmount') or quo_payload.get('tax_amount') or 0)
+            except (ValueError, TypeError):
+                tax_amount = 0.0
 
-        grand_total = float(getattr(quotation, 'grand_total', 0) or getattr(quotation, 'total_amount', 0) or 0)
-        if grand_total == 0 and active_rev:
-            grand_total = float(active_rev.get('grandTotal') or active_rev.get('grand_total') or 0)
+        if tax_amount == 0 and getattr(quotation, 'tax_amount', None):
+            tax_amount = float(quotation.tax_amount or 0)
+
+        grand_total = 0.0
+        if active_rev and (active_rev.get('grandTotal') is not None or active_rev.get('grand_total') is not None):
+            try:
+                val = active_rev.get('grandTotal') if active_rev.get('grandTotal') is not None else active_rev.get('grand_total')
+                grand_total = float(val)
+            except (ValueError, TypeError):
+                grand_total = 0.0
+
         if grand_total == 0 and quo_payload:
-            grand_total = float(quo_payload.get('grandTotal') or quo_payload.get('grand_total') or 0)
+            try:
+                grand_total = float(quo_payload.get('grandTotal') or quo_payload.get('grand_total') or 0)
+            except (ValueError, TypeError):
+                grand_total = 0.0
 
-        # Fallback calculation if amounts are still 0 but items exist
-        if (grand_total == 0 or subtotal == 0) and items:
-            calc_sub = sum(float(it.get('amount') or (float(it.get('quantity', 1)) * float(it.get('rate', 0)))) for it in items)
-            if subtotal == 0:
-                subtotal = calc_sub
-            if grand_total == 0:
-                grand_total = subtotal + tax_amount
+        if grand_total == 0 and getattr(quotation, 'grand_total', None):
+            grand_total = float(quotation.grand_total or getattr(quotation, 'total_amount', 0) or 0)
+
+        # Fallback calculation only if amounts are still 0 but items exist
+        if subtotal == 0 and items:
+            subtotal = sum(float(it.get('rate', 0)) * float(it.get('quantity', 1)) for it in items)
+        if grand_total == 0:
+            grand_total = subtotal + tax_amount
 
         # Update quotation object and database so it is permanently synchronized
         try:
