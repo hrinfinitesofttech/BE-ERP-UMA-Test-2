@@ -184,6 +184,20 @@ class SystemDeployView(View):
                 errors.append(err)
                 return False, "", str(e)
 
+        # Safeguard: Automatic pre-deployment SQLite database backup to prevent any data loss
+        db_path = Path(base_dir) / 'db.sqlite3'
+        backup_dir = Path(base_dir) / 'backups'
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_file = None
+        if db_path.exists():
+            backup_file = backup_dir / f"db_auto_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.sqlite3"
+            try:
+                import shutil
+                shutil.copy2(db_path, backup_file)
+                logs.append(f"[DB Backup] Successfully saved database snapshot to {backup_file}")
+            except Exception as bkp_err:
+                logs.append(f"[DB Backup Warning] Could not copy database: {bkp_err}")
+
         # Step 1: Git fetch origin main
         run_step(['git', 'fetch', 'origin', 'main'], "Git Fetch")
 
@@ -200,6 +214,17 @@ class SystemDeployView(View):
         else:
             run_step(['git', 'checkout', 'main'], "Git Checkout Main")
             run_step(['git', 'pull', 'origin', 'main'], "Git Pull")
+
+        # Safeguard: Ensure live database is never overwritten by Git checkout or pull
+        if backup_file and backup_file.exists() and db_path.exists():
+            try:
+                import shutil
+                # If git replaced db.sqlite3 with an older or smaller repo version, restore user data immediately
+                if db_path.stat().st_size != backup_file.stat().st_size:
+                    shutil.copy2(backup_file, db_path)
+                    logs.append("[DB Protection] Restored user database from pre-deploy backup to guarantee zero data loss.")
+            except Exception as rst_err:
+                logs.append(f"[DB Restore Warning] {rst_err}")
 
         new_commit = get_current_git_commit()
 

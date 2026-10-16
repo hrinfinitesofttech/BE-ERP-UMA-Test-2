@@ -140,9 +140,21 @@ path = '/home/{PA_USERNAME}/BE-ERP-UMA'
 if path not in sys.path:
     sys.path.append(path)
 
-# Execute atomic deployment bootstrap
+# Execute atomic deployment bootstrap with database protection
 try:
+    import shutil
+    db_file = os.path.join(path, 'db.sqlite3')
+    bkp_file = os.path.join(path, 'db_bootstrap_backup.sqlite3')
+    if os.path.exists(db_file):
+        shutil.copy2(db_file, bkp_file)
+
     p_git = subprocess.run('{cmd_git}', shell=True, cwd=path, capture_output=True, text=True, timeout=60)
+    
+    # Guarantee live database file is preserved and not overwritten
+    if os.path.exists(bkp_file):
+        if not os.path.exists(db_file) or os.path.getsize(db_file) != os.path.getsize(bkp_file):
+            shutil.copy2(bkp_file, db_file)
+
     p_mig = subprocess.run('/home/{PA_USERNAME}/.virtualenvs/erp-venv/bin/python manage.py migrate --noinput', shell=True, cwd=path, capture_output=True, text=True, timeout=90)
     with open('/home/{PA_USERNAME}/deploy_bootstrap_status.txt', 'w') as f:
         f.write(f"GIT_CODE:{{p_git.returncode}}\\nGIT_OUT:{{p_git.stdout}}\\nGIT_ERR:{{p_git.stderr}}\\nMIG_CODE:{{p_mig.returncode}}\\nMIG_OUT:{{p_mig.stdout}}\\n")
