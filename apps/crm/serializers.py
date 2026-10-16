@@ -685,6 +685,32 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
                 'status': ret.get('status'),
             }]
 
+        # Ensure top-level items and financial totals are populated from active revision
+        revs = ret.get('revisions') or []
+        cur_rev = ret.get('current_revision') or 'Rev-00'
+        active_rev = None
+        for r in revs:
+            if isinstance(r, dict) and r.get('revisionNumber') == cur_rev:
+                active_rev = r
+                break
+        if not active_rev and revs and isinstance(revs[-1], dict):
+            active_rev = revs[-1]
+
+        if active_rev:
+            if not ret.get('items'):
+                ret['items'] = active_rev.get('items') or []
+            if not ret.get('subtotal'):
+                ret['subtotal'] = float(active_rev.get('subTotal') or active_rev.get('subtotal') or 0)
+            if not ret.get('tax_amount'):
+                ret['tax_amount'] = float(active_rev.get('taxAmount') or active_rev.get('tax_amount') or 0)
+            if not ret.get('grand_total'):
+                ret['grand_total'] = float(active_rev.get('grandTotal') or active_rev.get('grand_total') or 0)
+            if not ret.get('total_amount'):
+                ret['total_amount'] = ret['grand_total']
+            if not ret.get('machine_product') and ret.get('items'):
+                first_it = ret['items'][0]
+                ret['machine_product'] = first_it.get('productName') or first_it.get('product_name') or ''
+
         if 'notes' in data:
             ret['notes'] = data.get('notes') or ''
         elif inst:
@@ -708,15 +734,33 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         rep['leadId'] = instance.lead_id
         rep['enquiryId'] = instance.enquiry_id
         rep['opportunityId'] = instance.opportunity_id
-        rep['machineProduct'] = instance.machine_product
+        revs = instance.revisions or []
+        cur_rev = instance.current_revision or 'Rev-00'
+        active_rev = None
+        for r in revs:
+            if isinstance(r, dict) and r.get('revisionNumber') == cur_rev:
+                active_rev = r
+                break
+        if not active_rev and revs and isinstance(revs[-1], dict):
+            active_rev = revs[-1]
+
+        items = instance.items or (active_rev.get('items') if active_rev else []) or []
+        subtotal = float(instance.subtotal or (active_rev.get('subTotal') or active_rev.get('subtotal') or 0) if active_rev else (instance.subtotal or 0))
+        tax_amount = float(instance.tax_amount or (active_rev.get('taxAmount') or active_rev.get('tax_amount') or 0) if active_rev else (instance.tax_amount or 0))
+        grand_total = float(instance.grand_total or instance.total_amount or (active_rev.get('grandTotal') or active_rev.get('grand_total') or 0) if active_rev else (instance.grand_total or instance.total_amount or 0))
+
+        first_item = (items or [{}])[0]
+        machine_prod = instance.machine_product or first_item.get('productName') or first_item.get('product_name') or 'Process Equipment'
+
+        rep['machineProduct'] = machine_prod
         rep['salesPersonId'] = instance.sales_person_id
         rep['salesPersonName'] = instance.sales_person_name
-        rep['revisions'] = instance.revisions or []
-        rep['items'] = instance.items or []
-        rep['subtotal'] = instance.subtotal
-        rep['taxAmount'] = instance.tax_amount
-        rep['totalAmount'] = instance.total_amount
-        rep['grandTotal'] = instance.grand_total or instance.total_amount
+        rep['revisions'] = revs
+        rep['items'] = items
+        rep['subtotal'] = subtotal
+        rep['taxAmount'] = tax_amount
+        rep['totalAmount'] = grand_total
+        rep['grandTotal'] = grand_total
         rep['status'] = instance.status
         rep['approvedBy'] = instance.approved_by
         rep['approvedAt'] = instance.approved_at.isoformat() if instance.approved_at else None
@@ -724,13 +768,10 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         rep['notes'] = instance.notes
         
         # Calculate latestSummary for frontend convenience
-        revs = instance.revisions or []
-        last_rev = revs[-1] if revs else {}
-        first_item = (instance.items or last_rev.get('items') or [{}])[0]
         rep['latestSummary'] = {
-            'machineProduct': instance.machine_product or first_item.get('productName', 'Process Equipment'),
-            'grandTotal': instance.grand_total or instance.total_amount or last_rev.get('grandTotal', 0),
-            'status': instance.status or last_rev.get('status', 'draft')
+            'machineProduct': machine_prod,
+            'grandTotal': grand_total,
+            'status': instance.status or (active_rev.get('status') if active_rev else 'draft')
         }
         return rep
 

@@ -960,12 +960,13 @@ class QuotationViewSet(viewsets.ModelViewSet):
             c_mobile = quo_payload.get('contactMobile') or quo_payload.get('contact_mobile') or ''
             c_id = quo_payload.get('customerId') or quo_payload.get('customer_id') or f"CUST-{pk}"
             m_product = quo_payload.get('machineProduct') or quo_payload.get('machine_product') or 'Industrial Fabrication Equipment'
-            sub = float(quo_payload.get('subtotal') or 0)
-            tax = float(quo_payload.get('taxAmount') or quo_payload.get('tax_amount') or 0)
-            g_total = float(quo_payload.get('grandTotal') or quo_payload.get('grand_total') or 0)
-            cur_rev = quo_payload.get('currentRevision') or 'Rev-00'
             revs = quo_payload.get('revisions') or []
-            itms = quo_payload.get('items') or []
+            last_r = revs[-1] if revs and isinstance(revs[-1], dict) else {}
+            itms = quo_payload.get('items') or last_r.get('items') or []
+            sub = float(quo_payload.get('subtotal') or quo_payload.get('subTotal') or last_r.get('subTotal') or last_r.get('subtotal') or 0)
+            tax = float(quo_payload.get('taxAmount') or quo_payload.get('tax_amount') or last_r.get('taxAmount') or last_r.get('tax_amount') or 0)
+            g_total = float(quo_payload.get('grandTotal') or quo_payload.get('grand_total') or last_r.get('grandTotal') or last_r.get('grand_total') or 0)
+            cur_rev = quo_payload.get('currentRevision') or last_r.get('revisionNumber') or 'Rev-00'
             v_until = quo_payload.get('validUntil') or quo_payload.get('valid_until') or '2026-12-31'
             dt = quo_payload.get('date') or datetime.date.today().isoformat()
 
@@ -1050,11 +1051,76 @@ class QuotationViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        subject = f"Quotation {quotation.quotation_number} ({quotation.current_revision}) - UMA Techno Fab Pvt. Ltd."
-        total_formatted = f"INR {quotation.grand_total:,.2f}" if quotation.grand_total else "As Detailed"
+        # Extract active revision and ensure items and financial totals are populated
+        cur_rev_num = getattr(quotation, 'current_revision', 'Rev-00') or 'Rev-00'
+        revs = getattr(quotation, 'revisions', []) or []
+        quo_payload = request.data.get('quotation') or {}
+        payload_revs = quo_payload.get('revisions') or []
+        if payload_revs and not revs:
+            revs = payload_revs
+
+        active_rev = None
+        for r in revs:
+            if isinstance(r, dict) and r.get('revisionNumber') == cur_rev_num:
+                active_rev = r
+                break
+        if not active_rev and revs and isinstance(revs[-1], dict):
+            active_rev = revs[-1]
+
+        # Extract items
+        items = getattr(quotation, 'items', []) or []
+        if not items and active_rev:
+            items = active_rev.get('items') or []
+        if not items and quo_payload.get('items'):
+            items = quo_payload.get('items') or []
+        if not items and payload_revs and isinstance(payload_revs[-1], dict):
+            items = payload_revs[-1].get('items') or []
+
+        # Extract financial amounts
+        subtotal = float(getattr(quotation, 'subtotal', 0) or 0)
+        if subtotal == 0 and active_rev:
+            subtotal = float(active_rev.get('subTotal') or active_rev.get('subtotal') or 0)
+        if subtotal == 0 and quo_payload:
+            subtotal = float(quo_payload.get('subtotal') or quo_payload.get('subTotal') or 0)
+
+        tax_amount = float(getattr(quotation, 'tax_amount', 0) or 0)
+        if tax_amount == 0 and active_rev:
+            tax_amount = float(active_rev.get('taxAmount') or active_rev.get('tax_amount') or 0)
+        if tax_amount == 0 and quo_payload:
+            tax_amount = float(quo_payload.get('taxAmount') or quo_payload.get('tax_amount') or 0)
+
+        grand_total = float(getattr(quotation, 'grand_total', 0) or getattr(quotation, 'total_amount', 0) or 0)
+        if grand_total == 0 and active_rev:
+            grand_total = float(active_rev.get('grandTotal') or active_rev.get('grand_total') or 0)
+        if grand_total == 0 and quo_payload:
+            grand_total = float(quo_payload.get('grandTotal') or quo_payload.get('grand_total') or 0)
+
+        # Fallback calculation if amounts are still 0 but items exist
+        if (grand_total == 0 or subtotal == 0) and items:
+            calc_sub = sum(float(it.get('amount') or (float(it.get('quantity', 1)) * float(it.get('rate', 0)))) for it in items)
+            if subtotal == 0:
+                subtotal = calc_sub
+            if grand_total == 0:
+                grand_total = subtotal + tax_amount
+
+        # Update quotation object and database so it is permanently synchronized
+        try:
+            quotation.items = items
+            quotation.subtotal = subtotal
+            quotation.tax_amount = tax_amount
+            quotation.total_amount = grand_total
+            quotation.grand_total = grand_total
+            if not getattr(quotation, 'machine_product', None) and items:
+                quotation.machine_product = items[0].get('productName') or items[0].get('product_name') or ''
+            if hasattr(quotation, 'save'):
+                quotation.save(update_fields=['items', 'subtotal', 'tax_amount', 'total_amount', 'grand_total', 'machine_product'])
+        except Exception as save_ex:
+            logger.warning(f"Could not update quotation fields: {save_ex}")
+
+        subject = f"Commercial Quotation {quotation.quotation_number} ({quotation.current_revision}) - UMA Techno Fab Pvt. Ltd."
+        total_formatted = f"INR {grand_total:,.2f}" if grand_total else "As Detailed"
 
         # Build items table for HTML email
-        items = quotation.items or []
         items_rows_html = ""
         items_text = ""
         for idx, itm in enumerate(items, 1):
@@ -1063,7 +1129,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
             qty = itm.get('quantity', 1)
             unit = itm.get('unit', 'Nos')
             rate = float(itm.get('rate', 0))
-            amt = float(itm.get('amount', 0))
+            amt = float(itm.get('amount', 0)) or (rate * float(qty))
             items_text += f"  {idx}. {p_name} | Qty: {qty} {unit} | Rate: INR {rate:,.2f} | Total: INR {amt:,.2f}\n"
             desc_html = f'<div style="font-size: 11px; color: #6b7280; margin: 3px 0 0 0; line-height: 1.4;" class="sub-text">{p_desc}</div>' if p_desc else ''
             items_rows_html += f"""
@@ -1102,8 +1168,8 @@ Equipment Scope : {quotation.machine_product or 'Industrial Machinery & Process 
 
 BILL OF QUANTITIES & PRICING:
 {items_text}
-Taxable Subtotal : INR {quotation.subtotal:,.2f}
-Applicable GST   : INR {quotation.tax_amount:,.2f}
+Taxable Subtotal : INR {subtotal:,.2f}
+Applicable GST   : INR {tax_amount:,.2f}
 Grand Total      : {total_formatted}
 
 Commercial Terms:
@@ -1261,11 +1327,11 @@ Web: www.umatechnofab.com
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-top: 8px; margin-bottom: 20px;">
                 <tr>
                   <td align="right" style="padding: 6px 10px; font-size: 12px; color: #6b7280;" class="sub-text">Taxable Subtotal:</td>
-                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {quotation.subtotal:,.2f}</td>
+                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {subtotal:,.2f}</td>
                 </tr>
                 <tr>
                   <td align="right" style="padding: 6px 10px; font-size: 12px; color: #6b7280;" class="sub-text">Applicable GST:</td>
-                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {quotation.tax_amount:,.2f}</td>
+                  <td align="right" width="130" style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: #1f2937; white-space: nowrap;" class="title-text">INR {tax_amount:,.2f}</td>
                 </tr>
                 <tr class="total-box" style="background-color: #faf0e6;">
                   <td align="right" style="padding: 12px 10px; font-size: 14px; font-weight: 800; color: #75401f; border-top: 1px solid #ebd8c8; border-bottom: 1px solid #ebd8c8;">Grand Total:</td>
@@ -1320,9 +1386,9 @@ Web: www.umatechnofab.com
                 to=[recipient],
                 reply_to=[reply_to_addr],
                 headers={
-                    'X-Mailer': 'UMA ERP Commercial Proposal System',
-                    'X-Entity-Ref-ID': f"QT-{quotation.quotation_number}",
-                    'Auto-Submitted': 'auto-generated',
+                    'X-Mailer': 'UMA ERP Commercial System',
+                    'X-Priority': '3',
+                    'Importance': 'Normal',
                 }
             )
             email_msg.attach_alternative(email_html, "text/html")
