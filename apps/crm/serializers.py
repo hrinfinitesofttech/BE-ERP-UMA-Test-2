@@ -734,17 +734,31 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         rep['leadId'] = instance.lead_id
         rep['enquiryId'] = instance.enquiry_id
         rep['opportunityId'] = instance.opportunity_id
+        import json
         revs = instance.revisions or []
+        if isinstance(revs, str):
+            try:
+                revs = json.loads(revs)
+            except Exception:
+                revs = []
+
         cur_rev = instance.current_revision or 'Rev-00'
         active_rev = None
         for r in revs:
-            if isinstance(r, dict) and r.get('revisionNumber') == cur_rev:
+            if isinstance(r, dict) and str(r.get('revisionNumber') or '').strip().lower() == str(cur_rev).strip().lower():
                 active_rev = r
                 break
         if not active_rev and revs and isinstance(revs[-1], dict):
             active_rev = revs[-1]
 
-        items = (active_rev.get('items') if active_rev and active_rev.get('items') else None) or instance.items or []
+        inst_items = instance.items or []
+        if isinstance(inst_items, str):
+            try:
+                inst_items = json.loads(inst_items)
+            except Exception:
+                inst_items = []
+
+        items = (active_rev.get('items') if active_rev and active_rev.get('items') else None) or inst_items or []
 
         if active_rev and (active_rev.get('subTotal') is not None or active_rev.get('subtotal') is not None):
             subtotal = float(active_rev.get('subTotal') if active_rev.get('subTotal') is not None else active_rev.get('subtotal'))
