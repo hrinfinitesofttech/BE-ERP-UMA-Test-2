@@ -234,6 +234,8 @@ class SupplierQuotationSerializer(serializers.ModelSerializer):
             data['payment_terms'] = data.pop('paymentTerms')
         if 'deliveryLeadTime' in data and 'delivery_lead_time' not in data:
             data['delivery_lead_time'] = data.pop('deliveryLeadTime')
+        if 'additionalCharges' in data and 'additional_charges' not in data:
+            data['additional_charges'] = data.pop('additionalCharges')
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -249,6 +251,7 @@ class SupplierQuotationSerializer(serializers.ModelSerializer):
             'quotationDate': ret.get('date', ''),
             'validityDate': ret.get('valid_until', ''),
             'items': ret.get('items') or [],
+            'additionalCharges': ret.get('additional_charges') or [],
             'subTotal': ret.get('sub_total', 0),
             'taxTotal': ret.get('tax_amount', 0),
             'grandTotal': ret.get('grand_total', 0),
@@ -368,6 +371,8 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             'poNumber': 'po_number',
             'revisionNumber': 'revision_number',
             'poDate': 'date',
+            'prNumber': 'pr_number',
+            'indentNumber': 'indent_number',
             'supplierId': 'supplier_id',
             'supplierName': 'supplier_name',
             'contactPerson': 'contact_person',
@@ -399,6 +404,8 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             data['supplier_id'] = data.pop('supplier')
         if 'indent' in data and 'indent_id' not in data:
             data['indent_id'] = data.pop('indent')
+        if 'additionalCharges' in data and 'additional_charges' not in data:
+            data['additional_charges'] = data.pop('additionalCharges')
 
         if data.get('supplier_id'):
             try:
@@ -446,6 +453,8 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             'revisionNumber': ret.get('revision_number', 'Rev-00'),
             'date': ret.get('date', ''),
             'poDate': ret.get('date', ''),
+            'prNumber': ret.get('pr_number', '') or ret.get('indent_number', ''),
+            'indentNumber': ret.get('indent_number', '') or ret.get('pr_number', ''),
             'supplierId': ret.get('supplier_id', ''),
             'supplierName': ret.get('supplier_name', ''),
             'contactPerson': ret.get('contact_person', ''),
@@ -462,6 +471,7 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             'dispatchMode': 'By Road Truck',
             'currency': 'INR',
             'items': items,
+            'additionalCharges': ret.get('additional_charges') or [],
             'subTotal': ret.get('sub_total', 0),
             'discountAmount': ret.get('discount_amount', 0),
             'taxAmount': ret.get('tax_amount', 0),

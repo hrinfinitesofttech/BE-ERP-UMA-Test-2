@@ -42,6 +42,7 @@ from apps.projects.views import (
     CustomerChangeRequestViewSet,
     ProjectCostViewSet,
     ProjectDocumentViewSet,
+    MasterTaskViewSet,
 )
 from apps.designer.views import (
     DesignJobViewSet,
@@ -197,6 +198,7 @@ api_router.register(r'project-jobs', ProjectJobMasterViewSet, basename='project-
 api_router.register(r'planning-stages', ProjectPlanningStageViewSet, basename='planning-stage')
 api_router.register(r'project-milestones', ProjectMilestoneViewSet, basename='project-milestone')
 api_router.register(r'project-tasks', ProjectTaskViewSet, basename='project-task')
+api_router.register(r'master-tasks', MasterTaskViewSet, basename='master-task')
 api_router.register(r'project-issues', ProjectIssueViewSet, basename='project-issue')
 api_router.register(r'project-delays', ProjectDelayViewSet, basename='project-delay')
 api_router.register(r'change-requests', CustomerChangeRequestViewSet, basename='change-request')

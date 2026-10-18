@@ -251,3 +251,24 @@ class ProjectDocument(models.Model):
     def __str__(self):
         return f"{self.document_name} ({self.version})"
 
+
+class MasterTask(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    task_code = models.CharField(max_length=50, blank=True, default='')
+    task_name = models.CharField(max_length=200)
+    department = models.CharField(max_length=100)
+    department_id = models.CharField(max_length=64, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    estimated_days = models.IntegerField(default=1)
+    estimated_hours = models.FloatField(default=8.0)
+    status = models.CharField(max_length=30, default='active')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        ordering = ['department', 'task_name']
+
+    def __str__(self):
+        return f"{self.task_name} ({self.department})"
+
+

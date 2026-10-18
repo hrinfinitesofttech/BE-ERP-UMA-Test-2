@@ -7,6 +7,7 @@ from .views import (
     DepartmentAssignmentViewSet,
     ProjectCostViewSet,
     ProjectDocumentViewSet,
+    MasterTaskViewSet,
     ProjectsDashboardSummaryView
 )
 
@@ -18,6 +19,7 @@ router.register(r'jobs', ProjectJobMasterViewSet, basename='project-job')
 router.register(r'', ProjectJobMasterViewSet, basename='project')
 router.register(r'planning-stages', ProjectPlanningStageViewSet, basename='planning-stage')
 router.register(r'tasks', ProjectTaskViewSet, basename='task')
+router.register(r'master-tasks', MasterTaskViewSet, basename='master-task')
 router.register(r'assignments', DepartmentAssignmentViewSet, basename='assignment')
 router.register(r'costs', ProjectCostViewSet, basename='cost')
 router.register(r'documents', ProjectDocumentViewSet, basename='document')

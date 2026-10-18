@@ -11,6 +11,7 @@ from .models import (
     CustomerChangeRequest,
     ProjectCost,
     ProjectDocument,
+    MasterTask,
 )
 
 
@@ -564,4 +565,51 @@ class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.Mode
             'projectManagerName': ret.get('project_manager_name', 'Bhavin Shah'),
             'isPlanningSaved': is_plan_saved,
             'is_planning_saved': is_plan_saved,
+        }
+
+
+class MasterTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MasterTask
+        fields = [
+            'id',
+            'task_code',
+            'task_name',
+            'department',
+            'department_id',
+            'description',
+            'estimated_days',
+            'estimated_hours',
+            'status',
+            'created_at',
+            'updated_at',
+        ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'taskCode' in data and 'task_code' not in data:
+            data['task_code'] = data.pop('taskCode')
+        if 'taskName' in data and 'task_name' not in data:
+            data['task_name'] = data.pop('taskName')
+        elif 'name' in data and 'task_name' not in data:
+            data['task_name'] = data.pop('name')
+        if 'departmentId' in data and 'department_id' not in data:
+            data['department_id'] = data.pop('departmentId')
+        if 'estimatedDays' in data and 'estimated_days' not in data:
+            data['estimated_days'] = data.pop('estimatedDays')
+        if 'estimatedHours' in data and 'estimated_hours' not in data:
+            data['estimated_hours'] = data.pop('estimatedHours')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return {
+            **ret,
+            'taskCode': ret.get('task_code', ''),
+            'taskName': ret.get('task_name', ''),
+            'departmentId': ret.get('department_id', ''),
+            'estimatedDays': ret.get('estimated_days', 1),
+            'estimatedHours': ret.get('estimated_hours', 8.0),
+            'createdAt': ret.get('created_at'),
+            'updatedAt': ret.get('updated_at'),
         }

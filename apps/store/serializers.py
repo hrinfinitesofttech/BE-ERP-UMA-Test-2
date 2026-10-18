@@ -143,16 +143,38 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
             'purchaseOrder': 'po_id',
             'purchaseOrderId': 'po_id',
             'poNumber': 'po_number',
+            'poDate': 'po_date',
+            'indentNumber': 'indent_number',
+            'indentDate': 'indent_date',
             'supplier': 'supplier_id',
             'supplierId': 'supplier_id',
             'supplierName': 'supplier_name',
+            'supplierAddress': 'supplier_address',
+            'gateEntryNumber': 'gate_entry_number',
+            'gateEntryNo': 'gate_entry_number',
+            'gateEntryDate': 'gate_entry_date',
             'challanNumber': 'challan_number',
             'deliveryChallanNumber': 'delivery_challan_number',
             'challanDate': 'challan_date',
+            'invoiceNumber': 'invoice_number',
+            'invoiceDate': 'invoice_date',
+            'billNumber': 'bill_number',
+            'billNo': 'bill_number',
+            'billDate': 'bill_date',
+            'lrNumber': 'lr_number',
+            'lrNo': 'lr_number',
             'vehicleNumber': 'vehicle_number',
+            'transporterName': 'transporter_name',
+            'authorized': 'authorized',
+            'inspectionRequired': 'inspection_required',
+            'grandTotal': 'grand_total',
+            'preparedBy': 'prepared_by',
+            'storeManager': 'store_manager',
+            'inspectedBy': 'inspected_by',
+            'hod': 'hod',
+            'accountManager': 'account_manager',
             'warehouseId': 'warehouse_id',
             'warehouseName': 'warehouse_name',
-            'transporterName': 'transporter_name',
             'totalReceivedValue': 'total_received_value',
             'receivedBy': 'received_by',
             'remarks': 'remarks',
@@ -172,6 +194,14 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
             data['delivery_challan_number'] = data['challan_number']
         if not data.get('challan_number') and data.get('delivery_challan_number'):
             data['challan_number'] = data['delivery_challan_number']
+        if not data.get('bill_number') and data.get('invoice_number'):
+            data['bill_number'] = data['invoice_number']
+        if not data.get('invoice_number') and data.get('bill_number'):
+            data['invoice_number'] = data['bill_number']
+        if not data.get('grand_total') and data.get('total_received_value'):
+            data['grand_total'] = data['total_received_value']
+        if not data.get('total_received_value') and data.get('grand_total'):
+            data['total_received_value'] = data['grand_total']
         if not data.get('remarks') and data.get('notes'):
             data['remarks'] = data['notes']
         if not data.get('notes') and data.get('remarks'):
@@ -182,6 +212,8 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
                 s = Supplier.objects.filter(id=data['supplier_id']).first() or Supplier.objects.filter(vendor_code=data['supplier_id']).first()
                 if s:
                     data['supplier_name'] = s.name
+                    if not data.get('supplier_address'):
+                        data['supplier_address'] = s.address
             except Exception:
                 pass
         if not data.get('supplier_name'):
@@ -192,6 +224,10 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
                 po = PurchaseOrder.objects.filter(id=data['po_id']).first()
                 if po:
                     data['po_number'] = po.po_number
+                    if not data.get('po_date'):
+                        data['po_date'] = po.date
+                    if not data.get('supplier_address') and getattr(po, 'supplier_address', ''):
+                        data['supplier_address'] = po.supplier_address
             except Exception:
                 pass
         if not data.get('po_number'):
@@ -201,24 +237,42 @@ class GoodsReceiptNoteSerializer(UniversalModelSerializerMixin, serializers.Mode
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['grnNumber'] = instance.grn_number
-        data['grnDate'] = str(instance.date) if instance.date else ''
-        data['receiptDate'] = str(instance.date) if instance.date else ''
+        data['grnDate'] = str(instance.date) if instance.date else (instance.grn_date or '')
+        data['receiptDate'] = str(instance.date) if instance.date else (instance.grn_date or '')
         data['projectId'] = instance.project_id
         data['jobId'] = instance.job_number
         data['jobNumber'] = instance.job_number
         data['poId'] = instance.po_id
         data['poNumber'] = instance.po_number
+        data['poDate'] = instance.po_date
+        data['indentNumber'] = instance.indent_number
+        data['indentDate'] = instance.indent_date
         data['supplierId'] = instance.supplier_id
         data['supplierName'] = instance.supplier_name
+        data['supplierAddress'] = instance.supplier_address
+        data['gateEntryNumber'] = instance.gate_entry_number
+        data['gateEntryDate'] = instance.gate_entry_date
         data['deliveryChallanNumber'] = instance.delivery_challan_number or instance.challan_number
         data['challanNumber'] = instance.challan_number or instance.delivery_challan_number
-        data['invoiceNumber'] = instance.invoice_number
+        data['challanDate'] = instance.challan_date
+        data['invoiceNumber'] = instance.invoice_number or instance.bill_number
+        data['billNumber'] = instance.bill_number or instance.invoice_number
+        data['billDate'] = instance.bill_date or instance.invoice_date
+        data['lrNumber'] = instance.lr_number
         data['vehicleNumber'] = instance.vehicle_number
         data['transporterName'] = instance.transporter_name
         data['receivedBy'] = instance.received_by
         data['warehouseId'] = instance.warehouse_id
         data['warehouseName'] = instance.warehouse_name
         data['totalReceivedValue'] = instance.total_received_value
+        data['grandTotal'] = instance.grand_total or instance.total_received_value
+        data['authorized'] = instance.authorized or 'Yes'
+        data['inspectionRequired'] = instance.inspection_required or 'Yes'
+        data['preparedBy'] = instance.prepared_by or 'EDP / PREPARED BY'
+        data['storeManager'] = instance.store_manager or 'STORE MANAGER'
+        data['inspectedBy'] = instance.inspected_by or 'INSPECTED BY'
+        data['hod'] = instance.hod or 'H.O.D.'
+        data['accountManager'] = instance.account_manager or 'ACCOUNT MANAGER'
         data['remarks'] = instance.remarks or instance.notes
         data['items'] = instance.items or []
         return data

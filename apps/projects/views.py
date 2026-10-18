@@ -19,6 +19,7 @@ from .models import (
     ProjectDelay,
     CustomerChangeRequest,
     ProjectCost,
+    MasterTask,
 )
 from .serializers import (
     ProjectJobMasterSerializer,
@@ -31,6 +32,7 @@ from .serializers import (
     ProjectDelaySerializer,
     CustomerChangeRequestSerializer,
     ProjectCostSerializer,
+    MasterTaskSerializer,
 )
 
 STANDARD_16_STAGE_DEFINITIONS = [
@@ -762,4 +764,51 @@ class ProjectsDashboardSummaryView(APIView):
             'tasks_count': len(tasks),
             'delays_count': len(delays),
         })
+
+
+class MasterTaskViewSet(viewsets.ModelViewSet):
+    queryset = MasterTask.objects.all()
+    serializer_class = MasterTaskSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        dept = self.request.query_params.get('department')
+        if dept:
+            qs = qs.filter(department__iexact=dept)
+        search = self.request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(task_name__icontains=search) | Q(task_code__icontains=search) | Q(department__icontains=search))
+        return qs.order_by('department', 'task_name')
+
+    def perform_create(self, serializer):
+        task_id = self.request.data.get('id')
+        if not task_id:
+            count = MasterTask.objects.count() + 1
+            task_id = f"MT-{count:03d}"
+        serializer.save(id=task_id)
+
+    @action(detail=False, methods=['post'], url_path='batch')
+    def batch_create(self, request):
+        items = request.data
+        if not isinstance(items, list):
+            items = request.data.get('tasks', [])
+        if not isinstance(items, list):
+            return Response({'error': 'Expected a list of tasks'}, status=status.HTTP_400_BAD_REQUEST)
+        created = []
+        for item in items:
+            task_id = item.get('id')
+            if not task_id:
+                count = MasterTask.objects.count() + 1
+                task_id = f"MT-{count:03d}-{uuid.uuid4().hex[:4].upper()}"
+            item_data = dict(item)
+            item_data['id'] = task_id
+            serializer = self.get_serializer(data=item_data)
+            if serializer.is_valid():
+                serializer.save()
+                created.append(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(created, status=status.HTTP_201_CREATED)
 
