@@ -780,7 +780,7 @@ class MasterTaskViewSet(viewsets.ModelViewSet):
         if search:
             from django.db.models import Q
             qs = qs.filter(Q(task_name__icontains=search) | Q(task_code__icontains=search) | Q(department__icontains=search))
-        return qs.order_by('department', 'task_name')
+        return qs.order_by('task_code', 'department', 'task_name')
 
     def perform_create(self, serializer):
         task_id = self.request.data.get('id')
@@ -806,7 +806,7 @@ class MasterTaskViewSet(viewsets.ModelViewSet):
             item_data['id'] = task_id
             serializer = self.get_serializer(data=item_data)
             if serializer.is_valid():
-                serializer.save()
+                serializer.save(id=task_id)
                 created.append(serializer.data)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

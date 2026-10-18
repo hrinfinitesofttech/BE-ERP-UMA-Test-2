@@ -7,6 +7,7 @@ from apps.projects.models import (
     ProjectIssue,
     ProjectDelay,
     ProjectCost,
+    MasterTask,
 )
 from apps.projects.views import auto_generate_16_stages
 from apps.designer.models import (
@@ -202,5 +203,23 @@ class Command(BaseCommand):
                 'items': bom_items,
             }
         )
-        self.stdout.write(self.style.SUCCESS(f'[OK] BOM Header BOM-CRV-10K with {len(bom_items)} items seeded.'))
+        # 9. Seed 10 Standard Manufacturing Master Tasks
+        master_tasks_data = [
+            {'id': 'Task-01', 'task_code': 'Task-01', 'task_name': 'Design', 'department': 'Design & Engineering', 'description': '2D design', 'estimated_days': 3, 'estimated_hours': 24, 'status': 'active'},
+            {'id': 'Task-02', 'task_code': 'Task-02', 'task_name': 'BOM', 'department': 'Design & Engineering', 'description': 'Material List', 'estimated_days': 2, 'estimated_hours': 16, 'status': 'active'},
+            {'id': 'Task-03', 'task_code': 'Task-03', 'task_name': 'Cutting', 'department': 'Nesting Programming', 'description': 'Nesting programming', 'estimated_days': 1, 'estimated_hours': 8, 'status': 'active'},
+            {'id': 'Task-04', 'task_code': 'Task-04', 'task_name': 'Bending', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 1, 'estimated_hours': 8, 'status': 'active'},
+            {'id': 'Task-05', 'task_code': 'Task-05', 'task_name': 'Teking', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 1, 'estimated_hours': 8, 'status': 'active'},
+            {'id': 'Task-06', 'task_code': 'Task-06', 'task_name': 'Welding', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 2, 'estimated_hours': 16, 'status': 'active'},
+            {'id': 'Task-07', 'task_code': 'Task-07', 'task_name': 'Grinding', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 2, 'estimated_hours': 16, 'status': 'active'},
+            {'id': 'Task-08', 'task_code': 'Task-08', 'task_name': 'Mach', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 2, 'estimated_hours': 16, 'status': 'active'},
+            {'id': 'Task-09', 'task_code': 'Task-09', 'task_name': 'Finishing', 'department': 'Production & Shop Floor', 'description': '', 'estimated_days': 2, 'estimated_hours': 16, 'status': 'active'},
+            {'id': 'Task-10', 'task_code': 'Task-10', 'task_name': 'Final Inspection', 'department': 'Quality Control', 'description': '', 'estimated_days': 1, 'estimated_hours': 8, 'status': 'active'},
+        ]
+        for m in master_tasks_data:
+            MasterTask.objects.update_or_create(
+                id=m['id'],
+                defaults=m,
+            )
+        self.stdout.write(self.style.SUCCESS(f'[OK] {len(master_tasks_data)} Master Tasks seeded.'))
         self.stdout.write(self.style.SUCCESS('Done: Phase 3 Project & Design Seeding Complete!'))

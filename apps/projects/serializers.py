@@ -584,6 +584,9 @@ class MasterTaskSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+        extra_kwargs = {
+            'id': {'read_only': False, 'required': False},
+        }
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
