@@ -14,6 +14,8 @@ from .models import (
     DataImportLog,
     SecurityCheckRecord,
     GoLiveChecklistItem,
+    RecordVersion,
+    FieldAuditHistory,
 )
 from .serializers import (
     CompanySettingSerializer,
@@ -25,7 +27,10 @@ from .serializers import (
     DataImportLogSerializer,
     SecurityCheckRecordSerializer,
     GoLiveChecklistItemSerializer,
+    RecordVersionSerializer,
+    FieldAuditHistorySerializer,
 )
+from .version_diff import compute_version_diff
 
 
 class CompanySettingView(APIView):
@@ -266,5 +271,103 @@ class GoLiveChecklistItemViewSet(viewsets.ModelViewSet):
     queryset = GoLiveChecklistItem.objects.all().order_by('module_name')
     serializer_class = GoLiveChecklistItemSerializer
     permission_classes = [permissions.AllowAny]
+
+
+class RecordVersionViewSet(viewsets.ModelViewSet):
+    """
+    API ViewSet for Record Version Snapshots & Milestone Comparisons (Figma / Sheets Style)
+    """
+    queryset = RecordVersion.objects.all().order_by('-version_index', '-created_at')
+    serializer_class = RecordVersionSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        entity_type = self.request.query_params.get('entity_type') or self.request.query_params.get('entityType')
+        entity_id = self.request.query_params.get('entity_id') or self.request.query_params.get('entityId')
+        milestone_only = self.request.query_params.get('milestone_only') or self.request.query_params.get('milestoneOnly')
+
+        if entity_type:
+            qs = qs.filter(entity_type=entity_type)
+        if entity_id:
+            qs = qs.filter(entity_id=entity_id)
+        if milestone_only == 'true':
+            qs = qs.filter(is_milestone=True)
+        return qs
+
+    @action(detail=False, methods=['get', 'post'], url_path='compare')
+    def compare(self, request):
+        """
+        Compare two versions of an entity and return multi-level visual diff
+        """
+        data = request.data if request.method == 'POST' else request.query_params
+
+        base_id = data.get('baseVersionId') or data.get('base_version_id')
+        target_id = data.get('targetVersionId') or data.get('target_version_id')
+
+        # Mode 1: Compare by Version Record IDs
+        if base_id and target_id:
+            try:
+                base_ver = RecordVersion.objects.get(id=base_id)
+                target_ver = RecordVersion.objects.get(id=target_id)
+
+                base_meta = RecordVersionSerializer(base_ver).data['meta']
+                target_meta = RecordVersionSerializer(target_ver).data['meta']
+
+                diff_result = compute_version_diff(
+                    version_a_meta=base_meta,
+                    version_a_data=base_ver.snapshot or {},
+                    version_b_meta=target_meta,
+                    version_b_data=target_ver.snapshot or {},
+                )
+                return Response(diff_result)
+            except RecordVersion.DoesNotExist:
+                return Response({'error': 'One or both version IDs not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Mode 2: Compare raw payloads passed in request body
+        version_a = data.get('versionA') or data.get('version_a')
+        version_b = data.get('versionB') or data.get('version_b')
+        if version_a and version_b:
+            meta_a = version_a.get('meta', {})
+            data_a = version_a.get('data', version_a)
+            meta_b = version_b.get('meta', {})
+            data_b = version_b.get('data', version_b)
+
+            diff_result = compute_version_diff(
+                version_a_meta=meta_a,
+                version_a_data=data_a,
+                version_b_meta=meta_b,
+                version_b_data=data_b,
+            )
+            return Response(diff_result)
+
+        return Response(
+            {'error': 'Provide either (baseVersionId, targetVersionId) or (versionA, versionB)'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class FieldAuditHistoryViewSet(viewsets.ModelViewSet):
+    """
+    API ViewSet for Single-Cell / Field-Level Edit History (Google Sheets Style)
+    """
+    queryset = FieldAuditHistory.objects.all().order_by('-changed_at')
+    serializer_class = FieldAuditHistorySerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        entity_type = self.request.query_params.get('entity_type') or self.request.query_params.get('entityType')
+        entity_id = self.request.query_params.get('entity_id') or self.request.query_params.get('entityId')
+        field_path = self.request.query_params.get('field_path') or self.request.query_params.get('fieldPath')
+
+        if entity_type:
+            qs = qs.filter(entity_type=entity_type)
+        if entity_id:
+            qs = qs.filter(entity_id=entity_id)
+        if field_path:
+            qs = qs.filter(field_path=field_path)
+        return qs
+
 
 

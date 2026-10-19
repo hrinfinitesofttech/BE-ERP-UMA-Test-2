@@ -185,3 +185,58 @@ class GoLiveChecklistItem(models.Model):
         return f"{self.module_name}: {self.item_title} ({self.status})"
 
 
+class RecordVersion(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    entity_type = models.CharField(max_length=60, db_index=True)
+    entity_id = models.CharField(max_length=100, db_index=True)
+    version_number = models.CharField(max_length=60)
+    version_index = models.IntegerField(default=1)
+    label = models.CharField(max_length=255, blank=True, default='')
+    is_milestone = models.BooleanField(default=True)
+    status = models.CharField(max_length=50, blank=True, default='draft')
+    snapshot = models.JSONField(default=dict)
+    change_summary = models.JSONField(default=dict, blank=True)
+    user_id = models.CharField(max_length=64, blank=True, default='')
+    user_name = models.CharField(max_length=150, blank=True, default='')
+    user_role = models.CharField(max_length=100, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-version_index', '-created_at']
+
+    def __str__(self):
+        return f"{self.entity_type} {self.entity_id} - {self.version_number}"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = f"ver-{uuid.uuid4().hex[:10]}"
+        super().save(*args, **kwargs)
+
+
+class FieldAuditHistory(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    entity_type = models.CharField(max_length=60, db_index=True)
+    entity_id = models.CharField(max_length=100, db_index=True)
+    field_path = models.CharField(max_length=100, db_index=True)
+    field_label = models.CharField(max_length=150)
+    old_value = models.JSONField(null=True, blank=True)
+    new_value = models.JSONField(null=True, blank=True)
+    changed_by_id = models.CharField(max_length=64, blank=True, default='')
+    changed_by_name = models.CharField(max_length=150, blank=True, default='')
+    version_number = models.CharField(max_length=60, blank=True, default='')
+    reason = models.TextField(blank=True, default='')
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.entity_type}/{self.entity_id} {self.field_path} by {self.changed_by_name}"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            self.id = f"fah-{uuid.uuid4().hex[:10]}"
+        super().save(*args, **kwargs)
+
+

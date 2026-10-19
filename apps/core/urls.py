@@ -10,6 +10,8 @@ from .views import (
     DataImportLogViewSet,
     SecurityCheckRecordViewSet,
     GoLiveChecklistItemViewSet,
+    RecordVersionViewSet,
+    FieldAuditHistoryViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +23,9 @@ router.register(r'backups', BackupRecordViewSet, basename='backup')
 router.register(r'data-imports', DataImportLogViewSet, basename='data-import')
 router.register(r'security-checks', SecurityCheckRecordViewSet, basename='security-check')
 router.register(r'go-live-checklist', GoLiveChecklistItemViewSet, basename='go-live-checklist')
+router.register(r'versions', RecordVersionViewSet, basename='record-version')
+router.register(r'field-history', FieldAuditHistoryViewSet, basename='field-audit-history')
+
 
 
 from .system_views import SystemHealthView, SystemDeployView
