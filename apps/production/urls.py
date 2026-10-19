@@ -16,7 +16,6 @@ router.register('manufacturing-jobs', ManufacturingJobViewSet, basename='manufac
 router.register('production-plans', ProductionPlanViewSet, basename='production-plan')
 router.register('work-centers', WorkCenterViewSet, basename='work-center')
 router.register('routing-operations', RoutingOperationViewSet, basename='routing-operation')
-router.register('work-orders', WorkOrderViewSet, basename='work-order')
 router.register('production-orders', ProductionOrderViewSet, basename='production-order')
 router.register('production-schedules', ProductionScheduleItemViewSet, basename='production-schedule')
 router.register('production-entries', ProductionEntryViewSet, basename='production-entry')
