@@ -145,7 +145,7 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
         return rep
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = [
@@ -160,6 +160,31 @@ class ContactSerializer(serializers.ModelSerializer):
             'whatsapp',
             'is_primary',
         ]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'isPrimary': 'is_primary',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('id'):
+            data['id'] = f"CONT-{int(datetime.now().timestamp())}"
+        if 'phone' in data and not data.get('mobile'):
+            data['mobile'] = data.pop('phone')
+        if not data.get('mobile'):
+            data['mobile'] = '9999999999'
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['customerId'] = instance.customer_id
+        rep['customerName'] = instance.customer_name
+        rep['isPrimary'] = instance.is_primary
+        return rep
 
 
 class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):

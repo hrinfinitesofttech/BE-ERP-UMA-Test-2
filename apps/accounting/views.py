@@ -205,6 +205,23 @@ class CustomerReceiptViewSet(viewsets.ModelViewSet):
     search_fields = ['receipt_number', 'customer_name', 'sales_invoice_number']
     filterset_fields = ['customer_id', 'status']
 
+    def perform_create(self, serializer):
+        receipt = serializer.save()
+        if receipt.sales_invoice_number and receipt.sales_invoice_number not in ['Direct Advance Payment', 'Direct Payment']:
+            inv = SalesInvoice.objects.filter(invoice_number=receipt.sales_invoice_number).first() or \
+                  SalesInvoice.objects.filter(id=receipt.sales_invoice_number).first()
+            if inv:
+                amt = float(receipt.amount or receipt.amount_paid or 0.0)
+                inv.paid_amount = float(inv.paid_amount or 0.0) + amt
+                inv.outstanding_amount = max(0.0, float(inv.grand_total) - inv.paid_amount)
+                if inv.outstanding_amount <= 0.0:
+                    inv.payment_status = 'Paid'
+                    inv.status = 'Paid'
+                else:
+                    inv.payment_status = 'Partially Paid'
+                    inv.status = 'Partially Paid'
+                inv.save()
+
 
 class SupplierPaymentViewSet(viewsets.ModelViewSet):
     queryset = SupplierPayment.objects.all().order_by('-id')
@@ -212,6 +229,23 @@ class SupplierPaymentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
     search_fields = ['payment_number', 'supplier_name', 'purchase_invoice_number']
     filterset_fields = ['supplier_id', 'status']
+
+    def perform_create(self, serializer):
+        payment = serializer.save()
+        if payment.purchase_invoice_number:
+            inv = PurchaseInvoice.objects.filter(invoice_number=payment.purchase_invoice_number).first() or \
+                  PurchaseInvoice.objects.filter(id=payment.purchase_invoice_number).first()
+            if inv:
+                amt = float(payment.amount or 0.0)
+                inv.paid_amount = float(inv.paid_amount or 0.0) + amt
+                inv.outstanding_amount = max(0.0, float(inv.grand_total) - inv.paid_amount)
+                if inv.outstanding_amount <= 0.0:
+                    inv.payment_status = 'Paid'
+                    inv.status = 'Paid'
+                else:
+                    inv.payment_status = 'Partially Paid'
+                    inv.status = 'Partially Paid'
+                inv.save()
 
 
 class JournalEntryViewSet(viewsets.ModelViewSet):
