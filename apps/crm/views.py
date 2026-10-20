@@ -539,6 +539,18 @@ class EnquiryViewSet(viewsets.ModelViewSet):
                 if not data.get('quantity'):
                     data['quantity'] = ld.quantity
 
+        customer_id = data.get('customer_id') or data.get('customerId')
+        if customer_id and not data.get('customer_name') and not data.get('customerName'):
+            cust = Customer.objects.filter(models.Q(id=customer_id) | models.Q(customer_code=customer_id)).first()
+            if cust:
+                data['customer_name'] = cust.company_name
+                if not data.get('customer_email') and not data.get('customerEmail') and cust.email:
+                    data['customer_email'] = cust.email
+                if not data.get('contact_person') and not data.get('contactPerson') and cust.contact_person:
+                    data['contact_person'] = cust.contact_person
+                if not data.get('contact_mobile') and not data.get('contactMobile') and cust.mobile:
+                    data['contact_mobile'] = cust.mobile
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -552,6 +564,10 @@ class EnquiryViewSet(viewsets.ModelViewSet):
             )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
 
 
 class OpportunityViewSet(viewsets.ModelViewSet):

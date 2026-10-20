@@ -347,39 +347,68 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
-        if data.get('customer_id') and not data.get('customer_name'):
-            try:
-                from .models import Customer
-                c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
-                if c:
-                    data['customer_name'] = c.company_name
-                    if not data.get('customer_email') and c.email:
-                        data['customer_email'] = c.email
-                    if not data.get('contact_person') and c.contact_person:
-                        data['contact_person'] = c.contact_person
-                    if not data.get('contact_mobile') and c.mobile:
-                        data['contact_mobile'] = c.mobile
-            except Exception:
-                pass
-        if not data.get('customer_name'):
-            data['customer_name'] = data.get('company_name') or 'Valued Customer'
-        if not data.get('requirement'):
-            data['requirement'] = data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
-        if not data.get('machine_product'):
-            items = data.get('items', [])
-            item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
-            data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
-        if not data.get('enquiry_date'):
-            data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
+
         inst = getattr(self, 'instance', None)
-        if inst:
-            if 'id' in data:
-                data.pop('id', None)
-        else:
+
+        # On create (not inst), resolve fallback fields from Lead or Customer
+        if not inst:
+            if data.get('lead_id') and not data.get('customer_name'):
+                try:
+                    from .models import Lead
+                    l = Lead.objects.filter(models.Q(id=data['lead_id']) | models.Q(lead_no=data['lead_id'])).first()
+                    if l:
+                        data['customer_name'] = l.company_name
+                        if not data.get('customer_email') and l.email:
+                            data['customer_email'] = l.email
+                        if not data.get('contact_person') and l.contact_person and l.contact_person != 'Contact Person':
+                            data['contact_person'] = l.contact_person
+                        if not data.get('contact_mobile') and l.mobile and l.mobile != '9999999999':
+                            data['contact_mobile'] = l.mobile
+                        if not data.get('machine_product') and l.product_name:
+                            data['machine_product'] = l.product_name
+                        if not data.get('quantity') and l.quantity:
+                            data['quantity'] = l.quantity
+                        if not data.get('requirement') and l.requirement_description:
+                            data['requirement'] = l.requirement_description
+                        if not data.get('specification') and l.capacity:
+                            data['specification'] = l.capacity
+                except Exception:
+                    pass
+
+            if data.get('customer_id') and not data.get('customer_name'):
+                try:
+                    from .models import Customer
+                    c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
+                    if c:
+                        data['customer_name'] = c.company_name
+                        if not data.get('customer_email') and c.email:
+                            data['customer_email'] = c.email
+                        if not data.get('contact_person') and c.contact_person:
+                            data['contact_person'] = c.contact_person
+                        if not data.get('contact_mobile') and c.mobile:
+                            data['contact_mobile'] = c.mobile
+                except Exception:
+                    pass
+
+            if not data.get('customer_name'):
+                data['customer_name'] = data.get('company_name') or 'Valued Customer'
+            if not data.get('requirement'):
+                data['requirement'] = data.get('specification') or data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
+            if not data.get('machine_product'):
+                items = data.get('items', [])
+                item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
+                data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
+            if not data.get('enquiry_date'):
+                data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
             if not data.get('enquiry_no'):
                 data['enquiry_no'] = data.get('enquiryNumber') or data.get('id') or f"ENQ-{int(datetime.now().timestamp())}"
             if not data.get('id'):
                 data['id'] = data['enquiry_no']
+        else:
+            # During partial update or full update, remove 'id' if sent
+            if 'id' in data:
+                data.pop('id', None)
+
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
