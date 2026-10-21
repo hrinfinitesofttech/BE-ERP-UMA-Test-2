@@ -547,28 +547,29 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"DWG-2D-{Drawing2D.objects.count() + 1:04d}"
-        if 'design_job_id' not in data:
-            data['design_job_id'] = data.get('designJobId') or ''
-        if 'drawing_number' not in data:
+            data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
+        if not data.get('design_job_id'):
+            data['design_job_id'] = data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+        if not data.get('drawing_number'):
             data['drawing_number'] = data.get('drawingNumber') or data['id']
-        if 'title' not in data:
-            data['title'] = data.get('drawingTitle') or data.get('title') or '2D CAD Drawing'
-        if 'revision' not in data:
+        if not data.get('title'):
+            data['title'] = data.get('drawingTitle') or data.get('drawing_title') or data.get('drawingName') or data.get('title') or '2D CAD Drawing'
+        if not data.get('revision'):
             data['revision'] = data.get('revisionNumber') or data.get('revision') or 'REV-00'
-        if 'sheet_size' not in data:
+        if not data.get('sheet_size'):
             data['sheet_size'] = data.get('sheetSize') or 'A1'
-        if 'scale' not in data:
+        if not data.get('scale'):
             data['scale'] = data.get('scale') or '1:10'
-        if 'prepared_by' not in data:
-            data['prepared_by'] = data.get('drawnBy') or data.get('prepared_by') or 'Dharmesh Joshi'
-        if 'checked_by' not in data:
+        if not data.get('prepared_by'):
+            data['prepared_by'] = data.get('designer') or data.get('drawnBy') or data.get('preparedBy') or data.get('prepared_by') or 'Super Admin'
+        if not data.get('checked_by'):
             data['checked_by'] = data.get('checkedBy') or ''
-        if 'approved_by' not in data:
+        if not data.get('approved_by'):
             data['approved_by'] = data.get('approvedBy') or ''
-        if 'file_url' not in data:
+        if not data.get('file_url'):
             data['file_url'] = data.get('fileUrl') or ''
 
         serializer = self.get_serializer(data=data)
@@ -583,26 +584,27 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"MOD3D-{Design3DModel.objects.count() + 1:04d}"
-        if 'design_job_id' not in data:
-            data['design_job_id'] = data.get('designJobId') or ''
-        if 'model_number' not in data:
+            data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
+        if not data.get('design_job_id'):
+            data['design_job_id'] = data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+        if not data.get('model_number'):
             data['model_number'] = data.get('modelNumber') or data.get('designNumber') or data['id']
-        if 'model_name' not in data:
+        if not data.get('model_name'):
             data['model_name'] = data.get('modelName') or data.get('modelTitle') or '3D CAD Model'
-        if 'software' not in data:
+        if not data.get('software'):
             data['software'] = data.get('software') or 'SolidWorks'
-        if 'version' not in data:
+        if not data.get('version'):
             data['version'] = data.get('version') or '2026 SP1'
-        if 'mass_kg' not in data:
+        if not data.get('mass_kg'):
             data['mass_kg'] = data.get('massKg') or data.get('totalWeightKg') or 0
-        if 'volume_m3' not in data:
+        if not data.get('volume_m3'):
             data['volume_m3'] = data.get('volumeM3') or 0
-        if 'modeled_by' not in data:
-            data['modeled_by'] = data.get('modeledBy') or data.get('designer') or 'Dharmesh Joshi'
-        if 'file_url' not in data:
+        if not data.get('modeled_by'):
+            data['modeled_by'] = data.get('modeledBy') or data.get('designer') or 'Super Admin'
+        if not data.get('file_url'):
             data['file_url'] = data.get('fileUrl') or ''
 
         serializer = self.get_serializer(data=data)

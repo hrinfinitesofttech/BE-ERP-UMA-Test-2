@@ -115,6 +115,18 @@ class NumberingSettingSerializer(serializers.ModelSerializer):
 class AuditLogSerializer(serializers.ModelSerializer):
     id = serializers.CharField(required=False, allow_blank=True)
     timestamp = serializers.DateTimeField(read_only=True)
+    user_id = serializers.CharField(required=False, allow_blank=True, default='')
+    user_name = serializers.CharField(required=False, allow_blank=True, default='')
+    role = serializers.CharField(required=False, allow_blank=True, default='Admin')
+    department = serializers.CharField(required=False, allow_blank=True, default='Management')
+    action = serializers.CharField(required=False, allow_blank=True, default='ACTION')
+    module = serializers.CharField(required=False, allow_blank=True, default='General')
+    page = serializers.CharField(required=False, allow_blank=True, default='')
+    record_id = serializers.CharField(required=False, allow_blank=True, default='')
+    old_value = serializers.CharField(required=False, allow_blank=True, default='')
+    new_value = serializers.CharField(required=False, allow_blank=True, default='')
+    ip_address = serializers.CharField(required=False, allow_blank=True, default='')
+    notes = serializers.CharField(required=False, allow_blank=True, default='')
 
     class Meta:
         model = AuditLog
@@ -150,6 +162,33 @@ class AuditLogSerializer(serializers.ModelSerializer):
         for camel, snake in mappings.items():
             if camel in data and snake not in data:
                 data[snake] = data[camel]
+
+        import json
+        if isinstance(data.get('old_value'), (dict, list)):
+            data['old_value'] = json.dumps(data['old_value'])
+        elif data.get('old_value') is None:
+            data['old_value'] = ''
+        else:
+            data['old_value'] = str(data['old_value'])
+
+        if isinstance(data.get('new_value'), (dict, list)):
+            data['new_value'] = json.dumps(data['new_value'])
+        elif data.get('new_value') is None:
+            data['new_value'] = ''
+        else:
+            data['new_value'] = str(data['new_value'])
+
+        data['user_id'] = str(data.get('user_id') or 'EMP-000')
+        data['user_name'] = str(data.get('user_name') or 'Super Admin')
+        data['role'] = str(data.get('role') or 'Super Admin')
+        data['department'] = str(data.get('department') or 'Management')
+        data['action'] = str(data.get('action') or 'ACTION')
+        data['module'] = str(data.get('module') or 'General')
+        data['page'] = str(data.get('page') or '')
+        data['record_id'] = str(data.get('record_id') or '')
+        data['notes'] = str(data.get('notes') or '')
+        data['ip_address'] = str(data.get('ip_address') or '')
+
         return super().to_internal_value(data)
 
     def to_representation(self, instance):

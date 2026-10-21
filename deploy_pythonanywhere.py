@@ -7,7 +7,7 @@ import json
 USERNAME = 'umaERP'
 PASSWORD = 'AAaa@123456@'
 DOMAIN = 'umaERP.pythonanywhere.com'
-LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
+LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 
 EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea', 'staticfiles', 'static', 'node_modules', '.next'}
@@ -70,8 +70,15 @@ def deploy():
             rel_path = os.path.relpath(local_path, LOCAL_DIR).replace('\\', '/')
             files_to_sync.append((local_path, rel_path))
 
-    # Sort store, HR, and core files first
-    files_to_sync.sort(key=lambda x: (0 if 'apps/store' in x[1] else (1 if 'apps/hr' in x[1] else (2 if 'erp_backend' in x[1] else 3)), x[1]))
+    # Prioritize CRM, core, designer, projects, and migrations first
+    priority_keywords = ['apps/crm', 'apps/core', 'apps/designer', 'apps/projects', 'migrations']
+    def get_priority(p):
+        for i, kw in enumerate(priority_keywords):
+            if kw in p:
+                return i
+        return 99
+
+    files_to_sync.sort(key=lambda x: (get_priority(x[1]), x[1]))
 
     success_count = 0
     fail_count = 0

@@ -61,7 +61,7 @@ class CustomerRequirement(models.Model):
     control_system = models.CharField(max_length=150, blank=True, default='')
     safety_requirements = models.TextField(blank=True, default='')
     special_requirements = models.TextField(blank=True, default='')
-    customer_drawing_url = models.CharField(max_length=255, blank=True, default='')
+    customer_drawing_url = models.TextField(blank=True, default='')
     customer_notes = models.TextField(blank=True, default='')
     designer_notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,23 +72,29 @@ class CustomerRequirement(models.Model):
 
 class Drawing2D(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
-    design_job_id = models.CharField(max_length=64)
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
     drawing_number = models.CharField(max_length=100)
-    title = models.CharField(max_length=200)
+    title = models.CharField(max_length=200, blank=True, default='2D CAD Drawing')
     revision = models.CharField(max_length=30, default='REV-00')
     status = models.CharField(max_length=50, default='approved')
     scale = models.CharField(max_length=30, blank=True, default='1:10')
     sheet_size = models.CharField(max_length=20, default='A1')
-    prepared_by = models.CharField(max_length=150)
+    prepared_by = models.CharField(max_length=150, blank=True, default='Super Admin')
     checked_by = models.CharField(max_length=150, blank=True, default='')
     approved_by = models.CharField(max_length=150, blank=True, default='')
     release_date = models.CharField(max_length=50, blank=True, default='')
-    file_url = models.CharField(max_length=255, blank=True, default='')
+    file_url = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = '2D Drawing'
         verbose_name_plural = '2D Drawings'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.drawing_number} - {self.title}"
@@ -96,21 +102,27 @@ class Drawing2D(models.Model):
 
 class Design3DModel(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
-    design_job_id = models.CharField(max_length=64)
+    design_job_id = models.CharField(max_length=64, blank=True, default='')
     model_number = models.CharField(max_length=100)
-    model_name = models.CharField(max_length=200)
+    model_name = models.CharField(max_length=200, blank=True, default='3D Model')
     software = models.CharField(max_length=50, default='SolidWorks')
     version = models.CharField(max_length=30, default='2026 SP1')
     status = models.CharField(max_length=50, default='approved')
     mass_kg = models.FloatField(default=0)
     volume_m3 = models.FloatField(default=0)
-    modeled_by = models.CharField(max_length=150)
-    file_url = models.CharField(max_length=255, blank=True, default='')
+    modeled_by = models.CharField(max_length=150, blank=True, default='Super Admin')
+    file_url = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = '3D Design Model'
         verbose_name_plural = '3D Design Models'
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.model_number} - {self.model_name}"
@@ -172,7 +184,7 @@ class TechnicalDocumentItem(models.Model):
     upload_date = models.CharField(max_length=50, blank=True, default='')
     access_permission = models.CharField(max_length=50, blank=True, default='public')
     file_size = models.CharField(max_length=50, blank=True, default='5.2 MB')
-    file_url = models.CharField(max_length=255, blank=True, default='#')
+    file_url = models.TextField(blank=True, default='')
     created_date = models.CharField(max_length=50, blank=True, default='')
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -218,7 +230,7 @@ class AssemblyDrawing(models.Model):
     revision_number = models.CharField(max_length=30, default='REV-00')
     file_format = models.CharField(max_length=30, default='DWG')
     file_size = models.CharField(max_length=50, default='5.0 MB')
-    file_url = models.CharField(max_length=255, blank=True, default='#')
+    file_url = models.TextField(blank=True, default='')
     linked_bom_item_id = models.CharField(max_length=64, blank=True, default='')
     drawn_by = models.CharField(max_length=150, blank=True, default='')
     approved_by = models.CharField(max_length=150, blank=True, default='')

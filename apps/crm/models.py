@@ -303,6 +303,25 @@ class Quotation(models.Model):
     def __str__(self):
         return f"{self.quotation_number} - {self.customer_name}"
 
+    def save(self, *args, **kwargs):
+        if self.rejection_reason is None:
+            self.rejection_reason = ''
+        if self.notes is None:
+            self.notes = ''
+        if self.machine_product is None:
+            self.machine_product = ''
+        if self.contact_person is None:
+            self.contact_person = ''
+        if self.contact_mobile is None:
+            self.contact_mobile = ''
+        if self.contact_email is None:
+            self.contact_email = ''
+        if self.sales_person_id is None:
+            self.sales_person_id = ''
+        if self.sales_person_name is None:
+            self.sales_person_name = ''
+        super().save(*args, **kwargs)
+
 
 class CustomerPO(models.Model):
     id = models.CharField(max_length=64, primary_key=True)

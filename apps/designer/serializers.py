@@ -154,6 +154,9 @@ class CustomerRequirementSerializer(serializers.ModelSerializer):
 
 
 class Drawing2DSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False, allow_blank=True)
+    file_url = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Drawing2D
         fields = [
@@ -173,19 +176,52 @@ class Drawing2DSerializer(serializers.ModelSerializer):
         ]
 
     def to_internal_value(self, data):
+        import uuid
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('id'):
+            data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
         if 'designJobId' in data and 'design_job_id' not in data:
             data['design_job_id'] = data.pop('designJobId')
+        if not data.get('design_job_id'):
+            data['design_job_id'] = data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+
         if 'drawingNumber' in data and 'drawing_number' not in data:
             data['drawing_number'] = data.pop('drawingNumber')
+        if not data.get('drawing_number'):
+            data['drawing_number'] = data['id']
+
         if 'drawingTitle' in data and 'title' not in data:
             data['title'] = data.pop('drawingTitle')
+        elif 'drawingName' in data and 'title' not in data:
+            data['title'] = data.pop('drawingName')
+        if not data.get('title'):
+            data['title'] = '2D CAD Drawing'
+
         if 'sheetSize' in data and 'sheet_size' not in data:
             data['sheet_size'] = data.pop('sheetSize')
+        if not data.get('sheet_size'):
+            data['sheet_size'] = 'A1'
+
+        if 'revisionNumber' in data and 'revision' not in data:
+            data['revision'] = data.pop('revisionNumber')
+        if not data.get('revision'):
+            data['revision'] = 'REV-00'
+
+        if not data.get('scale'):
+            data['scale'] = '1:10'
+
+        if not data.get('status'):
+            data['status'] = 'approved'
+
+        if 'designer' in data and 'prepared_by' not in data:
+            data['prepared_by'] = data.get('designer')
         if 'preparedBy' in data and 'prepared_by' not in data:
             data['prepared_by'] = data.pop('preparedBy')
         elif 'drawnBy' in data and 'prepared_by' not in data:
             data['prepared_by'] = data.pop('drawnBy')
+        if not data.get('prepared_by'):
+            data['prepared_by'] = data.get('designer') or 'Super Admin'
+
         if 'checkedBy' in data and 'checked_by' not in data:
             data['checked_by'] = data.pop('checkedBy')
         if 'approvedBy' in data and 'approved_by' not in data:
@@ -194,7 +230,10 @@ class Drawing2DSerializer(serializers.ModelSerializer):
             data['release_date'] = data.pop('releaseDate')
         if 'fileUrl' in data and 'file_url' not in data:
             data['file_url'] = data.pop('fileUrl')
-        return super().to_internal_value(data)
+
+        valid_fields = set(self.Meta.fields)
+        cleaned = {k: v for k, v in data.items() if k in valid_fields}
+        return super().to_internal_value(cleaned)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -204,8 +243,8 @@ class Drawing2DSerializer(serializers.ModelSerializer):
             'drawingNumber': ret.get('drawing_number', ''),
             'drawingTitle': ret.get('title', ''),
             'sheetSize': ret.get('sheet_size', 'A1'),
-            'preparedBy': ret.get('prepared_by', 'Dharmesh Joshi'),
-            'drawnBy': ret.get('prepared_by', 'Dharmesh Joshi'),
+            'preparedBy': ret.get('prepared_by', 'Super Admin'),
+            'drawnBy': ret.get('prepared_by', 'Super Admin'),
             'checkedBy': ret.get('checked_by', ''),
             'approvedBy': ret.get('approved_by', ''),
             'releaseDate': ret.get('release_date', ''),
@@ -214,6 +253,9 @@ class Drawing2DSerializer(serializers.ModelSerializer):
 
 
 class Design3DModelSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(required=False, allow_blank=True)
+    file_url = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Design3DModel
         fields = [
@@ -231,17 +273,29 @@ class Design3DModelSerializer(serializers.ModelSerializer):
         ]
 
     def to_internal_value(self, data):
+        import uuid
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('id'):
+            data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
         if 'designJobId' in data and 'design_job_id' not in data:
             data['design_job_id'] = data.pop('designJobId')
+        if not data.get('design_job_id'):
+            data['design_job_id'] = data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+
         if 'modelNumber' in data and 'model_number' not in data:
             data['model_number'] = data.pop('modelNumber')
         elif 'designNumber' in data and 'model_number' not in data:
             data['model_number'] = data.pop('designNumber')
+        if not data.get('model_number'):
+            data['model_number'] = data['id']
+
         if 'modelName' in data and 'model_name' not in data:
             data['model_name'] = data.pop('modelName')
         elif 'modelTitle' in data and 'model_name' not in data:
             data['model_name'] = data.pop('modelTitle')
+        if not data.get('model_name'):
+            data['model_name'] = '3D CAD Model'
+
         if 'massKg' in data and 'mass_kg' not in data:
             data['mass_kg'] = data.pop('massKg')
         elif 'totalWeightKg' in data and 'mass_kg' not in data:
@@ -252,9 +306,15 @@ class Design3DModelSerializer(serializers.ModelSerializer):
             data['modeled_by'] = data.pop('modeledBy')
         elif 'designer' in data and 'modeled_by' not in data:
             data['modeled_by'] = data.pop('designer')
+        if not data.get('modeled_by'):
+            data['modeled_by'] = 'Super Admin'
+
         if 'fileUrl' in data and 'file_url' not in data:
             data['file_url'] = data.pop('fileUrl')
-        return super().to_internal_value(data)
+
+        valid_fields = set(self.Meta.fields)
+        cleaned = {k: v for k, v in data.items() if k in valid_fields}
+        return super().to_internal_value(cleaned)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -265,8 +325,8 @@ class Design3DModelSerializer(serializers.ModelSerializer):
             'modelName': ret.get('model_name', ''),
             'massKg': ret.get('mass_kg', 0),
             'volumeM3': ret.get('volume_m3', 0),
-            'modeledBy': ret.get('modeled_by', 'Dharmesh Joshi'),
-            'designer': ret.get('modeled_by', 'Dharmesh Joshi'),
+            'modeledBy': ret.get('modeled_by', 'Super Admin'),
+            'designer': ret.get('modeled_by', 'Super Admin'),
             'fileUrl': ret.get('file_url', ''),
         }
 

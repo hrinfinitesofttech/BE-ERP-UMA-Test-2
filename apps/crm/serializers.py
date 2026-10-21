@@ -809,17 +809,24 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         ret['sales_person_name'] = data.get('sales_person_name') or data.get('salesPersonName') or (inst.sales_person_name if inst else '')
         ret['status'] = data.get('status') or (inst.status if inst else 'draft')
         ret['lead_id'] = data.get('lead_id') or data.get('leadId') or (inst.lead_id if inst else None)
-        ret['machine_product'] = data.get('machine_product') or data.get('machineProduct') or (inst.machine_product if inst else '')
-        ret['latest_summary'] = data.get('latest_summary') or data.get('latestSummary') or (inst.latest_summary if inst else '')
+        ret['machine_product'] = str(data.get('machine_product') or data.get('machineProduct') or (inst.machine_product if inst else '') or '')
+
+        raw_summary = data.get('latest_summary') if 'latest_summary' in data else data.get('latestSummary')
+        if raw_summary is None and inst:
+            raw_summary = inst.latest_summary
+        if isinstance(raw_summary, (dict, list)):
+            import json
+            ret['latest_summary'] = json.dumps(raw_summary)
+        else:
+            ret['latest_summary'] = str(raw_summary or '')
+
         ret['subtotal'] = float(data.get('subtotal') or (inst.subtotal if inst else 0))
         ret['tax_amount'] = float(data.get('tax_amount') or data.get('taxAmount') or (inst.tax_amount if inst else 0))
         ret['total_amount'] = float(data.get('total_amount') or data.get('totalAmount') or data.get('grand_total') or data.get('grandTotal') or (inst.total_amount if inst else 0))
         ret['grand_total'] = float(data.get('grand_total') or data.get('grandTotal') or ret['total_amount'] or (inst.grand_total if inst else 0))
         ret['items'] = data.get('items') or (inst.items if inst else [])
-        if 'approved_by' in data or 'approvedBy' in data:
-            ret['approved_by'] = data.get('approved_by') or data.get('approvedBy')
-        if 'rejection_reason' in data or 'rejectionReason' in data:
-            ret['rejection_reason'] = data.get('rejection_reason') or data.get('rejectionReason')
+        ret['approved_by'] = str(data.get('approved_by') or data.get('approvedBy') or (inst.approved_by if inst else '') or '')
+        ret['rejection_reason'] = str(data.get('rejection_reason') or data.get('rejectionReason') or (inst.rejection_reason if inst else '') or '')
 
         if 'revisions' in data:
             ret['revisions'] = data.get('revisions') or []
@@ -862,13 +869,24 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
                 first_it = ret['items'][0]
                 ret['machine_product'] = first_it.get('productName') or first_it.get('product_name') or ''
 
-        if 'notes' in data:
-            ret['notes'] = data.get('notes') or ''
-        elif inst:
-            ret['notes'] = inst.notes or ''
-        else:
-            ret['notes'] = ''
+        ret['notes'] = str((data.get('notes') if 'notes' in data else (inst.notes if inst else '')) or '')
+
+        # Remove primary key 'id' if updating an existing record to avoid DB PK conflict
+        if inst:
+            ret.pop('id', None)
+
         return ret
+
+    def update(self, instance, validated_data):
+        for k in ['rejection_reason', 'notes', 'machine_product', 'approved_by', 'contact_person', 'contact_mobile', 'contact_email', 'sales_person_id', 'sales_person_name']:
+            if getattr(instance, k, None) is None:
+                setattr(instance, k, '')
+        for attr, value in validated_data.items():
+            if value is None and attr in ['rejection_reason', 'notes', 'machine_product', 'approved_by', 'contact_person', 'contact_mobile', 'contact_email', 'sales_person_id', 'sales_person_name']:
+                value = ''
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)

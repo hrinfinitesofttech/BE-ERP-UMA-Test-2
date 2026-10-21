@@ -244,7 +244,7 @@ class ProjectDocument(models.Model):
     related_record = models.CharField(max_length=100, blank=True, default='')
     description = models.TextField(blank=True, default='')
     file_size = models.CharField(max_length=50, blank=True, default='1.5 MB')
-    file_url = models.CharField(max_length=255, blank=True, default='')
+    file_url = models.TextField(blank=True, default='')
     upload_date = models.CharField(max_length=50, blank=True, default='')
     created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)
 

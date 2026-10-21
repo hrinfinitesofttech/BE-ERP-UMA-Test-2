@@ -44,6 +44,29 @@ from .serializers import (
 )
 
 
+def _ensure_crm_schema():
+    try:
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE crm_quotation SET rejection_reason = '' WHERE rejection_reason IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET notes = '' WHERE notes IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET machine_product = '' WHERE machine_product IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET contact_person = '' WHERE contact_person IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET contact_mobile = '' WHERE contact_mobile IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET contact_email = '' WHERE contact_email IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET sales_person_id = '' WHERE sales_person_id IS NULL;")
+            cursor.execute("UPDATE crm_quotation SET sales_person_name = '' WHERE sales_person_name IS NULL;")
+    except Exception:
+        pass
+
+
+try:
+    _ensure_crm_schema()
+except Exception:
+    pass
+
+
+
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-created_at', '-id')
     serializer_class = LeadSerializer
@@ -802,6 +825,9 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
+        for k in ['rejection_reason', 'notes', 'machine_product', 'approved_by', 'contact_person', 'contact_mobile', 'contact_email', 'sales_person_id', 'sales_person_name']:
+            if getattr(instance, k, None) is None:
+                setattr(instance, k, '')
         safe, err_resp = validate_edit_safety(instance, request.data)
         if not safe:
             return err_resp
@@ -809,6 +835,9 @@ class QuotationViewSet(viewsets.ModelViewSet):
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
+        for k in ['rejection_reason', 'notes', 'machine_product', 'approved_by', 'contact_person', 'contact_mobile', 'contact_email', 'sales_person_id', 'sales_person_name']:
+            if getattr(instance, k, None) is None:
+                setattr(instance, k, '')
         safe, err_resp = validate_edit_safety(instance, request.data)
         if not safe:
             return err_resp
