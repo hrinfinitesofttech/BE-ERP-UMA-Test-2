@@ -1430,15 +1430,15 @@ class QuotationViewSet(viewsets.ModelViewSet):
             </tr>
             """
 
-        from apps.crm.quotation_pdf import generate_quotation_pdf
         import re
 
-        clean_quo_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(quotation.quotation_number or pk or 'QT'))
-        clean_rev_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(quotation.current_revision or cur_rev_num or 'Rev-00'))
+        clean_quo_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(getattr(quotation, 'quotation_number', None) or pk or 'QT'))
+        clean_rev_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(getattr(quotation, 'current_revision', None) or cur_rev_num or 'Rev-00'))
         pdf_filename = f"Quotation_{clean_quo_num}_{clean_rev_num}.pdf"
 
         pdf_bytes = None
         try:
+            from apps.crm.quotation_pdf import generate_quotation_pdf
             pdf_bytes = generate_quotation_pdf(quotation, active_revision=active_rev, payload=quo_payload)
             logger.info(f"Generated quotation PDF '{pdf_filename}' ({len(pdf_bytes)} bytes)")
         except Exception as pdf_ex:
@@ -1788,11 +1788,16 @@ Web: www.umatechnofab.com
             if not active_rev and revs and isinstance(revs[-1], dict):
                 active_rev = revs[-1]
 
-        pdf_bytes = generate_quotation_pdf(
-            quotation or SimpleNamespace(id=str(pk), quotation_number=str(pk)),
-            active_revision=active_rev,
-            payload=payload
-        )
+        try:
+            from apps.crm.quotation_pdf import generate_quotation_pdf
+            pdf_bytes = generate_quotation_pdf(
+                quotation or SimpleNamespace(id=str(pk), quotation_number=str(pk)),
+                active_revision=active_rev,
+                payload=payload
+            )
+        except Exception as e:
+            logger.warning(f"Error generating PDF in download_pdf: {e}")
+            return HttpResponse(f"Error generating PDF: {e}", status=500)
 
         q_num = getattr(quotation, 'quotation_number', None) or pk
         r_num = (active_rev.get('revisionNumber') if active_rev else None) or getattr(quotation, 'current_revision', None) or 'Rev-00'
