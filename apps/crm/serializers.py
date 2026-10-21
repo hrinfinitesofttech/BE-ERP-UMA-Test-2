@@ -173,6 +173,40 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
         rep['convertedOpportunityId'] = instance.converted_opportunity_id
         rep['exhibitionId'] = instance.exhibition_id
         rep['exhibitionName'] = instance.exhibition_name
+
+        # Auto-heal display values from linked Quotation or Enquiry if lead has dummy/blank values
+        try:
+            from .models import Quotation, Enquiry
+            target_ids = [val for val in [instance.id, instance.lead_no] if val]
+
+            if rep.get('companyName') in ('Valued Customer', '', None):
+                q = Quotation.objects.filter(lead_id__in=target_ids).exclude(customer_name__in=['', 'Valued Customer']).order_by('-id').first()
+                if q and q.customer_name:
+                    rep['companyName'] = q.customer_name
+                    if rep.get('contactPerson') in ('', 'Contact Person', 'Contact', None) and q.contact_person:
+                        rep['contactPerson'] = q.contact_person
+                    if rep.get('productName') in ('', 'Process Equipment', 'Industrial Process Equipment', None) and q.machine_product:
+                        rep['productName'] = q.machine_product
+                    if (not rep.get('quantity') or rep.get('quantity') == 0) and q.quantity:
+                        rep['quantity'] = q.quantity
+                else:
+                    enq = Enquiry.objects.filter(lead_id__in=target_ids).exclude(customer_name='').order_by('-id').first()
+                    if enq and enq.customer_name:
+                        rep['companyName'] = enq.customer_name
+                        if rep.get('contactPerson') in ('', 'Contact Person', 'Contact', None) and enq.contact_person:
+                            rep['contactPerson'] = enq.contact_person
+
+            if rep.get('contactPerson') in ('', 'Contact Person', 'Contact', None):
+                q = Quotation.objects.filter(lead_id__in=target_ids).exclude(contact_person__in=['', 'Contact Person', 'Contact']).order_by('-id').first()
+                if q and q.contact_person:
+                    rep['contactPerson'] = q.contact_person
+                else:
+                    enq = Enquiry.objects.filter(lead_id__in=target_ids).exclude(contact_person__in=['', 'Contact Person', 'Contact']).order_by('-id').first()
+                    if enq and enq.contact_person:
+                        rep['contactPerson'] = enq.contact_person
+        except Exception:
+            pass
+
         return rep
 
 

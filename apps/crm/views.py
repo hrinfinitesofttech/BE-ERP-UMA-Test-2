@@ -57,8 +57,80 @@ def _ensure_crm_schema():
             cursor.execute("UPDATE crm_quotation SET sales_person_id = '' WHERE sales_person_id IS NULL;")
             cursor.execute("UPDATE crm_quotation SET sales_person_name = '' WHERE sales_person_name IS NULL;")
 
-            # Clean up dummy 9999999999 and restore real contact data from enquiries where possible
+            # Clean up dummy data and restore real contact data from quotations & enquiries where possible
             try:
+                # 1. Restore company_name from linked quotation if dummy
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET company_name = (
+                        SELECT customer_name FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.customer_name != '' AND crm_quotation.customer_name != 'Valued Customer'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (company_name = '' OR company_name = 'Valued Customer')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.customer_name != '' AND crm_quotation.customer_name != 'Valued Customer'
+                      );
+                """)
+
+                # 2. Restore contact_person from linked quotation if dummy or empty
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET contact_person = (
+                        SELECT contact_person FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.contact_person != '' AND crm_quotation.contact_person != 'Contact Person' AND crm_quotation.contact_person != 'Contact'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (contact_person = '' OR contact_person = 'Contact Person' OR contact_person = 'Contact')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.contact_person != '' AND crm_quotation.contact_person != 'Contact Person' AND crm_quotation.contact_person != 'Contact'
+                      );
+                """)
+
+                # 3. Restore product_name & quantity from linked quotation if placeholder
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET product_name = (
+                        SELECT machine_product FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.machine_product != '' AND crm_quotation.machine_product != 'Process Equipment'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (product_name = '' OR product_name = 'Process Equipment' OR product_name = 'Industrial Process Equipment')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.machine_product != '' AND crm_quotation.machine_product != 'Process Equipment'
+                      );
+                """)
+
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET quantity = (
+                        SELECT quantity FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.quantity > 0
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (quantity IS NULL OR quantity = 0)
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.lead_id = crm_lead.id OR crm_quotation.lead_id = crm_lead.lead_no)
+                          AND crm_quotation.quantity > 0
+                      );
+                """)
+
+                # 4. Restore mobile & contact_person from enquiry if still missing
                 cursor.execute("""
                     UPDATE crm_lead
                     SET mobile = (
@@ -79,14 +151,14 @@ def _ensure_crm_schema():
                     SET contact_person = (
                         SELECT contact_person FROM crm_enquiry
                         WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
-                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person'
+                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person' AND crm_enquiry.contact_person != 'Contact'
                         LIMIT 1
                     )
-                    WHERE (contact_person = '' OR contact_person = 'Contact Person')
+                    WHERE (contact_person = '' OR contact_person = 'Contact Person' OR contact_person = 'Contact')
                       AND EXISTS (
                         SELECT 1 FROM crm_enquiry
                         WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
-                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person'
+                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person' AND crm_enquiry.contact_person != 'Contact'
                       );
                 """)
                 cursor.execute("UPDATE crm_lead SET mobile = '' WHERE mobile = '9999999999';")

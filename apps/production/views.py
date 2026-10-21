@@ -29,6 +29,37 @@ class ManufacturingJobViewSet(viewsets.ModelViewSet):
     search_fields = ['job_number', 'product_name', 'customer_name', 'project_number']
     filterset_fields = ['status', 'customer_id', 'project_id']
 
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        val = str(self.kwargs.get(lookup_url_kwarg, '')).strip()
+        obj = queryset.filter(id=val).first() or queryset.filter(job_number=val).first()
+        if obj:
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        if self.request.method in ['PATCH', 'PUT']:
+            data = self.request.data or {}
+            status_val = data.get('status') or 'In Production'
+            obj = ManufacturingJob.objects.create(
+                id=val,
+                job_number=val,
+                product_name=data.get('product_name') or data.get('productName') or 'Fabrication Project Equipment',
+                customer_name=data.get('customer_name') or data.get('customerName') or '',
+                status=status_val,
+            )
+            return obj
+
+        from django.http import Http404
+        raise Http404(f"No ManufacturingJob found matching {val}")
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'], url_path='update-progress')
     def update_progress(self, request, pk=None):
         job = self.get_object()
