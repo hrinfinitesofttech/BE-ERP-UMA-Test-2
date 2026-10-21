@@ -37,8 +37,8 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
     queryset = ServiceRequest.objects.all().order_by('-request_date', '-id')
     serializer_class = ServiceRequestSerializer
     permission_classes = [permissions.AllowAny]
-    search_fields = ['request_number', 'customer_name', 'machine_name', 'serial_number']
-    filterset_fields = ['status', 'priority', 'customer_id']
+    search_fields = ['request_number', 'customer_name', 'machine_name', 'serial_number', 'applicant_name', 'contact_number', 'completed_by', 'approved_by']
+    filterset_fields = ['status', 'priority', 'customer_id', 'request_type', 'urgency_level']
 
     @action(detail=True, methods=['post'], url_path='assign')
     def assign_technician(self, request, pk=None):

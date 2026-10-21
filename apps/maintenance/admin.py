@@ -20,9 +20,9 @@ class CustomerMachineAdmin(admin.ModelAdmin):
 
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(admin.ModelAdmin):
-    list_display = ('id', 'request_number', 'request_date', 'origin', 'customer_id', 'customer_name')
-    search_fields = ('id', 'request_number', 'customer_id', 'customer_name')
-    list_filter = ('request_date', 'complaint_type', 'warranty_status', 'amc_status')
+    list_display = ('id', 'request_number', 'request_date', 'customer_name', 'request_type', 'urgency_level', 'status')
+    search_fields = ('id', 'request_number', 'customer_name', 'applicant_name', 'contact_number')
+    list_filter = ('request_type', 'urgency_level', 'status', 'request_date', 'warranty_status', 'amc_status')
 
 @admin.register(PreventiveMaintenancePlan)
 class PreventiveMaintenancePlanAdmin(admin.ModelAdmin):
