@@ -18,6 +18,8 @@ from .models import (
 
 
 class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    mobile = serializers.CharField(required=False, allow_blank=True, default='')
+    contact_person = serializers.CharField(required=False, allow_blank=True, default='')
     product_name = serializers.CharField(required=False, allow_blank=True, default='')
     expected_delivery = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     next_follow_up_date = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
@@ -73,7 +75,22 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             'leadNo': 'lead_no',
             'companyName': 'company_name',
             'contactPerson': 'contact_person',
+            'contact_person': 'contact_person',
+            'contact': 'contact_person',
+            'mobile': 'mobile',
+            'mobileNo': 'mobile',
+            'mobile_no': 'mobile',
+            'mobileNumber': 'mobile',
+            'mobile_number': 'mobile',
+            'contactMobile': 'mobile',
+            'contact_mobile': 'mobile',
+            'contactNumber': 'mobile',
+            'contact_number': 'mobile',
+            'phone': 'mobile',
+            'phoneNumber': 'mobile',
+            'phone_number': 'mobile',
             'altMobile': 'alt_mobile',
+            'alt_mobile': 'alt_mobile',
             'productName': 'product_name',
             'machineType': 'machine_type',
             'requirementDescription': 'requirement_description',
@@ -92,6 +109,22 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
 
+        # Resolve mobile from any possible alias
+        mob_val = (
+            data.get('mobile') or
+            data.get('phone') or
+            data.get('contactMobile') or
+            data.get('contact_mobile') or
+            data.get('mobileNo') or
+            data.get('mobile_no') or
+            data.get('contactNumber') or
+            data.get('contact_number') or
+            data.get('phoneNumber') or
+            data.get('phone_number') or
+            ''
+        )
+        data['mobile'] = str(mob_val).strip()
+
         # Convert None to empty string for all text fields to avoid DRF null validation errors
         for str_field in [
             'expected_delivery', 'next_follow_up_date', 'remarks', 'address', 'city', 'state',
@@ -109,8 +142,6 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             data.pop('lead_no', None)
             data.pop('leadNo', None)
         else:
-            if not data.get('mobile'):
-                data['mobile'] = '9999999999'
             if not data.get('product_name'):
                 data['product_name'] = data.get('productName') or data.get('notes') or data.get('requirement_description') or 'Industrial Process Equipment'
             if not data.get('lead_no'):
@@ -176,7 +207,7 @@ class ContactSerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         if 'phone' in data and not data.get('mobile'):
             data['mobile'] = data.pop('phone')
         if not data.get('mobile'):
-            data['mobile'] = '9999999999'
+            data['mobile'] = ''
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -272,7 +303,7 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
         if 'phone' in data and 'mobile' not in data:
             data['mobile'] = data.pop('phone')
         if not data.get('mobile'):
-            data['mobile'] = '9999999999'
+            data['mobile'] = ''
         if 'address' in data and not data.get('billing_address'):
             data['billing_address'] = data.get('address')
         if not data.get('company_name'):
@@ -310,7 +341,7 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
                         'designation': c.get('designation') or customer.designation or '',
                         'department': c.get('department') or '',
                         'email': c.get('email') or customer.email or '',
-                        'mobile': c.get('mobile') or c.get('phone') or customer.mobile or '9999999999',
+                        'mobile': c.get('mobile') or c.get('phone') or customer.mobile or '',
                         'whatsapp': c.get('whatsapp') or customer.whatsapp or '',
                         'is_primary': c.get('isPrimary') or c.get('is_primary') or (idx == 0),
                     }
@@ -328,7 +359,7 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
                     'designation': customer.designation or 'Primary Contact',
                     'department': 'Management',
                     'email': customer.email or '',
-                    'mobile': customer.mobile or '9999999999',
+                    'mobile': customer.mobile or '',
                     'whatsapp': customer.whatsapp or '',
                     'is_primary': True,
                 }
@@ -802,7 +833,7 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
             ret['customer_name'] = data.get('company_name') or data.get('companyName') or 'Valued Customer'
         ret['contact_person'] = data.get('contact_person') or data.get('contactPerson') or (inst.contact_person if inst else '')
         ret['contact_mobile'] = data.get('contact_mobile') or data.get('contactMobile') or (inst.contact_mobile if inst else '')
-        ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or (inst.contact_email if inst else '')
+        ret['contact_email'] = data.get('contact_email') or data.get('contactEmail') or data.get('email') or (inst.contact_email if inst else '')
         ret['enquiry_id'] = data.get('enquiry_id') or data.get('enquiryId') or data.get('enquiry') or (inst.enquiry_id if inst else None)
         ret['opportunity_id'] = data.get('opportunity_id') or data.get('opportunityId') or (inst.opportunity_id if inst else None)
         ret['sales_person_id'] = data.get('sales_person_id') or data.get('salesPersonId') or (inst.sales_person_id if inst else '')
@@ -810,6 +841,69 @@ class QuotationSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         ret['status'] = data.get('status') or (inst.status if inst else 'draft')
         ret['lead_id'] = data.get('lead_id') or data.get('leadId') or (inst.lead_id if inst else None)
         ret['machine_product'] = str(data.get('machine_product') or data.get('machineProduct') or (inst.machine_product if inst else '') or '')
+
+        # Auto-heal contact_email, contact_person, contact_mobile from Lead / Enquiry / Customer if missing
+        if not ret.get('contact_email') or not ret.get('contact_mobile') or not ret.get('contact_person'):
+            try:
+                from .models import Lead, Enquiry, Customer
+                from django.db.models import Q
+
+                # 1. Check direct lead_id
+                if ret.get('lead_id'):
+                    ld = Lead.objects.filter(Q(id=ret['lead_id']) | Q(lead_no=ret['lead_id'])).first()
+                    if ld:
+                        if not ret.get('contact_email') and ld.email:
+                            ret['contact_email'] = ld.email
+                        if not ret.get('contact_person') and ld.contact_person:
+                            ret['contact_person'] = ld.contact_person
+                        if not ret.get('contact_mobile') and ld.mobile:
+                            ret['contact_mobile'] = ld.mobile
+
+                # 2. Check enquiry_id
+                if (not ret.get('contact_email') or not ret.get('lead_id')) and ret.get('enquiry_id'):
+                    enq = Enquiry.objects.filter(Q(id=ret['enquiry_id']) | Q(enquiry_no=ret['enquiry_id'])).first()
+                    if enq:
+                        if not ret.get('contact_email') and enq.customer_email:
+                            ret['contact_email'] = enq.customer_email
+                        if not ret.get('lead_id') and enq.lead_id:
+                            ret['lead_id'] = enq.lead_id
+                            ld_enq = Lead.objects.filter(Q(id=enq.lead_id) | Q(lead_no=enq.lead_id)).first()
+                            if ld_enq:
+                                if not ret.get('contact_email') and ld_enq.email:
+                                    ret['contact_email'] = ld_enq.email
+                                if not ret.get('contact_person') and ld_enq.contact_person:
+                                    ret['contact_person'] = ld_enq.contact_person
+                                if not ret.get('contact_mobile') and ld_enq.mobile:
+                                    ret['contact_mobile'] = ld_enq.mobile
+                        if not ret.get('contact_person') and enq.contact_person:
+                            ret['contact_person'] = enq.contact_person
+                        if not ret.get('contact_mobile') and enq.contact_mobile:
+                            ret['contact_mobile'] = enq.contact_mobile
+
+                # 3. Check customer_id
+                if not ret.get('contact_email') and ret.get('customer_id'):
+                    c_obj = Customer.objects.filter(Q(id=ret['customer_id']) | Q(customer_code=ret['customer_id'])).first()
+                    if c_obj:
+                        if not ret.get('contact_email') and c_obj.email:
+                            ret['contact_email'] = c_obj.email
+                        if not ret.get('contact_person') and c_obj.contact_person:
+                            ret['contact_person'] = c_obj.contact_person
+                        if not ret.get('contact_mobile') and c_obj.mobile:
+                            ret['contact_mobile'] = c_obj.mobile
+
+                # 4. Fallback search by company name in Lead database
+                if not ret.get('contact_email') and ret.get('customer_name'):
+                    ld_name = Lead.objects.filter(company_name__iexact=str(ret['customer_name']).strip()).exclude(email='').first()
+                    if ld_name and ld_name.email:
+                        ret['contact_email'] = ld_name.email
+                        if not ret.get('lead_id'):
+                            ret['lead_id'] = ld_name.id
+                        if not ret.get('contact_person') and ld_name.contact_person:
+                            ret['contact_person'] = ld_name.contact_person
+                        if not ret.get('contact_mobile') and ld_name.mobile:
+                            ret['contact_mobile'] = ld_name.mobile
+            except Exception:
+                pass
 
         raw_summary = data.get('latest_summary') if 'latest_summary' in data else data.get('latestSummary')
         if raw_summary is None and inst:

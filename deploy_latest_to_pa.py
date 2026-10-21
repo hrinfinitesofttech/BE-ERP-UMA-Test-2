@@ -11,12 +11,24 @@ HEADERS = {'Authorization': f'Token {API_TOKEN}'}
 WSGI_PATH = '/var/www/erpuma_pythonanywhere_com_wsgi.py'
 
 TARGET_FILES = [
-    'apps/maintenance/models.py',
-    'apps/maintenance/serializers.py',
-    'apps/maintenance/views.py',
-    'apps/maintenance/admin.py',
-    'apps/maintenance/migrations/0003_servicerequest_applicant_name_and_more.py',
-    'apps/core/management/commands/seed_phase5.py',
+    'erp_backend/settings.py',
+    'apps/core/base_serializers.py',
+    'apps/core/approval_security.py',
+    'apps/crm/models.py',
+    'apps/crm/serializers.py',
+    'apps/crm/views.py',
+    'apps/crm/migrations/0009_alter_lead_contact_person_alter_lead_mobile.py',
+    'apps/purchase/serializers.py',
+    'apps/designer/models.py',
+    'apps/designer/serializers.py',
+    'apps/designer/views.py',
+    'apps/designer/migrations/0002_designtask.py',
+    'apps/designer/migrations/0003_assemblydrawing.py',
+    'apps/designer/migrations/0004_technicaldocumentitem_access_permission_and_more.py',
+    'apps/designer/migrations/0005_designjob_approval_notes_designjob_approved_by_and_more.py',
+    'apps/designer/migrations/0006_alter_bomheader_options_alter_design3dmodel_options_and_more.py',
+    'apps/designer/migrations/0007_alter_assemblydrawing_file_url_and_more.py',
+    'apps/designer/migrations/0008_designjob_attachments_designjob_completed_by_and_more.py',
 ]
 
 def upload_file_to_pa(rel_path):
@@ -146,6 +158,20 @@ def verify_live_endpoints():
         print(f"  -> GET /api/service-requests/ HTTP {r_get.status_code}")
     except Exception as e:
         print(f"  GET error: {e}")
+
+    try:
+        print("\n[4/5] Checking CRM Leads and mobile numbers...")
+        r_lead = requests.get(f"{base_api}/leads/LEAD-2026-0013/", timeout=15)
+        if r_lead.status_code == 200:
+            lead_data = r_lead.json()
+            print(f"  -> LEAD-2026-0013 mobile: '{lead_data.get('mobile')}' (company: {lead_data.get('companyName')})")
+        r_all_leads = requests.get(f"{base_api}/leads/", timeout=15)
+        if r_all_leads.status_code == 200:
+            results = r_all_leads.json().get('results', r_all_leads.json())
+            static_count = sum(1 for l in results if l.get('mobile') == '9999999999')
+            print(f"  -> Total leads: {len(results)}, leads with '9999999999': {static_count}")
+    except Exception as e:
+        print(f"  Lead check error: {e}")
 
 if __name__ == '__main__':
     sync_files()

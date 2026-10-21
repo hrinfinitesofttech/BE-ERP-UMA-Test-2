@@ -193,7 +193,15 @@ def validate_edit_safety(instance, request_data):
     
     # Allow status updates or internal workflow transitions
     business_mutation = False
-    workflow_keys = {'status', 'remarks', 'approval_notes', 'rejection_reason', 'approved_by', 'revisions', 'approvalNotes', 'rejectionReason', 'approvedBy'}
+    workflow_keys = {
+        'status', 'remarks', 'approval_notes', 'rejection_reason', 'approved_by', 'revisions',
+        'approvalNotes', 'rejectionReason', 'approvedBy',
+        'drawingFileName', 'drawing_file_name', 'drawingTitle', 'drawing_title',
+        'drawingNumber', 'drawing_number', 'drawingCategory', 'drawing_category',
+        'drawingFormat', 'drawing_format', 'fileSize', 'file_size',
+        'fileUrl', 'file_url', 'attachments', 'completedDate', 'completed_date',
+        'completedBy', 'completed_by',
+    }
     
     for key in request_data.keys():
         if key not in workflow_keys and not key.startswith('_'):

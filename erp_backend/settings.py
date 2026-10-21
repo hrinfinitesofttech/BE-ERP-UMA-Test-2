@@ -127,6 +127,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Allow CAD drawings, PDF files, and high-resolution design images up to 100MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
+
 # ==============================================================================
 # JAZZMIN MODERN ADMIN THEME SETTINGS
 # ==============================================================================

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, date, timedelta
+from django.db import models
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -87,6 +88,50 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         p_code = data.get('project_number') or data.get('projectNumber') or data.get('id')
         j_code = data.get('job_number') or data.get('jobNumber')
+        so_id = data.get('sales_order_id') or data.get('salesOrderId') or data.get('sales_order_number') or data.get('salesOrderNumber')
+        po_num = data.get('customer_po_number') or data.get('customerPoNumber')
+        cust_id = data.get('customer_id') or data.get('customerId')
+        cust_name = data.get('customer_name') or data.get('customerName')
+        prod_name = data.get('product_name') or data.get('productName')
+
+        # Check for existing project to prevent duplicate entries
+        existing = None
+        if so_id:
+            existing = ProjectJobMaster.objects.filter(
+                models.Q(sales_order_id=so_id) | models.Q(sales_order_number=so_id)
+            ).first()
+        if not existing and po_num:
+            existing = ProjectJobMaster.objects.filter(customer_po_number=po_num).first()
+        if not existing and cust_id and prod_name:
+            # Check for existing open project for same customer and product without sales order
+            existing = ProjectJobMaster.objects.filter(
+                customer_id=cust_id,
+                product_name__iexact=prod_name
+            ).filter(models.Q(sales_order_id__isnull=True) | models.Q(sales_order_id='') | models.Q(sales_order_id='-')).first()
+
+        if existing:
+            # Update existing project rather than creating a duplicate
+            if so_id:
+                existing.sales_order_id = so_id
+                existing.sales_order_number = data.get('sales_order_number') or data.get('salesOrderNumber') or so_id
+            if po_num:
+                existing.customer_po_number = po_num
+            if cust_name:
+                existing.customer_name = cust_name
+            if data.get('target_delivery_date') or data.get('targetDeliveryDate') or data.get('deliveryDate'):
+                existing.target_delivery_date = data.get('target_delivery_date') or data.get('targetDeliveryDate') or data.get('deliveryDate')
+            if data.get('order_value') or data.get('orderValue'):
+                try:
+                    existing.order_value = float(data.get('order_value') or data.get('orderValue') or 0)
+                except (ValueError, TypeError):
+                    pass
+            if data.get('quantity'):
+                try:
+                    existing.quantity = int(data.get('quantity'))
+                except (ValueError, TypeError):
+                    pass
+            existing.save()
+            return Response(ProjectJobMasterSerializer(existing).data, status=status.HTTP_200_OK)
 
         if not p_code:
             num_setting = NumberingSetting.objects.filter(doc_type='project').first()
@@ -126,6 +171,24 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
         auto_generate_16_stages(project.id)
 
         return Response(ProjectJobMasterSerializer(project).data, status=status.HTTP_201_CREATED)
+
+    def perform_destroy(self, instance):
+        p_id = instance.id
+        from .models import (
+            ProjectPlanningStage, ProjectMilestone, ProjectTask,
+            DepartmentAssignment, ProjectIssue, ProjectDelay,
+            CustomerChangeRequest, ProjectCost, ProjectDocument
+        )
+        ProjectPlanningStage.objects.filter(project_id=p_id).delete()
+        ProjectMilestone.objects.filter(project_id=p_id).delete()
+        ProjectTask.objects.filter(project_id=p_id).delete()
+        DepartmentAssignment.objects.filter(project_id=p_id).delete()
+        ProjectIssue.objects.filter(project_id=p_id).delete()
+        ProjectDelay.objects.filter(project_id=p_id).delete()
+        CustomerChangeRequest.objects.filter(project_id=p_id).delete()
+        ProjectCost.objects.filter(project_id=p_id).delete()
+        ProjectDocument.objects.filter(project_id=p_id).delete()
+        instance.delete()
 
     @action(detail=True, methods=['post'], url_path='generate-stages')
     def generate_stages(self, request, pk=None):

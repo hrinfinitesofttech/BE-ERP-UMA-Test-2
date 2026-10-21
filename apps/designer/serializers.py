@@ -162,8 +162,12 @@ class Drawing2DSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'design_job_id',
+            'project_id',
+            'job_number',
+            'machine_name',
             'drawing_number',
             'title',
+            'category',
             'revision',
             'status',
             'scale',
@@ -172,6 +176,8 @@ class Drawing2DSerializer(serializers.ModelSerializer):
             'checked_by',
             'approved_by',
             'release_date',
+            'file_format',
+            'file_size',
             'file_url',
         ]
 
@@ -185,6 +191,13 @@ class Drawing2DSerializer(serializers.ModelSerializer):
         if not data.get('design_job_id'):
             data['design_job_id'] = data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
 
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.pop('projectId')
+        if 'jobNumber' in data and 'job_number' not in data:
+            data['job_number'] = data.pop('jobNumber')
+        if 'machineName' in data and 'machine_name' not in data:
+            data['machine_name'] = data.pop('machineName')
+
         if 'drawingNumber' in data and 'drawing_number' not in data:
             data['drawing_number'] = data.pop('drawingNumber')
         if not data.get('drawing_number'):
@@ -196,6 +209,13 @@ class Drawing2DSerializer(serializers.ModelSerializer):
             data['title'] = data.pop('drawingName')
         if not data.get('title'):
             data['title'] = '2D CAD Drawing'
+
+        if 'category' in data and 'category' not in data:
+            data['category'] = data.pop('category')
+        if 'fileFormat' in data and 'file_format' not in data:
+            data['file_format'] = data.pop('fileFormat')
+        if 'fileSize' in data and 'file_size' not in data:
+            data['file_size'] = data.pop('fileSize')
 
         if 'sheetSize' in data and 'sheet_size' not in data:
             data['sheet_size'] = data.pop('sheetSize')
@@ -240,15 +260,21 @@ class Drawing2DSerializer(serializers.ModelSerializer):
         return {
             **ret,
             'designJobId': ret.get('design_job_id', ''),
+            'projectId': ret.get('project_id', ''),
+            'jobNumber': ret.get('job_number', ''),
+            'machineName': ret.get('machine_name', ''),
             'drawingNumber': ret.get('drawing_number', ''),
             'drawingTitle': ret.get('title', ''),
+            'category': ret.get('category', 'GA'),
+            'fileFormat': ret.get('file_format', 'PNG'),
+            'fileSize': ret.get('file_size', ''),
+            'fileUrl': ret.get('file_url', ''),
             'sheetSize': ret.get('sheet_size', 'A1'),
             'preparedBy': ret.get('prepared_by', 'Super Admin'),
             'drawnBy': ret.get('prepared_by', 'Super Admin'),
             'checkedBy': ret.get('checked_by', ''),
             'approvedBy': ret.get('approved_by', ''),
             'releaseDate': ret.get('release_date', ''),
-            'fileUrl': ret.get('file_url', ''),
         }
 
 
@@ -597,6 +623,19 @@ class DesignJobSerializer(serializers.ModelSerializer):
             'status',
             'remarks',
             'active_revision',
+            'drawing_file_name',
+            'drawing_title',
+            'drawing_number',
+            'drawing_category',
+            'drawing_format',
+            'file_size',
+            'file_url',
+            'attachments',
+            'completed_date',
+            'completed_by',
+            'start_date',
+            'target_completion_date',
+            'planning_task_id',
             'approved_by',
             'approved_date',
             'disapproved_by',
@@ -628,6 +667,18 @@ class DesignJobSerializer(serializers.ModelSerializer):
             'assignedDesigner': 'assigned_designer',
             'requiredDate': 'required_date',
             'activeRevision': 'active_revision',
+            'drawingFileName': 'drawing_file_name',
+            'drawingTitle': 'drawing_title',
+            'drawingNumber': 'drawing_number',
+            'drawingCategory': 'drawing_category',
+            'drawingFormat': 'drawing_format',
+            'fileSize': 'file_size',
+            'fileUrl': 'file_url',
+            'completedDate': 'completed_date',
+            'completedBy': 'completed_by',
+            'startDate': 'start_date',
+            'targetCompletionDate': 'target_completion_date',
+            'planningTaskId': 'planning_task_id',
             'approvedBy': 'approved_by',
             'approvedDate': 'approved_date',
             'disapprovedBy': 'disapproved_by',
@@ -639,7 +690,10 @@ class DesignJobSerializer(serializers.ModelSerializer):
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
-        return super().to_internal_value(data)
+
+        valid_fields = set(self.Meta.fields)
+        cleaned = {k: v for k, v in data.items() if k in valid_fields}
+        return super().to_internal_value(cleaned)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -660,6 +714,19 @@ class DesignJobSerializer(serializers.ModelSerializer):
             'assignedDesigner': ret.get('assigned_designer', 'Dharmesh Joshi'),
             'requiredDate': ret.get('required_date', ''),
             'activeRevision': ret.get('active_revision', 'REV-00'),
+            'drawingFileName': ret.get('drawing_file_name', ''),
+            'drawingTitle': ret.get('drawing_title', ''),
+            'drawingNumber': ret.get('drawing_number', ''),
+            'drawingCategory': ret.get('drawing_category', 'GA'),
+            'drawingFormat': ret.get('drawing_format', 'PNG'),
+            'fileSize': ret.get('file_size', ''),
+            'fileUrl': ret.get('file_url', ''),
+            'attachments': ret.get('attachments', []),
+            'completedDate': ret.get('completed_date', ''),
+            'completedBy': ret.get('completed_by', ''),
+            'startDate': ret.get('start_date', ''),
+            'targetCompletionDate': ret.get('target_completion_date', ''),
+            'planningTaskId': ret.get('planning_task_id', ''),
             'approvedBy': ret.get('approved_by', ''),
             'approvedDate': ret.get('approved_date', ''),
             'disapprovedBy': ret.get('disapproved_by', ''),

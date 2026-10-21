@@ -318,7 +318,7 @@ class SupplierSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
         if 'phone' in data and not data.get('mobile'):
             data['mobile'] = data.get('phone')
         if not data.get('mobile'):
-            data['mobile'] = data.get('phone') or '9999999999'
+            data['mobile'] = data.get('phone') or ''
         if not data.get('id'):
             data['id'] = data.get('vendor_code') or f"SUP-{int(datetime.now().timestamp())}"
         return super().to_internal_value(data)

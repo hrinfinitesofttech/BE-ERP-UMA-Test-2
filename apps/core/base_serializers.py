@@ -84,9 +84,9 @@ class UniversalModelSerializerMixin:
         if model_cls:
             model_fields = {f.name for f in model_cls._meta.fields}
 
-            # If model has mobile and phone is provided
+            # If model has mobile and phone/mobile is provided
             if 'mobile' in model_fields and 'mobile' not in data:
-                data['mobile'] = data.get('phone') or '9999999999'
+                data['mobile'] = data.get('phone') or data.get('contactMobile') or data.get('contact_mobile') or data.get('mobileNo') or data.get('contactNumber') or ''
 
             # If model has vendor_code and supplierCode or id is provided
             if 'vendor_code' in model_fields and 'vendor_code' not in data:

@@ -56,6 +56,92 @@ def _ensure_crm_schema():
             cursor.execute("UPDATE crm_quotation SET contact_email = '' WHERE contact_email IS NULL;")
             cursor.execute("UPDATE crm_quotation SET sales_person_id = '' WHERE sales_person_id IS NULL;")
             cursor.execute("UPDATE crm_quotation SET sales_person_name = '' WHERE sales_person_name IS NULL;")
+
+            # Clean up dummy 9999999999 and restore real contact data from enquiries where possible
+            try:
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET mobile = (
+                        SELECT contact_mobile FROM crm_enquiry
+                        WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
+                          AND crm_enquiry.contact_mobile != '' AND crm_enquiry.contact_mobile != '9999999999'
+                        LIMIT 1
+                    )
+                    WHERE (mobile = '' OR mobile = '9999999999')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_enquiry
+                        WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
+                          AND crm_enquiry.contact_mobile != '' AND crm_enquiry.contact_mobile != '9999999999'
+                      );
+                """)
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET contact_person = (
+                        SELECT contact_person FROM crm_enquiry
+                        WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
+                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person'
+                        LIMIT 1
+                    )
+                    WHERE (contact_person = '' OR contact_person = 'Contact Person')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_enquiry
+                        WHERE (crm_enquiry.lead_id = crm_lead.id OR crm_enquiry.lead_id = crm_lead.lead_no)
+                          AND crm_enquiry.contact_person != '' AND crm_enquiry.contact_person != 'Contact Person'
+                      );
+                """)
+                cursor.execute("UPDATE crm_lead SET mobile = '' WHERE mobile = '9999999999';")
+                cursor.execute("UPDATE crm_lead SET contact_person = '' WHERE contact_person = 'Contact Person' OR contact_person = 'Contact';")
+
+                # Auto-heal quotation contact_email from linked leads, enquiries, and customers
+                cursor.execute("""
+                    UPDATE crm_quotation
+                    SET contact_email = (
+                        SELECT email FROM crm_lead
+                        WHERE (crm_lead.id = crm_quotation.lead_id OR crm_lead.lead_no = crm_quotation.lead_id)
+                          AND crm_lead.email != ''
+                        LIMIT 1
+                    )
+                    WHERE (contact_email IS NULL OR contact_email = '')
+                      AND lead_id IS NOT NULL AND lead_id != ''
+                      AND EXISTS (
+                        SELECT 1 FROM crm_lead
+                        WHERE (crm_lead.id = crm_quotation.lead_id OR crm_lead.lead_no = crm_quotation.lead_id)
+                          AND crm_lead.email != ''
+                      );
+                """)
+                cursor.execute("""
+                    UPDATE crm_quotation
+                    SET contact_email = (
+                        SELECT customer_email FROM crm_enquiry
+                        WHERE (crm_enquiry.id = crm_quotation.enquiry_id OR crm_enquiry.enquiry_no = crm_quotation.enquiry_id)
+                          AND crm_enquiry.customer_email != ''
+                        LIMIT 1
+                    )
+                    WHERE (contact_email IS NULL OR contact_email = '')
+                      AND enquiry_id IS NOT NULL AND enquiry_id != ''
+                      AND EXISTS (
+                        SELECT 1 FROM crm_enquiry
+                        WHERE (crm_enquiry.id = crm_quotation.enquiry_id OR crm_enquiry.enquiry_no = crm_quotation.enquiry_id)
+                          AND crm_enquiry.customer_email != ''
+                      );
+                """)
+                cursor.execute("""
+                    UPDATE crm_quotation
+                    SET contact_email = (
+                        SELECT email FROM crm_lead
+                        WHERE LOWER(TRIM(crm_lead.company_name)) = LOWER(TRIM(crm_quotation.customer_name))
+                          AND crm_lead.email != ''
+                        LIMIT 1
+                    )
+                    WHERE (contact_email IS NULL OR contact_email = '')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_lead
+                        WHERE LOWER(TRIM(crm_lead.company_name)) = LOWER(TRIM(crm_quotation.customer_name))
+                          AND crm_lead.email != ''
+                      );
+                """)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -150,6 +236,10 @@ class LeadViewSet(viewsets.ModelViewSet):
         data.pop('id', None)
         data.pop('lead_no', None)
         data.pop('leadNo', None)
+        if 'mobile' in data or 'phone' in data or 'contactMobile' in data or 'contact_mobile' in data or 'contactNumber' in data or 'mobileNo' in data:
+            data['mobile'] = str(data.get('mobile') or data.get('phone') or data.get('contactMobile') or data.get('contact_mobile') or data.get('contactNumber') or data.get('mobileNo') or '').strip()
+        if 'contactPerson' in data or 'contact_person' in data or 'contact' in data:
+            data['contact_person'] = str(data.get('contactPerson') or data.get('contact_person') or data.get('contact') or '').strip()
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -195,6 +285,25 @@ class LeadViewSet(viewsets.ModelViewSet):
             for camel, snake in field_mappings.items():
                 if camel in data and snake not in data:
                     data[snake] = data[camel]
+
+            # Normalize mobile and contact person from all variations
+            mob_val = (
+                data.get('mobile') or
+                data.get('phone') or
+                data.get('contactMobile') or
+                data.get('contact_mobile') or
+                data.get('mobileNo') or
+                data.get('mobile_no') or
+                data.get('contactNumber') or
+                data.get('contact_number') or
+                data.get('phoneNumber') or
+                data.get('phone_number') or
+                ''
+            )
+            data['mobile'] = str(mob_val).strip()
+
+            if not data.get('contact_person'):
+                data['contact_person'] = str(data.get('contactPerson') or data.get('contact') or '').strip()
 
             is_explicit_id = bool(data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id'))
             lead_val = data.get('lead_no') or data.get('lead_number') or data.get('leadNumber') or data.get('leadNo') or data.get('id')
@@ -1055,8 +1164,13 @@ class QuotationViewSet(viewsets.ModelViewSet):
         # If recipient is still empty, try linked Enquiry, Lead, or Customer record
         if not recipient and quotation.enquiry_id:
             enq = Enquiry.objects.filter(models.Q(id=quotation.enquiry_id) | models.Q(enquiry_no=quotation.enquiry_id)).first()
-            if enq and enq.customer_email:
-                recipient = str(enq.customer_email).strip()
+            if enq:
+                if enq.customer_email:
+                    recipient = str(enq.customer_email).strip()
+                elif enq.lead_id:
+                    ld = Lead.objects.filter(models.Q(id=enq.lead_id) | models.Q(lead_no=enq.lead_id)).first()
+                    if ld and ld.email:
+                        recipient = str(ld.email).strip()
         if not recipient and quotation.lead_id:
             ld = Lead.objects.filter(models.Q(id=quotation.lead_id) | models.Q(lead_no=quotation.lead_id)).first()
             if ld and ld.email:
@@ -1065,6 +1179,10 @@ class QuotationViewSet(viewsets.ModelViewSet):
             cust = Customer.objects.filter(models.Q(id=quotation.customer_id) | models.Q(customer_code=quotation.customer_id)).first()
             if cust and cust.email:
                 recipient = str(cust.email).strip()
+        if not recipient and getattr(quotation, 'customer_name', None):
+            ld = Lead.objects.filter(company_name__iexact=str(quotation.customer_name).strip()).exclude(email='').first()
+            if ld and ld.email:
+                recipient = str(ld.email).strip()
 
         if not recipient:
             return Response(
@@ -1072,13 +1190,17 @@ class QuotationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Persist email to quotation if it was previously empty
-        if recipient and not getattr(quotation, 'contact_email', None):
+        # Persist email to quotation so it is permanently synchronized
+        if recipient and (not getattr(quotation, 'contact_email', None) or quotation.contact_email != recipient):
             try:
                 quotation.contact_email = recipient
-                quotation.save(update_fields=['contact_email'])
+                if hasattr(quotation, 'save'):
+                    quotation.save(update_fields=['contact_email'])
             except Exception:
-                pass
+                try:
+                    quotation.save()
+                except Exception:
+                    pass
 
         # Extract active revision and ensure items and financial totals are populated
         import json

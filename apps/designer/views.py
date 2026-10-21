@@ -70,12 +70,19 @@ class AssemblyDrawingViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id'):
-            code = data.get('assembly_number') or data.get('assemblyNumber') or f"ASM-2026-{AssemblyDrawing.objects.count() + 1:04d}"
-            data['id'] = code
+        req_id = data.get('id')
+        asm_num = data.get('assembly_number') or data.get('assemblyNumber')
+        
+        existing = None
+        if req_id:
+            existing = AssemblyDrawing.objects.filter(id=req_id).first()
+        if not existing and asm_num:
+            existing = AssemblyDrawing.objects.filter(assembly_number=asm_num).first()
+
         if 'assembly_number' not in data:
-            data['assembly_number'] = data.get('assemblyNumber') or f"ASM-{data.get('id', '001')}"
+            data['assembly_number'] = asm_num or f"ASM-{uuid.uuid4().hex[:8].upper()}"
         if 'assembly_title' not in data:
             data['assembly_title'] = data.get('assemblyTitle') or 'Sub-Assembly Drawing'
         if 'sub_assembly_code' not in data:
@@ -102,6 +109,18 @@ class AssemblyDrawingViewSet(viewsets.ModelViewSet):
             data['job_number'] = data.get('jobNumber') or ''
         if 'project_id' not in data:
             data['project_id'] = data.get('projectId') or ''
+
+        if existing:
+            data['id'] = existing.id
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if not data.get('id') or AssemblyDrawing.objects.filter(id=data.get('id')).exists():
+            data['id'] = f"ASM-{uuid.uuid4().hex[:8].upper()}"
+            while AssemblyDrawing.objects.filter(id=data['id']).exists():
+                data['id'] = f"ASM-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -189,7 +208,6 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 status=data.get('status', 'in_progress'),
                 remarks=data.get('remarks', ''),
             )
-            return Response(DesignJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
         if 'status' in data:
             job.status = data['status']
@@ -201,7 +219,29 @@ class DesignJobViewSet(viewsets.ModelViewSet):
             job.design_manager = data.get('designManager') or data.get('design_manager')
         if 'activeRevision' in data or 'active_revision' in data:
             job.active_revision = data.get('activeRevision') or data.get('active_revision')
-        
+
+        # Persist drawing file, title, and attachments
+        if 'drawingFileName' in data or 'drawing_file_name' in data:
+            job.drawing_file_name = data.get('drawingFileName') or data.get('drawing_file_name') or ''
+        if 'drawingTitle' in data or 'drawing_title' in data:
+            job.drawing_title = data.get('drawingTitle') or data.get('drawing_title') or ''
+        if 'drawingNumber' in data or 'drawing_number' in data:
+            job.drawing_number = data.get('drawingNumber') or data.get('drawing_number') or ''
+        if 'drawingCategory' in data or 'drawing_category' in data:
+            job.drawing_category = data.get('drawingCategory') or data.get('drawing_category') or 'GA'
+        if 'drawingFormat' in data or 'drawing_format' in data:
+            job.drawing_format = data.get('drawingFormat') or data.get('drawing_format') or 'PNG'
+        if 'fileSize' in data or 'file_size' in data:
+            job.file_size = data.get('fileSize') or data.get('file_size') or ''
+        if 'fileUrl' in data or 'file_url' in data:
+            job.file_url = data.get('fileUrl') or data.get('file_url') or ''
+        if 'attachments' in data:
+            job.attachments = data.get('attachments') or []
+        if 'completedDate' in data or 'completed_date' in data:
+            job.completed_date = data.get('completedDate') or data.get('completed_date') or ''
+        if 'completedBy' in data or 'completed_by' in data:
+            job.completed_by = data.get('completedBy') or data.get('completed_by') or ''
+
         safe, err_resp = validate_edit_safety(job, data)
         if not safe:
             return err_resp
@@ -549,14 +589,25 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id'):
-            data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
+        req_id = data.get('id')
+        drw_num = data.get('drawing_number') or data.get('drawingNumber')
+        des_job = data.get('design_job_id') or data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+        drw_title = data.get('drawingTitle') or data.get('drawing_title') or data.get('drawingName') or data.get('title') or '2D CAD Drawing'
+
+        existing = None
+        if req_id:
+            existing = Drawing2D.objects.filter(id=req_id).first()
+        if not existing and drw_num:
+            existing = Drawing2D.objects.filter(drawing_number=drw_num).first()
+        if not existing and des_job and drw_title:
+            existing = Drawing2D.objects.filter(design_job_id=des_job, title=drw_title).first()
+
         if not data.get('design_job_id'):
-            data['design_job_id'] = data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+            data['design_job_id'] = des_job
         if not data.get('drawing_number'):
-            data['drawing_number'] = data.get('drawingNumber') or data['id']
+            data['drawing_number'] = drw_num or (existing.drawing_number if existing else f"DWG-2D-{uuid.uuid4().hex[:8].upper()}")
         if not data.get('title'):
-            data['title'] = data.get('drawingTitle') or data.get('drawing_title') or data.get('drawingName') or data.get('title') or '2D CAD Drawing'
+            data['title'] = drw_title
         if not data.get('revision'):
             data['revision'] = data.get('revisionNumber') or data.get('revision') or 'REV-00'
         if not data.get('sheet_size'):
@@ -569,8 +620,32 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
             data['checked_by'] = data.get('checkedBy') or ''
         if not data.get('approved_by'):
             data['approved_by'] = data.get('approvedBy') or ''
+        if not data.get('project_id'):
+            data['project_id'] = data.get('projectId') or ''
+        if not data.get('job_number'):
+            data['job_number'] = data.get('jobNumber') or ''
+        if not data.get('machine_name'):
+            data['machine_name'] = data.get('machineName') or ''
+        if not data.get('category'):
+            data['category'] = data.get('drawingCategory') or 'GA'
+        if not data.get('file_format'):
+            data['file_format'] = data.get('fileFormat') or 'PNG'
+        if not data.get('file_size'):
+            data['file_size'] = data.get('fileSize') or ''
         if not data.get('file_url'):
             data['file_url'] = data.get('fileUrl') or ''
+
+        if existing:
+            data['id'] = existing.id
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if not data.get('id') or Drawing2D.objects.filter(id=data.get('id')).exists():
+            data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
+            while Drawing2D.objects.filter(id=data['id']).exists():
+                data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -586,14 +661,25 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         import uuid
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        if not data.get('id'):
-            data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
+        req_id = data.get('id')
+        mod_num = data.get('modelNumber') or data.get('model_number') or data.get('designNumber')
+        des_job = data.get('design_job_id') or data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+        mod_name = data.get('modelName') or data.get('model_name') or data.get('modelTitle') or '3D CAD Model'
+
+        existing = None
+        if req_id:
+            existing = Design3DModel.objects.filter(id=req_id).first()
+        if not existing and mod_num:
+            existing = Design3DModel.objects.filter(model_number=mod_num).first()
+        if not existing and des_job and mod_name:
+            existing = Design3DModel.objects.filter(design_job_id=des_job, model_name=mod_name).first()
+
         if not data.get('design_job_id'):
-            data['design_job_id'] = data.get('designJobId') or data.get('jobNumber') or data.get('job_number') or data.get('projectId') or data.get('project_id') or 'DJ-001'
+            data['design_job_id'] = des_job
         if not data.get('model_number'):
-            data['model_number'] = data.get('modelNumber') or data.get('designNumber') or data['id']
+            data['model_number'] = mod_num or (existing.model_number if existing else f"MOD3D-{uuid.uuid4().hex[:8].upper()}")
         if not data.get('model_name'):
-            data['model_name'] = data.get('modelName') or data.get('modelTitle') or '3D CAD Model'
+            data['model_name'] = mod_name
         if not data.get('software'):
             data['software'] = data.get('software') or 'SolidWorks'
         if not data.get('version'):
@@ -606,6 +692,18 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
             data['modeled_by'] = data.get('modeledBy') or data.get('designer') or 'Super Admin'
         if not data.get('file_url'):
             data['file_url'] = data.get('fileUrl') or ''
+
+        if existing:
+            data['id'] = existing.id
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        if not data.get('id') or Design3DModel.objects.filter(id=data.get('id')).exists():
+            data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
+            while Design3DModel.objects.filter(id=data['id']).exists():
+                data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
