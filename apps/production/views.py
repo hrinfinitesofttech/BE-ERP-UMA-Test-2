@@ -696,6 +696,18 @@ class PackingOrderViewSet(viewsets.ModelViewSet):
         data['verified_by'] = data.get('verified_by') or data.get('verifiedBy', 'Quality Inspector')
         data['status'] = data.get('status', 'Packed')
         data['remarks'] = data.get('remarks', '')
+        if 'items' in request.data:
+            data['items'] = request.data['items']
+
+        existing = (
+            PackingOrder.objects.filter(id=data['id']).first()
+            or PackingOrder.objects.filter(packing_number=pack_num).first()
+        )
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
