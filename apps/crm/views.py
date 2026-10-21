@@ -539,18 +539,6 @@ class EnquiryViewSet(viewsets.ModelViewSet):
                 if not data.get('quantity'):
                     data['quantity'] = ld.quantity
 
-        customer_id = data.get('customer_id') or data.get('customerId')
-        if customer_id and not data.get('customer_name') and not data.get('customerName'):
-            cust = Customer.objects.filter(models.Q(id=customer_id) | models.Q(customer_code=customer_id)).first()
-            if cust:
-                data['customer_name'] = cust.company_name
-                if not data.get('customer_email') and not data.get('customerEmail') and cust.email:
-                    data['customer_email'] = cust.email
-                if not data.get('contact_person') and not data.get('contactPerson') and cust.contact_person:
-                    data['contact_person'] = cust.contact_person
-                if not data.get('contact_mobile') and not data.get('contactMobile') and cust.mobile:
-                    data['contact_mobile'] = cust.mobile
-
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -564,10 +552,6 @@ class EnquiryViewSet(viewsets.ModelViewSet):
             )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def partial_update(self, request, *args, **kwargs):
-        kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)
 
 
 class OpportunityViewSet(viewsets.ModelViewSet):
@@ -1223,11 +1207,26 @@ class QuotationViewSet(viewsets.ModelViewSet):
             </tr>
             """
 
+        from apps.crm.quotation_pdf import generate_quotation_pdf
+        import re
+
+        clean_quo_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(quotation.quotation_number or pk or 'QT'))
+        clean_rev_num = re.sub(r'[^A-Za-z0-9_-]', '_', str(quotation.current_revision or cur_rev_num or 'Rev-00'))
+        pdf_filename = f"Quotation_{clean_quo_num}_{clean_rev_num}.pdf"
+
+        pdf_bytes = None
+        try:
+            pdf_bytes = generate_quotation_pdf(quotation, active_revision=active_rev, payload=quo_payload)
+            logger.info(f"Generated quotation PDF '{pdf_filename}' ({len(pdf_bytes)} bytes)")
+        except Exception as pdf_ex:
+            logger.warning(f"Error generating quotation PDF: {pdf_ex}")
+
         email_text = f"""Dear {quotation.contact_person or quotation.customer_name},
 
 Thank you for your business enquiry with UMA TECHNO FAB PVT. LTD.
 
-We are pleased to submit our formal commercial and technical proposal for your valued review:
+We are pleased to submit our formal commercial and technical proposal for your valued review.
+Please find attached our official quotation proposal in PDF format: {pdf_filename}
 
 ============================================================
 PROPOSAL DETAILS:
@@ -1237,6 +1236,7 @@ Valid Until     : {quotation.valid_until}
 Customer Name   : {quotation.customer_name}
 Attn            : {quotation.contact_person}
 Equipment Scope : {quotation.machine_product or 'Industrial Machinery & Process Equipment'}
+Official PDF    : {pdf_filename}
 ============================================================
 
 BILL OF QUANTITIES & PRICING:
@@ -1250,6 +1250,8 @@ Commercial Terms:
 - Validity: 30 days from proposal date.
 - Inspection & Quality: Strictly compliant with standard industrial fabrication norms.
 
+The complete itemized engineering specifications, scope of supply, and commercial terms are detailed in the attached official PDF ({pdf_filename}).
+
 Please feel free to contact us for any technical or commercial clarifications.
 
 Warm Regards,
@@ -1260,7 +1262,6 @@ Web: www.umatechnofab.com
 """
 
         from django.conf import settings
-        import re
         from_email_setting = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'UMA TECHNO FAB <hrinfinitesofttech@gmail.com>'
         email_match = re.search(r'<([^>]+)>', str(from_email_setting))
         reply_to_addr = email_match.group(1).strip() if email_match else str(from_email_setting).strip()
@@ -1383,6 +1384,23 @@ Web: www.umatechnofab.com
                 Thank you for your business enquiry. We are pleased to submit our formal commercial and technical proposal for your valued review:
               </p>
 
+              <!-- PDF Attachment Banner Box -->
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="meta-pill-box" style="background-color: #faf5f0; border: 1.5px dashed #75401f; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 12px 14px;">
+                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #75401f; font-weight: 700;">
+                      &#128196; OFFICIAL ATTACHMENT (PDF FORMAT)
+                    </div>
+                    <div style="font-size: 13px; font-weight: 800; color: #3e2723; margin-top: 3px;">
+                      {pdf_filename}
+                    </div>
+                    <div style="font-size: 11px; color: #70665f; margin-top: 2px; line-height: 1.4;" class="sub-text">
+                      Please open the attached PDF proposal to view our complete official letterhead, itemized engineering specifications, scope of supply, and formal commercial terms.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
               <!-- Bill of Quantities / Items List (Responsive Card-based Table) -->
               <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse; margin-bottom: 16px;">
                 <thead>
@@ -1465,10 +1483,13 @@ Web: www.umatechnofab.com
                 }
             )
             email_msg.attach_alternative(email_html, "text/html")
+            if pdf_bytes:
+                email_msg.attach(pdf_filename, pdf_bytes, 'application/pdf')
+
             email_msg.send(fail_silently=False)
 
             email_status = 'sent'
-            message = f"Quotation {quotation.quotation_number} ({quotation.current_revision}) successfully dispatched via email to {recipient}."
+            message = f"Quotation {quotation.quotation_number} ({quotation.current_revision}) successfully dispatched via email to {recipient} with attached PDF ({pdf_filename})."
 
             # Update quotation & revision status to 'sent' upon confirmed dispatch
             if quotation.status in ['draft', 'approved']:
@@ -1493,6 +1514,8 @@ Web: www.umatechnofab.com
                 'quotationNumber': quotation.quotation_number,
                 'currentRevision': quotation.current_revision,
                 'emailStatus': email_status,
+                'hasPdfAttachment': bool(pdf_bytes),
+                'pdfFilename': pdf_filename,
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.warning(f"SMTP dispatch failed ({e}). Logged dispatch error for quotation.")
@@ -1510,7 +1533,55 @@ Web: www.umatechnofab.com
                 'recipient': recipient,
                 'quotationNumber': quotation.quotation_number,
                 'emailStatus': 'failed',
+                'hasPdfAttachment': bool(pdf_bytes),
+                'pdfFilename': pdf_filename,
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get', 'post'], url_path='pdf')
+    def download_pdf(self, request, pk=None):
+        from django.http import HttpResponse
+        from apps.crm.quotation_pdf import generate_quotation_pdf
+        from types import SimpleNamespace
+        import json
+        import re
+
+        quotation = Quotation.objects.filter(models.Q(id=pk) | models.Q(quotation_number=pk)).first()
+        payload = request.data if request.method == 'POST' else {}
+
+        target_rev = request.query_params.get('revision') or payload.get('currentRevision')
+        active_rev = None
+        if quotation and quotation.revisions:
+            revs = quotation.revisions
+            if isinstance(revs, str):
+                try:
+                    revs = json.loads(revs)
+                except Exception:
+                    revs = []
+            if target_rev:
+                for r in revs:
+                    if isinstance(r, dict) and str(r.get('revisionNumber') or '').strip().lower() == str(target_rev).strip().lower():
+                        active_rev = r
+                        break
+            if not active_rev and revs and isinstance(revs[-1], dict):
+                active_rev = revs[-1]
+
+        pdf_bytes = generate_quotation_pdf(
+            quotation or SimpleNamespace(id=str(pk), quotation_number=str(pk)),
+            active_revision=active_rev,
+            payload=payload
+        )
+
+        q_num = getattr(quotation, 'quotation_number', None) or pk
+        r_num = (active_rev.get('revisionNumber') if active_rev else None) or getattr(quotation, 'current_revision', None) or 'Rev-00'
+        clean_quo = re.sub(r'[^A-Za-z0-9_-]', '_', str(q_num))
+        clean_rev = re.sub(r'[^A-Za-z0-9_-]', '_', str(r_num))
+        filename = f"Quotation_{clean_quo}_{clean_rev}.pdf"
+
+        disposition = 'inline' if request.query_params.get('view') == '1' else 'attachment'
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'{disposition}; filename="{filename}"'
+        return response
+
 
 
 class CustomerPOViewSet(viewsets.ModelViewSet):

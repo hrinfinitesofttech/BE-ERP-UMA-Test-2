@@ -178,3 +178,206 @@ class Phase2CrmApiTestCase(TestCase):
         self.assertTrue(hasattr(PurchaseOrder, 'objects'))
         self.assertTrue(hasattr(SupplierQuotation, 'objects'))
 
+    def test_quotation_pdf_generation_endpoint(self):
+        response = self.client.get('/api/quotations/QT-2026-0118/pdf/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF-'))
+        self.assertIn('Quotation_QT-2026-0118', response['Content-Disposition'])
+
+    def test_quotation_send_email_attaches_pdf(self):
+        from django.core import mail
+        quo = Quotation.objects.filter(quotation_number='QT-2026-0118').first()
+        self.assertIsNotNone(quo)
+
+        # Clear outbox
+        mail.outbox = []
+
+        response = self.client.post(f'/api/quotations/{quo.id}/send-email/', {
+            'recipientEmail': 'client.test@example.com'
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['hasPdfAttachment'])
+        self.assertTrue(data['pdfFilename'].endswith('.pdf'))
+
+        # Verify dispatched email message and its PDF attachment
+        self.assertEqual(len(mail.outbox), 1)
+        sent_msg = mail.outbox[0]
+        self.assertIn('client.test@example.com', sent_msg.to)
+        self.assertTrue(len(sent_msg.attachments) >= 1)
+        # Check attachment details
+        att_filename, att_content, att_mimetype = sent_msg.attachments[0]
+        self.assertTrue(att_filename.endswith('.pdf'))
+        self.assertEqual(att_mimetype, 'application/pdf')
+        self.assertTrue(att_content.startswith(b'%PDF-'))
+
+    def test_customer_full_statutory_banking_contacts_persistence(self):
+        from apps.crm.models import Contact
+        customer_payload = {
+            'customerCode': 'CUST-2026-9099',
+            'companyName': 'Bharat Heavy Fabricators Pvt Ltd',
+            'customerType': 'company',
+            'industry': 'Heavy Engineering',
+            'category': 'platinum',
+            'gstin': '24AAACB9876C1Z1',
+            'pan': 'AAACB9876C',
+            'tan': 'AHMC12345D',
+            'msmeNumber': 'UDYAM-GJ-01-0012345',
+            'taxCategory': 'regular',
+            'bankName': 'HDFC Bank Ltd',
+            'bankAccountNo': '50200012345678',
+            'bankAccountName': 'Bharat Heavy Fabricators Pvt Ltd',
+            'bankIfsc': 'HDFC0000001',
+            'bankBranch': 'Makarpura Industrial Estate, Vadodara',
+            'paymentTerms': '30 Days Net',
+            'creditPeriodDays': 45,
+            'creditLimit': 1500000,
+            'billingAddress': 'Plot 45, GIDC Industrial Estate',
+            'shippingAddress': 'Plot 45, GIDC Industrial Estate',
+            'city': 'Vadodara',
+            'state': 'Gujarat',
+            'country': 'India',
+            'pincode': '390010',
+            'nearestPortRailway': 'Vadodara Junction / Kandla Port',
+            'inspectionRequirements': 'Third Party TPI by TUV SUD mandatory',
+            'specialInstructions': 'Deliver during working shifts only (8 AM to 6 PM)',
+            'contactPerson': 'Mr. Rajesh Sharma',
+            'designation': 'General Manager Procurement',
+            'mobile': '+91 98250 99999',
+            'email': 'rajesh.sharma@bharatfab.com',
+            'contacts': [
+                {
+                    'id': 'CONT-BHARAT-01',
+                    'name': 'Mr. Rajesh Sharma',
+                    'designation': 'GM Procurement',
+                    'department': 'Procurement',
+                    'mobile': '+91 98250 99999',
+                    'email': 'rajesh.sharma@bharatfab.com',
+                    'isPrimary': True,
+                },
+                {
+                    'id': 'CONT-BHARAT-02',
+                    'name': 'Ms. Pooja Patel',
+                    'designation': 'Accounts Manager',
+                    'department': 'Finance',
+                    'mobile': '+91 98250 88888',
+                    'email': 'accounts@bharatfab.com',
+                    'isPrimary': False,
+                }
+            ]
+        }
+
+        # 1. Create customer
+        res = self.client.post('/api/customers/', customer_payload, format='json')
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        cust_id = data['id']
+        self.assertEqual(data['companyName'], 'Bharat Heavy Fabricators Pvt Ltd')
+        self.assertEqual(data['msmeNumber'], 'UDYAM-GJ-01-0012345')
+        self.assertEqual(data['tan'], 'AHMC12345D')
+        self.assertEqual(data['taxCategory'], 'regular')
+        self.assertEqual(data['bankName'], 'HDFC Bank Ltd')
+        self.assertEqual(data['bankAccountNo'], '50200012345678')
+        self.assertEqual(data['bankIfsc'], 'HDFC0000001')
+        self.assertEqual(data['creditPeriodDays'], 45)
+        self.assertEqual(data['nearestPortRailway'], 'Vadodara Junction / Kandla Port')
+        self.assertEqual(data['inspectionRequirements'], 'Third Party TPI by TUV SUD mandatory')
+
+        # 2. Verify contacts were saved and linked to Customer
+        linked_contacts = Contact.objects.filter(customer_id=cust_id)
+        self.assertTrue(linked_contacts.count() >= 2)
+        primary_c = linked_contacts.filter(is_primary=True).first()
+        self.assertIsNotNone(primary_c)
+        self.assertEqual(primary_c.name, 'Mr. Rajesh Sharma')
+
+        # 3. Retrieve Customer via GET
+        get_res = self.client.get(f'/api/customers/{cust_id}/')
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data['msmeNumber'], 'UDYAM-GJ-01-0012345')
+        self.assertEqual(get_data['bankBranch'], 'Makarpura Industrial Estate, Vadodara')
+        self.assertTrue(len(get_data.get('contacts', [])) >= 2)
+
+    def test_exhibition_crud_and_camel_case_mappings(self):
+        expo_payload = {
+            'expoName': 'EngiExpo India 2026',
+            'organizer': 'Industrial Exhibitions Ltd',
+            'location': 'Helipad Exhibition Ground',
+            'venue': 'Hall 3',
+            'city': 'Gandhinagar',
+            'country': 'India',
+            'participationStatus': 'confirmed',
+            'startDate': '2026-11-15',
+            'endDate': '2026-11-18',
+            'stallNumber': 'Stall B-12',
+            'contactPerson': 'Sunil Verma',
+            'budget': 250000,
+            'actualExpenses': 180000,
+            'assignedTeam': ['Sunil Verma', 'Priya Shah'],
+            'productsDisplayed': 'Chemical Reaction Vessels, Heat Exchangers',
+            'notes': 'Booked corner stall with heavy 3-phase machinery electrical connection',
+            'totalContacts': 45,
+            'qualifiedLeads': 12,
+            'quotationsSent': 5,
+            'convertedCustomers': 2,
+        }
+
+        # 1. Create exhibition
+        res = self.client.post('/api/exhibitions/', expo_payload, format='json')
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        expo_id = data['id']
+        self.assertEqual(data['expoName'], 'EngiExpo India 2026')
+        self.assertEqual(data['stallNumber'], 'Stall B-12')
+        self.assertEqual(data['participationStatus'], 'confirmed')
+        self.assertEqual(data['actualExpenses'], 180000.0)
+
+        # 2. Update exhibition via PATCH
+        patch_res = self.client.patch(f'/api/exhibitions/{expo_id}/', {
+            'actualExpenses': 210000,
+            'totalContacts': 60,
+            'notes': 'Stall setup completed with company banner',
+        }, format='json')
+        self.assertEqual(patch_res.status_code, 200)
+        patch_data = patch_res.json()
+        self.assertEqual(patch_data['actualExpenses'], 210000.0)
+        self.assertEqual(patch_data['totalContacts'], 60)
+
+    def test_site_visit_lifecycle(self):
+        visit_payload = {
+            'visitNo': 'VST-2026-8801',
+            'customerId': 'cust-01',
+            'customerName': 'Reliance Industries Ltd.',
+            'contactPerson': 'Mr. Mukesh',
+            'contactMobile': '+91 98250 11111',
+            'visitDate': '2026-10-25',
+            'location': 'Hazira Petrochemical Complex, Surat',
+            'employeeId': 'EMP-001',
+            'employeeName': 'Technical Sales Lead',
+            'purpose': 'Site measurement & nozzle orientation inspection',
+            'discussionNotes': 'Verified foundation bolts and foundation load capacity.',
+            'requirementDetails': 'Nozzles need to align with existing header line DN200.',
+            'outcome': 'positive',
+            'nextAction': 'Submit revised fabrication drawing with updated nozzle elevations',
+            'nextFollowUpDate': '2026-10-28',
+        }
+
+        # 1. Create site visit
+        res = self.client.post('/api/visits/', visit_payload, format='json')
+        self.assertEqual(res.status_code, 201)
+        data = res.json()
+        visit_id = data['id']
+        self.assertEqual(data['visitNo'], 'VST-2026-8801')
+        self.assertEqual(data['outcome'], 'positive')
+
+        # 2. Fetch list and detail
+        get_res = self.client.get(f'/api/visits/{visit_id}/')
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(get_data['location'], 'Hazira Petrochemical Complex, Surat')
+        self.assertEqual(get_data['nextFollowUpDate'], '2026-10-28')
+
+

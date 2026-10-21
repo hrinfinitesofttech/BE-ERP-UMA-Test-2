@@ -7,7 +7,7 @@ import json
 USERNAME = 'umaERP'
 PASSWORD = 'AAaa@123456@'
 DOMAIN = 'umaERP.pythonanywhere.com'
-LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
+LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 
 EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea', 'staticfiles', 'static', 'node_modules', '.next'}

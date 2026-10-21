@@ -200,6 +200,9 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
             'industry',
             'gstin',
             'pan',
+            'tan',
+            'msme_number',
+            'tax_category',
             'website',
             'contact_person',
             'designation',
@@ -213,16 +216,32 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
             'country',
             'pincode',
             'payment_terms',
+            'credit_period_days',
             'credit_limit',
             'currency',
             'category',
             'assigned_sales_person',
+            'bank_name',
+            'bank_account_no',
+            'bank_account_name',
+            'bank_ifsc',
+            'bank_branch',
+            'linked_lead_id',
+            'nearest_port_railway',
+            'inspection_requirements',
+            'special_instructions',
+            'status',
             'created_date',
             'contacts',
         ]
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'contacts' in data:
+            self._incoming_contacts = data.pop('contacts')
+        else:
+            self._incoming_contacts = None
+
         field_map = {
             'customerCode': 'customer_code',
             'customerType': 'customer_type',
@@ -231,8 +250,20 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
             'billingAddress': 'billing_address',
             'shippingAddress': 'shipping_address',
             'paymentTerms': 'payment_terms',
+            'creditPeriodDays': 'credit_period_days',
             'creditLimit': 'credit_limit',
             'assignedSalesPerson': 'assigned_sales_person',
+            'msmeNumber': 'msme_number',
+            'taxCategory': 'tax_category',
+            'bankName': 'bank_name',
+            'bankAccountNo': 'bank_account_no',
+            'bankAccountName': 'bank_account_name',
+            'bankIfsc': 'bank_ifsc',
+            'bankBranch': 'bank_branch',
+            'linkedLeadId': 'linked_lead_id',
+            'nearestPortRailway': 'nearest_port_railway',
+            'inspectionRequirements': 'inspection_requirements',
+            'specialInstructions': 'special_instructions',
             'createdDate': 'created_date',
         }
         for camel, snake in field_map.items():
@@ -263,6 +294,47 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
                 data['contact_person'] = data.get('company_name', 'Customer Representative')
         return super().to_internal_value(data)
 
+    def create(self, validated_data):
+        customer = super().create(validated_data)
+        incoming_contacts = getattr(self, '_incoming_contacts', None)
+        if incoming_contacts and isinstance(incoming_contacts, list):
+            for idx, c in enumerate(incoming_contacts):
+                c_id = c.get('id') or f"CONT-{customer.id}-{idx + 1}"
+                Contact.objects.update_or_create(
+                    id=c_id,
+                    defaults={
+                        'customer_ref': customer,
+                        'customer_id': customer.id,
+                        'customer_name': customer.company_name,
+                        'name': c.get('name') or customer.contact_person or 'Primary Contact',
+                        'designation': c.get('designation') or customer.designation or '',
+                        'department': c.get('department') or '',
+                        'email': c.get('email') or customer.email or '',
+                        'mobile': c.get('mobile') or c.get('phone') or customer.mobile or '9999999999',
+                        'whatsapp': c.get('whatsapp') or customer.whatsapp or '',
+                        'is_primary': c.get('isPrimary') or c.get('is_primary') or (idx == 0),
+                    }
+                )
+        elif customer.contact_person:
+            # Auto-create primary contact if none exists yet
+            c_id = f"CONT-{customer.id}-1"
+            Contact.objects.get_or_create(
+                id=c_id,
+                defaults={
+                    'customer_ref': customer,
+                    'customer_id': customer.id,
+                    'customer_name': customer.company_name,
+                    'name': customer.contact_person,
+                    'designation': customer.designation or 'Primary Contact',
+                    'department': 'Management',
+                    'email': customer.email or '',
+                    'mobile': customer.mobile or '9999999999',
+                    'whatsapp': customer.whatsapp or '',
+                    'is_primary': True,
+                }
+            )
+        return customer
+
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep['customerCode'] = instance.customer_code
@@ -272,8 +344,21 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
         rep['billingAddress'] = instance.billing_address
         rep['shippingAddress'] = instance.shipping_address
         rep['paymentTerms'] = instance.payment_terms
+        rep['creditPeriodDays'] = instance.credit_period_days
         rep['creditLimit'] = float(instance.credit_limit or 0)
         rep['assignedSalesPerson'] = instance.assigned_sales_person
+        rep['msmeNumber'] = instance.msme_number
+        rep['taxCategory'] = instance.tax_category
+        rep['bankName'] = instance.bank_name
+        rep['bankAccountNo'] = instance.bank_account_no
+        rep['bankAccountName'] = instance.bank_account_name
+        rep['bankIfsc'] = instance.bank_ifsc
+        rep['bankBranch'] = instance.bank_branch
+        rep['linkedLeadId'] = instance.linked_lead_id
+        rep['nearestPortRailway'] = instance.nearest_port_railway
+        rep['inspectionRequirements'] = instance.inspection_requirements
+        rep['specialInstructions'] = instance.special_instructions
+        rep['status'] = instance.status
         rep['createdDate'] = str(instance.created_date) if instance.created_date else ''
         return rep
 
@@ -347,68 +432,39 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
-
+        if data.get('customer_id') and not data.get('customer_name'):
+            try:
+                from .models import Customer
+                c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
+                if c:
+                    data['customer_name'] = c.company_name
+                    if not data.get('customer_email') and c.email:
+                        data['customer_email'] = c.email
+                    if not data.get('contact_person') and c.contact_person:
+                        data['contact_person'] = c.contact_person
+                    if not data.get('contact_mobile') and c.mobile:
+                        data['contact_mobile'] = c.mobile
+            except Exception:
+                pass
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('company_name') or 'Valued Customer'
+        if not data.get('requirement'):
+            data['requirement'] = data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
+        if not data.get('machine_product'):
+            items = data.get('items', [])
+            item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
+            data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
+        if not data.get('enquiry_date'):
+            data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
         inst = getattr(self, 'instance', None)
-
-        # On create (not inst), resolve fallback fields from Lead or Customer
-        if not inst:
-            if data.get('lead_id') and not data.get('customer_name'):
-                try:
-                    from .models import Lead
-                    l = Lead.objects.filter(models.Q(id=data['lead_id']) | models.Q(lead_no=data['lead_id'])).first()
-                    if l:
-                        data['customer_name'] = l.company_name
-                        if not data.get('customer_email') and l.email:
-                            data['customer_email'] = l.email
-                        if not data.get('contact_person') and l.contact_person and l.contact_person != 'Contact Person':
-                            data['contact_person'] = l.contact_person
-                        if not data.get('contact_mobile') and l.mobile and l.mobile != '9999999999':
-                            data['contact_mobile'] = l.mobile
-                        if not data.get('machine_product') and l.product_name:
-                            data['machine_product'] = l.product_name
-                        if not data.get('quantity') and l.quantity:
-                            data['quantity'] = l.quantity
-                        if not data.get('requirement') and l.requirement_description:
-                            data['requirement'] = l.requirement_description
-                        if not data.get('specification') and l.capacity:
-                            data['specification'] = l.capacity
-                except Exception:
-                    pass
-
-            if data.get('customer_id') and not data.get('customer_name'):
-                try:
-                    from .models import Customer
-                    c = Customer.objects.filter(id=data['customer_id']).first() or Customer.objects.filter(customer_code=data['customer_id']).first()
-                    if c:
-                        data['customer_name'] = c.company_name
-                        if not data.get('customer_email') and c.email:
-                            data['customer_email'] = c.email
-                        if not data.get('contact_person') and c.contact_person:
-                            data['contact_person'] = c.contact_person
-                        if not data.get('contact_mobile') and c.mobile:
-                            data['contact_mobile'] = c.mobile
-                except Exception:
-                    pass
-
-            if not data.get('customer_name'):
-                data['customer_name'] = data.get('company_name') or 'Valued Customer'
-            if not data.get('requirement'):
-                data['requirement'] = data.get('specification') or data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
-            if not data.get('machine_product'):
-                items = data.get('items', [])
-                item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
-                data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
-            if not data.get('enquiry_date'):
-                data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
             if not data.get('enquiry_no'):
                 data['enquiry_no'] = data.get('enquiryNumber') or data.get('id') or f"ENQ-{int(datetime.now().timestamp())}"
             if not data.get('id'):
                 data['id'] = data['enquiry_no']
-        else:
-            # During partial update or full update, remove 'id' if sent
-            if 'id' in data:
-                data.pop('id', None)
-
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
@@ -622,7 +678,7 @@ class SiteVisitSerializer(UniversalModelSerializerMixin, serializers.ModelSerial
         return ret
 
 
-class ExhibitionSerializer(serializers.ModelSerializer):
+class ExhibitionSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = Exhibition
         fields = [
@@ -649,6 +705,45 @@ class ExhibitionSerializer(serializers.ModelSerializer):
             'converted_customers',
         ]
 
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'expoName': 'expo_name',
+            'startDate': 'start_date',
+            'endDate': 'end_date',
+            'stallNumber': 'stall_number',
+            'contactPerson': 'contact_person',
+            'participationStatus': 'participation_status',
+            'actualExpenses': 'actual_expenses',
+            'assignedTeam': 'assigned_team',
+            'productsDisplayed': 'products_displayed',
+            'totalContacts': 'total_contacts',
+            'qualifiedLeads': 'qualified_leads',
+            'quotationsSent': 'quotations_sent',
+            'convertedCustomers': 'converted_customers',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+
+        inst = getattr(self, 'instance', None)
+        if inst:
+            if 'id' in data:
+                data.pop('id', None)
+        else:
+            if not data.get('id'):
+                data['id'] = f"EXPO-2026-{int(datetime.now().timestamp())}"
+            if not data.get('expo_name'):
+                data['expo_name'] = 'Industry Expo'
+            if not data.get('location'):
+                data['location'] = 'Exhibition Center'
+            if not data.get('start_date'):
+                data['start_date'] = datetime.now().strftime('%Y-%m-%d')
+            if not data.get('end_date'):
+                data['end_date'] = datetime.now().strftime('%Y-%m-%d')
+
+        return super().to_internal_value(data)
+
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         ret['expoName'] = ret.get('expo_name')
@@ -657,6 +752,8 @@ class ExhibitionSerializer(serializers.ModelSerializer):
         ret['stallNumber'] = ret.get('stall_number')
         ret['contactPerson'] = ret.get('contact_person')
         ret['participationStatus'] = ret.get('participation_status')
+        ret['actualExpenses'] = ret.get('actual_expenses')
+        ret['assignedTeam'] = ret.get('assigned_team')
         ret['productsDisplayed'] = ret.get('products_displayed')
         ret['totalContacts'] = ret.get('total_contacts')
         ret['qualifiedLeads'] = ret.get('qualified_leads')
