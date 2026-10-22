@@ -254,6 +254,8 @@ class ContactSerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
 
 class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
     contacts = ContactSerializer(many=True, read_only=True)
+    mobile = serializers.CharField(required=False, allow_blank=True, default='')
+    contact_person = serializers.CharField(required=False, allow_blank=True, default='')
 
     class Meta:
         model = Customer
@@ -336,17 +338,18 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
                 data[snake] = data.pop(camel)
         if 'phone' in data and 'mobile' not in data:
             data['mobile'] = data.pop('phone')
-        if not data.get('mobile'):
-            data['mobile'] = ''
         if 'address' in data and not data.get('billing_address'):
             data['billing_address'] = data.get('address')
-        if not data.get('company_name'):
-            data['company_name'] = data.get('name', 'Customer Co')
+        if 'name' in data and not data.get('company_name'):
+            data['company_name'] = data.pop('name')
+
         inst = getattr(self, 'instance', None)
         if inst:
             if 'id' in data:
                 data.pop('id', None)
         else:
+            if not data.get('company_name'):
+                data['company_name'] = 'Customer Co'
             if not data.get('customer_code'):
                 data['customer_code'] = data.get('id') or f"CUST-{int(datetime.now().timestamp())}"
             if not data.get('id'):
@@ -357,6 +360,8 @@ class CustomerSerializer(UniversalModelSerializerMixin, serializers.ModelSeriali
                 data['customer_type'] = 'company'
             if not data.get('contact_person'):
                 data['contact_person'] = data.get('company_name', 'Customer Representative')
+            if not data.get('mobile'):
+                data['mobile'] = ''
         return super().to_internal_value(data)
 
     def create(self, validated_data):

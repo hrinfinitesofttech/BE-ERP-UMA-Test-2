@@ -17,6 +17,7 @@ TARGET_FILES = [
     'apps/crm/models.py',
     'apps/crm/serializers.py',
     'apps/crm/views.py',
+    'apps/crm/migrations/0008_customer_bank_account_name_customer_bank_account_no_and_more.py',
     'apps/crm/migrations/0009_alter_lead_contact_person_alter_lead_mobile.py',
     'apps/purchase/serializers.py',
     'apps/designer/models.py',
