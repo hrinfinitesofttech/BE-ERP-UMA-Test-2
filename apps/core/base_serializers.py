@@ -215,6 +215,14 @@ class UniversalModelSerializerMixin:
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
+        # Ensure created_at and updated_at are present if model instance has them
+        c_at = getattr(instance, 'created_at', None)
+        if c_at and 'created_at' not in ret:
+            ret['created_at'] = c_at.isoformat() if hasattr(c_at, 'isoformat') else str(c_at)
+        u_at = getattr(instance, 'updated_at', None)
+        if u_at and 'updated_at' not in ret:
+            ret['updated_at'] = u_at.isoformat() if hasattr(u_at, 'isoformat') else str(u_at)
+
         # Add camelCase aliases for all snake_case keys
         aliases = {}
         for k, v in ret.items():
@@ -223,3 +231,4 @@ class UniversalModelSerializerMixin:
                 aliases[camel_k] = v
         ret.update(aliases)
         return ret
+

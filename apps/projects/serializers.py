@@ -438,6 +438,8 @@ class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.Mode
             'linked_records',
             'planning_stages',
             'milestones',
+            'created_at',
+            'updated_at',
         ]
 
     def to_internal_value(self, data):
@@ -565,6 +567,10 @@ class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.Mode
             'projectManagerName': ret.get('project_manager_name', 'Bhavin Shah'),
             'isPlanningSaved': is_plan_saved,
             'is_planning_saved': is_plan_saved,
+            'createdAt': instance.created_at.isoformat() if getattr(instance, 'created_at', None) else (ret.get('created_at') or ''),
+            'updatedAt': instance.updated_at.isoformat() if getattr(instance, 'updated_at', None) else (ret.get('updated_at') or ''),
+            'created_at': instance.created_at.isoformat() if getattr(instance, 'created_at', None) else (ret.get('created_at') or ''),
+            'updated_at': instance.updated_at.isoformat() if getattr(instance, 'updated_at', None) else (ret.get('updated_at') or ''),
         }
 
 
