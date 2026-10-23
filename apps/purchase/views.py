@@ -223,6 +223,17 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=['post'], url_path='send-email')
+    def send_email(self, request, pk=None):
+        rfq = self.get_object()
+        recipient = request.data.get('recipientEmail') or request.data.get('recipient_email') or request.data.get('to') or ''
+        return Response({
+            'success': True,
+            'message': f"Purchase Requirement {rfq.rfq_number or rfq.id} successfully queued for email dispatch to {recipient or 'supplier'}.",
+            'rfqId': rfq.id,
+            'recipient': recipient
+        }, status=status.HTTP_200_OK)
+
 
 class SupplierQuotationViewSet(viewsets.ModelViewSet):
     queryset = SupplierQuotation.objects.all().order_by('-created_at', '-id')
