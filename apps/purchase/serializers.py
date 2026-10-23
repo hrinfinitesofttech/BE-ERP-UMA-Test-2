@@ -178,12 +178,60 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
             data['suppliers'] = data.pop('invitedSuppliers')
         if 'termsAndConditions' in data and 'terms_and_conditions' not in data:
             data['terms_and_conditions'] = data.pop('termsAndConditions')
+
+        # Safely capture vendor and inquiry metadata inside suppliers JSONField
+        vendor_meta = {
+            'supplierId': data.get('supplierId', ''),
+            'supplierName': data.get('supplierName', ''),
+            'supplierMobile': data.get('supplierMobile', ''),
+            'supplierEmail': data.get('supplierEmail', ''),
+            'supplierAddress': data.get('supplierAddress', ''),
+            'supplierGstin': data.get('supplierGstin', ''),
+            'projectId': data.get('projectId', data.get('pr_id', '')),
+            'subject': data.get('subject', 'Material Purchase Requirement'),
+            'specialNote': data.get('specialNote', ''),
+            'buyer': data.get('buyer', 'Uma Technofab.'),
+            'taxes': data.get('taxes', 'AS APPLICABLE.'),
+            'shipTo': data.get('shipTo', 'LOCAL'),
+            'deliveryLocation': data.get('deliveryLocation', 'RAJPUR'),
+            'pageNo': data.get('pageNo', 'PAGE NO: 1 OF 1'),
+            'terms': data.get('terms', []),
+        }
+        raw_supps = data.get('suppliers') or []
+        if isinstance(raw_supps, list):
+            if len(raw_supps) == 0:
+                data['suppliers'] = [vendor_meta]
+            elif isinstance(raw_supps[0], dict):
+                raw_supps[0].update(vendor_meta)
+                data['suppliers'] = raw_supps
+            else:
+                data['suppliers'] = [vendor_meta] + raw_supps
+        else:
+            data['suppliers'] = [vendor_meta]
+
+        # Pop non-model fields before calling super
+        extra_fields = [
+            'supplierId', 'supplierName', 'supplierMobile', 'supplierEmail',
+            'supplierAddress', 'supplierGstin', 'projectId', 'subject',
+            'specialNote', 'buyer', 'taxes', 'shipTo', 'deliveryLocation',
+            'pageNo', 'terms', 'signatory', 'prNumber', 'surcharges'
+        ]
+        for ef in extra_fields:
+            data.pop(ef, None)
+
         return super().to_internal_value(data)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         items = ret.get('items') or []
         suppliers = ret.get('suppliers') or []
+
+        vendor_data = {}
+        if isinstance(suppliers, list) and len(suppliers) > 0 and isinstance(suppliers[0], dict):
+            vendor_data = suppliers[0]
+        elif isinstance(suppliers, dict):
+            vendor_data = suppliers
+
         return {
             'id': ret.get('id'),
             'rfqNumber': ret.get('rfq_number', ''),
@@ -198,6 +246,22 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
             'termsAndConditions': ret.get('terms_and_conditions', ''),
             'issuedBy': 'Purchase Team',
             'createdAt': ret.get('created_at', ''),
+            # Vendor and Inquiry Specific Fields:
+            'supplierId': vendor_data.get('supplierId', ''),
+            'supplierName': vendor_data.get('supplierName', ''),
+            'supplierMobile': vendor_data.get('supplierMobile', ''),
+            'supplierEmail': vendor_data.get('supplierEmail', ''),
+            'supplierAddress': vendor_data.get('supplierAddress', ''),
+            'supplierGstin': vendor_data.get('supplierGstin', ''),
+            'projectId': vendor_data.get('projectId', ret.get('pr_id', '')),
+            'subject': vendor_data.get('subject', 'Material Purchase Requirement'),
+            'specialNote': vendor_data.get('specialNote', ''),
+            'buyer': vendor_data.get('buyer', 'Uma Technofab.'),
+            'taxes': vendor_data.get('taxes', 'AS APPLICABLE.'),
+            'shipTo': vendor_data.get('shipTo', 'LOCAL'),
+            'deliveryLocation': vendor_data.get('deliveryLocation', 'RAJPUR'),
+            'pageNo': vendor_data.get('pageNo', 'PAGE NO: 1 OF 1'),
+            'terms': vendor_data.get('terms', []),
         }
 
 
@@ -447,6 +511,20 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         items = ret.get('items') or []
+
+        # Resolve supplier phone and email
+        supplier_mobile = ''
+        supplier_email = ''
+        if ret.get('supplier_id'):
+            try:
+                from .models import Supplier
+                s = Supplier.objects.filter(id=ret['supplier_id']).first() or Supplier.objects.filter(vendor_code=ret['supplier_id']).first() or Supplier.objects.filter(name__iexact=ret.get('supplier_name', '')).first()
+                if s:
+                    supplier_mobile = s.mobile or s.phone or ''
+                    supplier_email = s.email or ''
+            except Exception:
+                pass
+
         return {
             'id': ret.get('id'),
             'poNumber': ret.get('po_number', ''),
@@ -457,6 +535,8 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             'indentNumber': ret.get('indent_number', '') or ret.get('pr_number', ''),
             'supplierId': ret.get('supplier_id', ''),
             'supplierName': ret.get('supplier_name', ''),
+            'supplierMobile': supplier_mobile,
+            'supplierEmail': supplier_email,
             'contactPerson': ret.get('contact_person', ''),
             'supplierGstin': ret.get('supplier_gstin', '24AAAAA0000A1Z5'),
             'supplierAddress': ret.get('supplier_address', ''),
