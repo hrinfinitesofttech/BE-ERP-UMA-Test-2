@@ -7,14 +7,14 @@ USERNAME = 'umaERP'
 PASSWORD = 'AAaa@123456@'
 DOMAIN = 'umaERP.pythonanywhere.com'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
-LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
+LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TARGET_FILES = [
-    'apps/projects/models.py',
-    'apps/projects/serializers.py',
-    'apps/projects/views.py',
-    'apps/projects/migrations/0008_mastertask.py',
-    'apps/projects/management/commands/seed_phase3.py',
+    'apps/purchase/serializers.py',
+    'apps/purchase/models.py',
+    'apps/purchase/views.py',
+    'apps/purchase/migrations/0003_purchaseorder_billing_address_purchaseorder_currency_and_more.py',
+    'apps/purchase/migrations/0004_purchaseorder_additional_charges_and_more.py',
 ]
 
 def upload_file(session, rel_path, headers):
@@ -51,7 +51,7 @@ def main():
     print("   CHECKING & SYNCING BACKEND TO PYTHONANYWHERE          ")
     print("=========================================================")
     
-    print("\n[1/4] Authenticating with PythonAnywhere...")
+    print("\n[1/5] Authenticating with PythonAnywhere...")
     session = requests.Session()
     login_url = 'https://www.pythonanywhere.com/login/'
     r_login_page = session.get(login_url, timeout=15)
@@ -75,13 +75,33 @@ def main():
     csrf_token = session.cookies.get('csrftoken')
     headers = {'X-CSRFToken': csrf_token, 'Referer': 'https://www.pythonanywhere.com/'}
 
-    print("\n[2/4] Uploading updated backend files to PythonAnywhere...")
+    print("\n[2/5] Uploading updated backend files to PythonAnywhere...")
     for fpath in TARGET_FILES:
         ok, msg = upload_file(session, fpath, headers)
         print(f"  -> {fpath}: {'SUCCESS' if ok else 'FAILED'} ({msg})", flush=True)
         time.sleep(0.5)
 
-    print("\n[3/4] Reloading PythonAnywhere WebApp (umaERP.pythonanywhere.com)...")
+    print("\n[3/5] Updating WSGI to auto-run database migrations on reload...")
+    wsgi_url = f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/webapps/{DOMAIN}/"
+    r_webapp = session.get(wsgi_url, headers=headers)
+    wsgi_path = r_webapp.json().get('user_wsgi_file_path')
+    if wsgi_path:
+        r_file = session.get(f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/files/path{wsgi_path}", headers=headers)
+        original_wsgi = r_file.text
+        migrate_code = """
+try:
+    from django.core.management import call_command
+    call_command('migrate')
+    print("Auto-migration successful on webapp reload!")
+except Exception as e:
+    print("Auto-migration error:", e)
+"""
+        clean_wsgi = re.sub(r'try:\s+from django\.core\.management import call_command.*?print\("Auto-migration error:", e\)\s*"""?', '', original_wsgi, flags=re.DOTALL)
+        new_wsgi = clean_wsgi.strip() + "\n" + migrate_code
+        r_up = session.post(f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/files/path{wsgi_path}", files={"content": new_wsgi}, headers=headers)
+        print(f"  -> WSGI migration hook: {'SUCCESS' if r_up.status_code in [200, 201] else 'FAILED'}")
+
+    print("\n[4/5] Reloading PythonAnywhere WebApp (umaERP.pythonanywhere.com)...")
     reload_url = f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/webapps/{DOMAIN}/reload/"
     r_reload = session.post(reload_url, headers=headers, timeout=25)
     if r_reload.status_code == 200:
@@ -89,19 +109,14 @@ def main():
     else:
         print(f"[WARN] Reload returned: {r_reload.status_code} - {r_reload.text[:100]}")
 
-    print("\n[4/4] Verifying Live API Status on https://umaERP.pythonanywhere.com ...")
-    time.sleep(3)
+    print("\n[5/5] Verifying Live API Status on https://umaERP.pythonanywhere.com ...")
+    time.sleep(5)
     endpoints = [
         '/api/auth/me/',
+        '/api/rfqs/',
+        '/api/purchase-orders/',
+        '/api/suppliers/',
         '/api/departments/',
-        '/api/designations/',
-        '/api/routing-operations/',
-        '/api/production-holds/',
-        '/api/production-schedules/',
-        '/api/production-entries/',
-        '/api/rework-orders/',
-        '/api/production-scraps/',
-        '/api/designer/jobs/',
     ]
     all_ok = True
     for ep in endpoints:
