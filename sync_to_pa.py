@@ -10,7 +10,7 @@ USERNAME = 'umaERP'
 PASSWORD = 'AAaa@123456@'
 DOMAIN = 'umaERP.pythonanywhere.com'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
-LOCAL_DIR = r'd:/UMA ERP/BE-ERP-UMA'
+LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 
 EXCLUDE_DIRS = {'.git', '__pycache__', 'env', 'venv', '.vscode', '.idea', 'staticfiles'}
 EXCLUDE_EXTS = {'.pyc', '.log', '.sqlite3'}
