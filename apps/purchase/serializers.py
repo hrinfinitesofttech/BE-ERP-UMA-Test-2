@@ -179,21 +179,41 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
         if 'termsAndConditions' in data and 'terms_and_conditions' not in data:
             data['terms_and_conditions'] = data.pop('termsAndConditions')
 
-        # Safely capture vendor and inquiry metadata inside suppliers JSONField
+        # Map camelCase to snake_case direct model fields
+        if 'supplierId' in data and 'supplier_id' not in data:
+            data['supplier_id'] = data.get('supplierId') or ''
+        if 'supplierName' in data and 'supplier_name' not in data:
+            data['supplier_name'] = data.get('supplierName') or ''
+        if 'supplierMobile' in data and 'supplier_mobile' not in data:
+            data['supplier_mobile'] = data.get('supplierMobile') or ''
+        if 'supplierEmail' in data and 'supplier_email' not in data:
+            data['supplier_email'] = data.get('supplierEmail') or ''
+        if 'supplierAddress' in data and 'supplier_address' not in data:
+            data['supplier_address'] = data.get('supplierAddress') or ''
+        if 'supplierGstin' in data and 'supplier_gstin' not in data:
+            data['supplier_gstin'] = data.get('supplierGstin') or ''
+        if 'projectId' in data and 'project_id' not in data:
+            data['project_id'] = data.get('projectId') or ''
+        if 'specialNote' in data and 'special_note' not in data:
+            data['special_note'] = data.get('specialNote') or ''
+        if 'deliveryLocation' in data and 'delivery_location' not in data:
+            data['delivery_location'] = data.get('deliveryLocation') or 'RAJPUR'
+
+        # Also capture vendor and inquiry metadata inside suppliers JSONField for robust redundancy
         vendor_meta = {
-            'supplierId': data.get('supplierId', ''),
-            'supplierName': data.get('supplierName', ''),
-            'supplierMobile': data.get('supplierMobile', ''),
-            'supplierEmail': data.get('supplierEmail', ''),
-            'supplierAddress': data.get('supplierAddress', ''),
-            'supplierGstin': data.get('supplierGstin', ''),
-            'projectId': data.get('projectId', data.get('pr_id', '')),
+            'supplierId': data.get('supplier_id') or data.get('supplierId', ''),
+            'supplierName': data.get('supplier_name') or data.get('supplierName', ''),
+            'supplierMobile': data.get('supplier_mobile') or data.get('supplierMobile', ''),
+            'supplierEmail': data.get('supplier_email') or data.get('supplierEmail', ''),
+            'supplierAddress': data.get('supplier_address') or data.get('supplierAddress', ''),
+            'supplierGstin': data.get('supplier_gstin') or data.get('supplierGstin', ''),
+            'projectId': data.get('project_id') or data.get('projectId', data.get('pr_id', '')),
             'subject': data.get('subject', 'Material Purchase Requirement'),
-            'specialNote': data.get('specialNote', ''),
+            'specialNote': data.get('special_note') or data.get('specialNote', ''),
             'buyer': data.get('buyer', 'Uma Technofab.'),
             'taxes': data.get('taxes', 'AS APPLICABLE.'),
             'shipTo': data.get('shipTo', 'LOCAL'),
-            'deliveryLocation': data.get('deliveryLocation', 'RAJPUR'),
+            'deliveryLocation': data.get('delivery_location') or data.get('deliveryLocation', 'RAJPUR'),
             'pageNo': data.get('pageNo', 'PAGE NO: 1 OF 1'),
             'terms': data.get('terms', []),
         }
@@ -209,14 +229,14 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
         else:
             data['suppliers'] = [vendor_meta]
 
-        # Pop non-model fields before calling super
-        extra_fields = [
+        # Pop transient UI-only non-model fields before super().to_internal_value
+        non_model_fields = [
             'supplierId', 'supplierName', 'supplierMobile', 'supplierEmail',
-            'supplierAddress', 'supplierGstin', 'projectId', 'subject',
-            'specialNote', 'buyer', 'taxes', 'shipTo', 'deliveryLocation',
+            'supplierAddress', 'supplierGstin', 'projectId', 'specialNote',
+            'buyer', 'taxes', 'shipTo', 'deliveryLocation',
             'pageNo', 'terms', 'signatory', 'prNumber', 'surcharges'
         ]
-        for ef in extra_fields:
+        for ef in non_model_fields:
             data.pop(ef, None)
 
         return super().to_internal_value(data)
@@ -232,13 +252,27 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
         elif isinstance(suppliers, dict):
             vendor_data = suppliers
 
+        supp_name = ret.get('supplier_name') or vendor_data.get('supplierName', '')
+        supp_id = ret.get('supplier_id') or vendor_data.get('supplierId', '')
+        supp_mobile = ret.get('supplier_mobile') or vendor_data.get('supplierMobile', '')
+        supp_email = ret.get('supplier_email') or vendor_data.get('supplierEmail', '')
+        supp_addr = ret.get('supplier_address') or vendor_data.get('supplierAddress', '')
+        supp_gstin = ret.get('supplier_gstin') or vendor_data.get('supplierGstin', '')
+        proj_id = ret.get('project_id') or vendor_data.get('projectId', ret.get('pr_id', ''))
+        subj = ret.get('subject') or vendor_data.get('subject', 'Material Purchase Requirement')
+        spec_note = ret.get('special_note') or vendor_data.get('specialNote', '')
+        deliv_loc = ret.get('delivery_location') or vendor_data.get('deliveryLocation', 'RAJPUR')
+
         return {
             'id': ret.get('id'),
             'rfqNumber': ret.get('rfq_number', ''),
+            'rfq_number': ret.get('rfq_number', ''),
             'prId': ret.get('pr_id', ''),
             'prNumber': ret.get('pr_id', ''),
             'rfqDate': ret.get('rfq_date', ''),
+            'rfq_date': ret.get('rfq_date', ''),
             'dueDate': ret.get('due_date', ''),
+            'due_date': ret.get('due_date', ''),
             'invitedSuppliers': suppliers,
             'suppliers': suppliers,
             'items': items,
@@ -246,20 +280,29 @@ class RequestForQuotationSerializer(serializers.ModelSerializer):
             'termsAndConditions': ret.get('terms_and_conditions', ''),
             'issuedBy': 'Purchase Team',
             'createdAt': ret.get('created_at', ''),
-            # Vendor and Inquiry Specific Fields:
-            'supplierId': vendor_data.get('supplierId', ''),
-            'supplierName': vendor_data.get('supplierName', ''),
-            'supplierMobile': vendor_data.get('supplierMobile', ''),
-            'supplierEmail': vendor_data.get('supplierEmail', ''),
-            'supplierAddress': vendor_data.get('supplierAddress', ''),
-            'supplierGstin': vendor_data.get('supplierGstin', ''),
-            'projectId': vendor_data.get('projectId', ret.get('pr_id', '')),
-            'subject': vendor_data.get('subject', 'Material Purchase Requirement'),
-            'specialNote': vendor_data.get('specialNote', ''),
+            # Vendor and Inquiry Specific Fields (available in both camelCase and snake_case):
+            'supplierId': supp_id,
+            'supplier_id': supp_id,
+            'supplierName': supp_name,
+            'supplier_name': supp_name,
+            'supplierMobile': supp_mobile,
+            'supplier_mobile': supp_mobile,
+            'supplierEmail': supp_email,
+            'supplier_email': supp_email,
+            'supplierAddress': supp_addr,
+            'supplier_address': supp_addr,
+            'supplierGstin': supp_gstin,
+            'supplier_gstin': supp_gstin,
+            'projectId': proj_id,
+            'project_id': proj_id,
+            'subject': subj,
+            'specialNote': spec_note,
+            'special_note': spec_note,
             'buyer': vendor_data.get('buyer', 'Uma Technofab.'),
             'taxes': vendor_data.get('taxes', 'AS APPLICABLE.'),
             'shipTo': vendor_data.get('shipTo', 'LOCAL'),
-            'deliveryLocation': vendor_data.get('deliveryLocation', 'RAJPUR'),
+            'deliveryLocation': deliv_loc,
+            'delivery_location': deliv_loc,
             'pageNo': vendor_data.get('pageNo', 'PAGE NO: 1 OF 1'),
             'terms': vendor_data.get('terms', []),
         }
@@ -487,8 +530,13 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             except Exception:
                 pass
 
-        if not data.get('po_number'):
-            data['po_number'] = data.get('id') or f"PO-{int(datetime.now().timestamp())}"
+        if not data.get('po_number') or data.get('po_number') == '-':
+            from .models import PurchaseOrder
+            try:
+                count = PurchaseOrder.objects.count() + 1
+            except Exception:
+                count = 1
+            data['po_number'] = data.get('id') if (data.get('id') and str(data.get('id')).startswith('PO-')) else f"PO-{datetime.now().year}-{count:04d}"
         if not data.get('id'):
             data['id'] = data['po_number']
         if not data.get('date'):
@@ -525,9 +573,11 @@ class PurchaseOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSe
             except Exception:
                 pass
 
+        resolved_po_num = ret.get('po_number') or ret.get('id') or 'PO-2026-0001'
         return {
-            'id': ret.get('id'),
-            'poNumber': ret.get('po_number', ''),
+            'id': ret.get('id') or resolved_po_num,
+            'poNumber': resolved_po_num,
+            'po_number': resolved_po_num,
             'revisionNumber': ret.get('revision_number', 'Rev-00'),
             'date': ret.get('date', ''),
             'poDate': ret.get('date', ''),

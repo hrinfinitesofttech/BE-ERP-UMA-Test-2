@@ -78,8 +78,18 @@ class RequestForQuotation(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     rfq_number = models.CharField(max_length=64, unique=True)
     pr_id = models.CharField(max_length=64, blank=True, default='')
-    rfq_date = models.CharField(max_length=50)
-    due_date = models.CharField(max_length=50)
+    rfq_date = models.CharField(max_length=50, blank=True, default='')
+    due_date = models.CharField(max_length=50, blank=True, default='')
+    supplier_id = models.CharField(max_length=64, blank=True, default='')
+    supplier_name = models.CharField(max_length=255, blank=True, default='')
+    supplier_mobile = models.CharField(max_length=50, blank=True, default='')
+    supplier_email = models.CharField(max_length=255, blank=True, default='')
+    supplier_address = models.TextField(blank=True, default='')
+    supplier_gstin = models.CharField(max_length=50, blank=True, default='')
+    project_id = models.CharField(max_length=64, blank=True, default='')
+    subject = models.CharField(max_length=255, blank=True, default='Material Purchase Requirement')
+    special_note = models.TextField(blank=True, default='')
+    delivery_location = models.CharField(max_length=150, blank=True, default='RAJPUR')
     suppliers = models.JSONField(default=list, blank=True)
     items = models.JSONField(default=list, blank=True)
     status = models.CharField(max_length=50, default='sent') # draft, sent, closed
@@ -87,7 +97,7 @@ class RequestForQuotation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.rfq_number
+        return f"{self.rfq_number} - {self.supplier_name or 'RFQ'}"
 
 
 class SupplierQuotation(models.Model):
