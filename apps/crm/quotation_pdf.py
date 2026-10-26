@@ -530,8 +530,38 @@ def generate_quotation_pdf(quotation, active_revision=None, payload=None) -> byt
         amt = float(itm.get('amount') or 0) or (rate * float(qty))
 
         desc_flowables = [Paragraph(f"<b>{p_name}</b>", styles['TableCellBold'])]
-        if p_desc:
-            desc_flowables.append(Paragraph(p_desc, styles['TableCellDesc']))
+        desc_lines = itm.get('descriptionLines') if isinstance(itm.get('descriptionLines'), list) else []
+        if not desc_lines and p_desc:
+            raw_desc = str(p_desc).strip()
+            if '\n' in raw_desc:
+                pts = raw_desc.split('\n')
+            elif '• •' in raw_desc:
+                pts = raw_desc.split('• •')
+            elif ' • ' in raw_desc:
+                pts = raw_desc.split(' • ')
+            elif '•' in raw_desc:
+                pts = raw_desc.split('•')
+            elif '; ' in raw_desc:
+                pts = raw_desc.split('; ')
+            else:
+                pts = [raw_desc]
+            desc_lines = pts
+
+        cleaned_bullets = []
+        for line in desc_lines:
+            ln = str(line).strip().lstrip('•').strip()
+            if not ln:
+                continue
+            if ':' in ln and ln.find(':') < 40:
+                lbl, val = ln.split(':', 1)
+                cleaned_bullets.append(f"&bull; <b>{lbl.strip()}:</b> {val.strip()}")
+            else:
+                cleaned_bullets.append(f"&bull; {ln}")
+
+        if cleaned_bullets:
+            formatted_html = "<br/>".join(cleaned_bullets)
+            desc_flowables.append(Spacer(1, 1 * mm))
+            desc_flowables.append(Paragraph(formatted_html, styles['TableCellDesc']))
 
         table_data.append([
             Paragraph(str(idx), styles['TableCellCenter']),
