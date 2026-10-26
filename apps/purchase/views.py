@@ -223,6 +223,12 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'], url_path='send-email')
+    def send_email_direct(self, request):
+        rfq_payload = request.data.get('rfq') or {}
+        rfq_id = request.data.get('id') or request.data.get('rfqId') or request.data.get('rfqNumber') or rfq_payload.get('rfqNumber') or rfq_payload.get('id')
+        return self.send_email(request, pk=rfq_id)
+
     @action(detail=True, methods=['post'], url_path='send-email')
     def send_email(self, request, pk=None):
         import logging
@@ -233,12 +239,18 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
         from apps.purchase.rfq_pdf import generate_rfq_pdf
         logger = logging.getLogger(__name__)
 
-        rfq = RequestForQuotation.objects.filter(models.Q(id=pk) | models.Q(rfq_number=pk)).first()
         rfq_payload = request.data.get('rfq') or request.data
+        rfq = None
+        if pk:
+            rfq = RequestForQuotation.objects.filter(models.Q(id=pk) | models.Q(rfq_number=pk)).first()
+        if not rfq and rfq_payload:
+            payload_num = rfq_payload.get('rfqNumber') or rfq_payload.get('rfq_number') or rfq_payload.get('id')
+            if payload_num:
+                rfq = RequestForQuotation.objects.filter(models.Q(id=payload_num) | models.Q(rfq_number=payload_num)).first()
 
         if not rfq:
             # Auto-create or instantiate from payload for seamless client resilience
-            rfq_num = rfq_payload.get('rfqNumber') or rfq_payload.get('rfq_number') or str(pk)
+            rfq_num = rfq_payload.get('rfqNumber') or rfq_payload.get('rfq_number') or str(pk or 'REQ-2026')
             s_name = rfq_payload.get('supplierName') or rfq_payload.get('supplier_name') or rfq_payload.get('vendorName') or 'Supplier'
             s_email = rfq_payload.get('supplierEmail') or rfq_payload.get('supplier_email') or request.data.get('recipientEmail') or ''
             s_mobile = rfq_payload.get('supplierMobile') or rfq_payload.get('supplier_mobile') or ''
@@ -704,6 +716,12 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         log_approval_audit(user_info, 'REJECT', 'Purchase', 'PurchaseOrder', po.id, reason)
         return Response(PurchaseOrderSerializer(po).data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['post'], url_path='send-email')
+    def send_email_direct(self, request):
+        po_payload = request.data.get('po') or {}
+        po_id = request.data.get('id') or request.data.get('poId') or request.data.get('poNumber') or po_payload.get('poNumber') or po_payload.get('id')
+        return self.send_email(request, pk=po_id)
+
     @action(detail=True, methods=['post'], url_path='send-email')
     def send_email(self, request, pk=None):
         import logging
@@ -714,12 +732,18 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
         from apps.purchase.po_pdf import generate_po_pdf
         logger = logging.getLogger(__name__)
 
-        po = PurchaseOrder.objects.filter(models.Q(id=pk) | models.Q(po_number=pk)).first()
         po_payload = request.data.get('po') or request.data
+        po = None
+        if pk:
+            po = PurchaseOrder.objects.filter(models.Q(id=pk) | models.Q(po_number=pk)).first()
+        if not po and po_payload:
+            payload_num = po_payload.get('poNumber') or po_payload.get('po_number') or po_payload.get('id')
+            if payload_num:
+                po = PurchaseOrder.objects.filter(models.Q(id=payload_num) | models.Q(po_number=payload_num)).first()
 
         if not po:
             # Auto-create or instantiate from payload for seamless client resilience
-            raw_po_num = po_payload.get('poNumber') or po_payload.get('po_number') or str(pk)
+            raw_po_num = po_payload.get('poNumber') or po_payload.get('po_number') or str(pk or 'PO-2026')
             po_num = str(raw_po_num).strip()
             if po_num == '-' or not po_num:
                 po_num = f"PO-{datetime.now().year}-{PurchaseOrder.objects.count() + 1:04d}"
