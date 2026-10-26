@@ -229,6 +229,165 @@ def _ensure_crm_schema():
                           AND crm_lead.email != ''
                       );
                 """)
+
+                # Auto-heal crm_enquiry records (customer_name, contact, machine_product, lead_id)
+                # 1. Restore customer_name from linked quotation if dummy or empty
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET customer_name = (
+                        SELECT customer_name FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.customer_name != '' AND crm_quotation.customer_name != 'Valued Customer'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (customer_name = '' OR customer_name = 'Valued Customer')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.customer_name != '' AND crm_quotation.customer_name != 'Valued Customer'
+                      );
+                """)
+
+                # 2. Restore customer_name from linked lead if still dummy or empty
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET customer_name = (
+                        SELECT company_name FROM crm_lead
+                        WHERE (crm_lead.id = crm_enquiry.lead_id OR crm_lead.lead_no = crm_enquiry.lead_id)
+                          AND crm_lead.company_name != '' AND crm_lead.company_name != 'Valued Customer'
+                        LIMIT 1
+                    )
+                    WHERE (customer_name = '' OR customer_name = 'Valued Customer')
+                      AND lead_id IS NOT NULL AND lead_id != ''
+                      AND EXISTS (
+                        SELECT 1 FROM crm_lead
+                        WHERE (crm_lead.id = crm_enquiry.lead_id OR crm_lead.lead_no = crm_enquiry.lead_id)
+                          AND crm_lead.company_name != '' AND crm_lead.company_name != 'Valued Customer'
+                      );
+                """)
+
+                # 3. Restore lead_id in crm_enquiry from linked quotation if empty
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET lead_id = (
+                        SELECT lead_id FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.lead_id != ''
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (lead_id IS NULL OR lead_id = '')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.lead_id != ''
+                      );
+                """)
+
+                # 4. Restore contact_person & contact_mobile & customer_email in crm_enquiry from linked quotation
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET contact_person = (
+                        SELECT contact_person FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_person != '' AND crm_quotation.contact_person != 'Contact Person' AND crm_quotation.contact_person != 'Contact'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (contact_person = '' OR contact_person = 'Contact Person' OR contact_person = 'Contact' OR contact_person = 'N/A')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_person != '' AND crm_quotation.contact_person != 'Contact Person' AND crm_quotation.contact_person != 'Contact'
+                      );
+                """)
+
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET contact_mobile = (
+                        SELECT contact_mobile FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_mobile != '' AND crm_quotation.contact_mobile != '9999999999'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (contact_mobile = '' OR contact_mobile = '9999999999')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_mobile != '' AND crm_quotation.contact_mobile != '9999999999'
+                      );
+                """)
+
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET customer_email = (
+                        SELECT contact_email FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_email != ''
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (customer_email = '' OR customer_email IS NULL)
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.contact_email != ''
+                      );
+                """)
+
+                # 5. Restore machine_product in crm_enquiry from linked quotation if 'Process Equipment'
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET machine_product = (
+                        SELECT machine_product FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.machine_product != '' AND crm_quotation.machine_product != 'Process Equipment'
+                        ORDER BY crm_quotation.id DESC
+                        LIMIT 1
+                    )
+                    WHERE (machine_product = '' OR machine_product = 'Process Equipment')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_quotation
+                        WHERE (crm_quotation.enquiry_id = crm_enquiry.id OR crm_quotation.enquiry_id = crm_enquiry.enquiry_no)
+                          AND crm_quotation.machine_product != '' AND crm_quotation.machine_product != 'Process Equipment'
+                      );
+                """)
+
+                # 6. Restore machine_product from linked lead if still 'Process Equipment'
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET machine_product = (
+                        SELECT product_name FROM crm_lead
+                        WHERE (crm_lead.id = crm_enquiry.lead_id OR crm_lead.lead_no = crm_enquiry.lead_id)
+                          AND crm_lead.product_name != '' AND crm_lead.product_name != 'Process Equipment'
+                        LIMIT 1
+                    )
+                    WHERE (machine_product = '' OR machine_product = 'Process Equipment')
+                      AND lead_id IS NOT NULL AND lead_id != ''
+                      AND EXISTS (
+                        SELECT 1 FROM crm_lead
+                        WHERE (crm_lead.id = crm_enquiry.lead_id OR crm_lead.lead_no = crm_enquiry.lead_id)
+                          AND crm_lead.product_name != '' AND crm_lead.product_name != 'Process Equipment'
+                      );
+                """)
+
+                # 7. Restore requirement from specification if requirement is 'Customer Requirement'
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET requirement = specification
+                    WHERE (requirement = '' OR requirement = 'Customer Requirement')
+                      AND specification != '' AND specification != 'Customer Requirement';
+                """)
+
+                # 8. Restore specification from requirement if specification is empty
+                cursor.execute("""
+                    UPDATE crm_enquiry
+                    SET specification = requirement
+                    WHERE (specification = '' OR specification = 'Customer Requirement')
+                      AND requirement != '' AND requirement != 'Customer Requirement';
+                """)
             except Exception:
                 pass
     except Exception:
@@ -814,6 +973,104 @@ class EnquiryViewSet(viewsets.ModelViewSet):
             )
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data.copy()
+
+        lead_id = data.get('lead_id') or data.get('leadId') or instance.lead_id
+        if lead_id:
+            ld = Lead.objects.filter(models.Q(id=lead_id) | models.Q(lead_no=lead_id)).first()
+            if ld:
+                updates = {}
+                c_name = data.get('customer_name') or data.get('customerName')
+                if c_name and c_name != 'Valued Customer':
+                    updates['company_name'] = c_name
+                c_pers = data.get('contact_person') or data.get('contactPerson')
+                if c_pers and c_pers not in ['Contact', 'Contact Person', 'N/A']:
+                    updates['contact_person'] = c_pers
+                c_mob = data.get('contact_mobile') or data.get('contactMobile')
+                if c_mob and c_mob != '9999999999':
+                    updates['mobile'] = c_mob
+                c_em = data.get('customer_email') or data.get('customerEmail')
+                if c_em:
+                    updates['email'] = c_em
+                if updates:
+                    Lead.objects.filter(id=ld.id).update(**updates)
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    @action(detail=False, methods=['get', 'post'])
+    def sync_enquiry_data(self, request):
+        updated_count = 0
+        from .models import Quotation, Lead, Customer
+        for enq in Enquiry.objects.all():
+            changed = False
+            q_filter = models.Q(enquiry_id=enq.id) | models.Q(enquiry_id=enq.enquiry_no)
+            if enq.quotation_id:
+                q_filter |= models.Q(id=enq.quotation_id) | models.Q(quotation_number=enq.quotation_id)
+            q_filter |= models.Q(customer_id=f"cust-enq-{enq.id}") | models.Q(customer_id=f"cust-enq-{enq.enquiry_no}")
+            q = Quotation.objects.filter(q_filter).exclude(customer_name='Valued Customer').first()
+
+            if q:
+                if (not enq.customer_name or enq.customer_name == 'Valued Customer') and q.customer_name:
+                    enq.customer_name = q.customer_name
+                    changed = True
+                if not enq.lead_id and q.lead_id:
+                    enq.lead_id = q.lead_id
+                    changed = True
+                if (not enq.contact_person or enq.contact_person in ['Contact', 'Contact Person', 'N/A']) and q.contact_person:
+                    enq.contact_person = q.contact_person
+                    changed = True
+                if (not enq.contact_mobile or enq.contact_mobile == '9999999999') and q.contact_mobile:
+                    enq.contact_mobile = q.contact_mobile
+                    changed = True
+                if not enq.customer_email and q.contact_email:
+                    enq.customer_email = q.contact_email
+                    changed = True
+                if (not enq.machine_product or enq.machine_product == 'Process Equipment') and q.machine_product and q.machine_product != 'Process Equipment':
+                    enq.machine_product = q.machine_product
+                    changed = True
+
+            target_lead_id = enq.lead_id or (q.lead_id if q else None)
+            if target_lead_id and ((not enq.customer_name or enq.customer_name == 'Valued Customer') or (not enq.machine_product or enq.machine_product == 'Process Equipment') or not enq.contact_person or enq.contact_person in ['Contact', 'Contact Person', 'N/A']):
+                ld = Lead.objects.filter(models.Q(id=target_lead_id) | models.Q(lead_no=target_lead_id)).exclude(company_name='Valued Customer').first()
+                if ld:
+                    if (not enq.customer_name or enq.customer_name == 'Valued Customer') and ld.company_name:
+                        enq.customer_name = ld.company_name
+                        changed = True
+                    if (not enq.contact_person or enq.contact_person in ['Contact', 'Contact Person', 'N/A']) and ld.contact_person:
+                        enq.contact_person = ld.contact_person
+                        changed = True
+                    if (not enq.contact_mobile or enq.contact_mobile == '9999999999') and ld.mobile:
+                        enq.contact_mobile = ld.mobile
+                        changed = True
+                    if not enq.customer_email and ld.email:
+                        enq.customer_email = ld.email
+                        changed = True
+                    if (not enq.machine_product or enq.machine_product == 'Process Equipment') and ld.product_name and ld.product_name != 'Process Equipment':
+                        enq.machine_product = ld.product_name
+                        changed = True
+
+            if (enq.requirement == 'Customer Requirement' or not enq.requirement) and enq.specification and enq.specification != 'Customer Requirement':
+                enq.requirement = enq.specification
+                changed = True
+            elif (not enq.specification or enq.specification == 'Customer Requirement') and enq.requirement and enq.requirement != 'Customer Requirement':
+                enq.specification = enq.requirement
+                changed = True
+
+            if changed:
+                enq.save()
+                updated_count += 1
+        return Response({'status': 'ok', 'updated_count': updated_count})
 
 
 class OpportunityViewSet(viewsets.ModelViewSet):

@@ -502,6 +502,23 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
+        if data.get('lead_id') and (not data.get('customer_name') or not data.get('contact_person') or not data.get('machine_product')):
+            try:
+                from .models import Lead
+                ld = Lead.objects.filter(id=data['lead_id']).first() or Lead.objects.filter(lead_no=data['lead_id']).first()
+                if ld:
+                    if not data.get('customer_name') and ld.company_name:
+                        data['customer_name'] = ld.company_name
+                    if not data.get('contact_person') and ld.contact_person:
+                        data['contact_person'] = ld.contact_person
+                    if not data.get('contact_mobile') and ld.mobile:
+                        data['contact_mobile'] = ld.mobile
+                    if not data.get('customer_email') and ld.email:
+                        data['customer_email'] = ld.email
+                    if not data.get('machine_product') and ld.product_name:
+                        data['machine_product'] = ld.product_name
+            except Exception:
+                pass
         if data.get('customer_id') and not data.get('customer_name'):
             try:
                 from .models import Customer
@@ -517,13 +534,13 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
             except Exception:
                 pass
         if not data.get('customer_name'):
-            data['customer_name'] = data.get('company_name') or 'Valued Customer'
+            data['customer_name'] = data.get('company_name') or ''
         if not data.get('requirement'):
-            data['requirement'] = data.get('description') or data.get('subject') or data.get('notes') or 'Customer Requirement'
+            data['requirement'] = data.get('description') or data.get('subject') or data.get('notes') or data.get('specification') or ''
         if not data.get('machine_product'):
             items = data.get('items', [])
             item_name = items[0].get('productName') or items[0].get('product_name') if items and isinstance(items, list) and isinstance(items[0], dict) else None
-            data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or 'Process Equipment'
+            data['machine_product'] = item_name or data.get('machineProduct') or data.get('productName') or data.get('subject') or ''
         if not data.get('enquiry_date'):
             data['enquiry_date'] = data.get('enquiryDate') or data.get('date') or datetime.now().date().isoformat()
         inst = getattr(self, 'instance', None)
@@ -540,29 +557,94 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep['enquiryNo'] = instance.enquiry_no
-        rep['leadId'] = instance.lead_id
-        rep['customerId'] = instance.customer_id
-        rep['customerName'] = instance.customer_name
-        rep['customerEmail'] = instance.customer_email
-        rep['contactPerson'] = instance.contact_person
-        rep['contactMobile'] = instance.contact_mobile
+        rep['leadId'] = instance.lead_id or ''
+        rep['customerId'] = instance.customer_id or ''
+
+        cust_name = instance.customer_name or ''
+        contact_p = instance.contact_person or ''
+        contact_m = instance.contact_mobile or ''
+        cust_email = instance.customer_email or ''
+        prod_name = instance.machine_product or ''
+        req = instance.requirement or ''
+        spec = instance.specification or ''
+
+        # Dynamic cross-resolution from linked Quotation, Lead, or Customer if missing or dummy
+        if not cust_name or cust_name == 'Valued Customer' or not prod_name or prod_name == 'Process Equipment' or not contact_p or contact_p in ['Contact', 'Contact Person', 'N/A']:
+            try:
+                from .models import Quotation, Lead, Customer
+                q_filter = models.Q(enquiry_id=instance.id) | models.Q(enquiry_id=instance.enquiry_no)
+                if instance.quotation_id:
+                    q_filter |= models.Q(id=instance.quotation_id) | models.Q(quotation_number=instance.quotation_id)
+                q_filter |= models.Q(customer_id=f"cust-enq-{instance.id}") | models.Q(customer_id=f"cust-enq-{instance.enquiry_no}")
+                q = Quotation.objects.filter(q_filter).exclude(customer_name='Valued Customer').first()
+                if q:
+                    if (not cust_name or cust_name == 'Valued Customer') and q.customer_name:
+                        cust_name = q.customer_name
+                    if not rep.get('leadId') and q.lead_id:
+                        rep['leadId'] = q.lead_id
+                    if (not contact_p or contact_p in ['Contact', 'Contact Person', 'N/A']) and q.contact_person:
+                        contact_p = q.contact_person
+                    if (not contact_m or contact_m == '9999999999') and q.contact_mobile:
+                        contact_m = q.contact_mobile
+                    if not cust_email and q.contact_email:
+                        cust_email = q.contact_email
+                    if (not prod_name or prod_name == 'Process Equipment') and q.machine_product and q.machine_product != 'Process Equipment':
+                        prod_name = q.machine_product
+
+                target_lead_id = rep.get('leadId') or instance.lead_id or (q.lead_id if q else None)
+                if target_lead_id and ((not cust_name or cust_name == 'Valued Customer') or (not prod_name or prod_name == 'Process Equipment') or not contact_p or contact_p in ['Contact', 'Contact Person', 'N/A']):
+                    ld = Lead.objects.filter(models.Q(id=target_lead_id) | models.Q(lead_no=target_lead_id)).exclude(company_name='Valued Customer').first()
+                    if ld:
+                        if (not cust_name or cust_name == 'Valued Customer') and ld.company_name:
+                            cust_name = ld.company_name
+                        if (not contact_p or contact_p in ['Contact', 'Contact Person', 'N/A']) and ld.contact_person:
+                            contact_p = ld.contact_person
+                        if (not contact_m or contact_m == '9999999999') and ld.mobile:
+                            contact_m = ld.mobile
+                        if not cust_email and ld.email:
+                            cust_email = ld.email
+                        if (not prod_name or prod_name == 'Process Equipment') and ld.product_name and ld.product_name != 'Process Equipment':
+                            prod_name = ld.product_name
+
+                if (not cust_name or cust_name == 'Valued Customer') and instance.customer_id:
+                    c = Customer.objects.filter(models.Q(id=instance.customer_id) | models.Q(customer_code=instance.customer_id)).first()
+                    if c:
+                        if c.company_name: cust_name = c.company_name
+                        if not contact_p and c.contact_person: contact_p = c.contact_person
+                        if not contact_m and c.mobile: contact_m = c.mobile
+                        if not cust_email and c.email: cust_email = c.email
+            except Exception:
+                pass
+
+        if (req == 'Customer Requirement' or not req) and spec and spec != 'Customer Requirement':
+            req = spec
+        elif (not spec or spec == 'Customer Requirement') and req and req != 'Customer Requirement':
+            spec = req
+
+        rep['customerName'] = cust_name
+        rep['customerEmail'] = cust_email
+        rep['contactPerson'] = contact_p
+        rep['contactMobile'] = contact_m
+        rep['machineProduct'] = prod_name
+        rep['requirement'] = req
+        rep['specification'] = spec
+        rep['quantity'] = instance.quantity if instance.quantity is not None else 1
         rep['enquiryDate'] = str(instance.enquiry_date) if instance.enquiry_date else ''
-        rep['machineProduct'] = instance.machine_product
-        rep['machineType'] = instance.machine_type
-        rep['application'] = instance.application
-        rep['capacity'] = instance.capacity
-        rep['materialGrade'] = instance.material_grade
-        rep['unitOfMeasure'] = instance.unit_of_measure
-        rep['operatingConditions'] = instance.operating_conditions
-        rep['budget'] = instance.budget
-        rep['specification'] = instance.specification
-        rep['technicalClarifications'] = instance.technical_clarifications
-        rep['attachments'] = instance.attachments
-        rep['remarks'] = instance.remarks
+        rep['machineType'] = instance.machine_type or ''
+        rep['application'] = instance.application or ''
+        rep['capacity'] = instance.capacity or ''
+        rep['materialGrade'] = instance.material_grade or ''
+        rep['unitOfMeasure'] = instance.unit_of_measure or 'Unit'
+        rep['operatingConditions'] = instance.operating_conditions or ''
+        rep['budget'] = instance.budget or 0
+        rep['technicalClarifications'] = instance.technical_clarifications or ''
+        rep['attachments'] = instance.attachments or []
+        rep['remarks'] = instance.remarks or ''
         rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''
-        rep['assignedPersonId'] = instance.assigned_person_id
-        rep['assignedPersonName'] = instance.assigned_person_name
-        rep['quotationId'] = instance.quotation_id
+        rep['assignedPersonId'] = instance.assigned_person_id or ''
+        rep['assignedPersonName'] = instance.assigned_person_name or 'Pravin Patel'
+        rep['status'] = instance.status or 'new'
+        rep['quotationId'] = instance.quotation_id or ''
         return rep
 
 
