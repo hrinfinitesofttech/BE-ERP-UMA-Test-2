@@ -611,49 +611,8 @@ def generate_quotation_pdf(quotation, active_revision=None, payload=None) -> byt
     story.append(Spacer(1, 4 * mm))
 
     # -------------------------------------------------------------
-    # 4. COMMERCIAL TERMS & SCOPE
+    # 4. COMMERCIAL TERMS & SCOPE (Removed per user request)
     # -------------------------------------------------------------
-    terms_flowables = [
-        Paragraph("COMMERCIAL TERMS & TECHNICAL SCOPE", styles['SectionHeading']),
-        Spacer(1, 2 * mm),
-    ]
-
-    terms_data = [
-        [
-            [Paragraph("Technical Scope & Standard:", styles['TermLabel']), Paragraph(technical_specs, styles['TermText'])],
-            [Paragraph("Payment Terms:", styles['TermLabel']), Paragraph(payment_terms, styles['TermText'])],
-        ],
-        [
-            [Paragraph("Scope of Supply:", styles['TermLabel']), Paragraph(scope_of_supply, styles['TermText'])],
-            [Paragraph("Delivery & Warranty:", styles['TermLabel']), Paragraph(f"Delivery: {delivery_time}<br/>Warranty: {warranty}", styles['TermText'])],
-        ],
-    ]
-
-    if terms_and_conditions:
-        lines = [line.strip() for line in terms_and_conditions.split('\n') if line.strip()]
-        formatted_tc = "<br/>".join(f"• {ln}" for ln in lines)
-        terms_data.append([
-            [Paragraph("Standard Terms & Conditions:", styles['TermLabel']), Paragraph(formatted_tc, styles['TermText'])],
-            [Paragraph("Inspection & Testing:", styles['TermLabel']), Paragraph("Client/TPI inspection as agreed prior to dispatch. Material Test Certificates (MTC) provided.", styles['TermText'])],
-        ])
-
-    terms_table = Table(
-        terms_data,
-        colWidths=[printable_width * 0.50, printable_width * 0.50]
-    )
-    terms_table.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#FAF7F2')),
-        ('BOX', (0, 0), (-1, -1), 0.6, c_border),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, c_border),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-    ]))
-    terms_flowables.append(terms_table)
-    story.append(KeepTogether(terms_flowables))
-    story.append(Spacer(1, 4 * mm))
 
     # -------------------------------------------------------------
     # 5. SIGNATURE & AUTHORIZATION BLOCK
