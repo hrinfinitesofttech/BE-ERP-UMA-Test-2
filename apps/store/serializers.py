@@ -48,6 +48,20 @@ class ItemMasterSerializer(serializers.ModelSerializer):
     maximumStock = serializers.FloatField(source='maximum_stock', read_only=True)
     reorderLevel = serializers.FloatField(source='reorder_level', read_only=True)
     standardCost = serializers.FloatField(source='unit_cost', read_only=True)
+    currentStock = serializers.SerializerMethodField()
+    current_stock = serializers.SerializerMethodField()
+
+    def get_currentStock(self, obj):
+        sb = StockBalance.objects.filter(item_code=obj.item_code).first()
+        if sb:
+            return float(sb.available_quantity)
+        sb2 = StockBalance.objects.filter(item_name__iexact=obj.item_name).first()
+        if sb2:
+            return float(sb2.available_quantity)
+        return 0.0
+
+    def get_current_stock(self, obj):
+        return self.get_currentStock(obj)
 
     class Meta:
         model = ItemMaster
@@ -78,6 +92,8 @@ class ItemMasterSerializer(serializers.ModelSerializer):
             'reorderLevel',
             'unit_cost',
             'standardCost',
+            'currentStock',
+            'current_stock',
             'status',
         ]
 
