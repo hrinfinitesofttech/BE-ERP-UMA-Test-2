@@ -164,6 +164,23 @@ def _ensure_crm_schema():
                 cursor.execute("UPDATE crm_lead SET mobile = '' WHERE mobile = '9999999999';")
                 cursor.execute("UPDATE crm_lead SET contact_person = '' WHERE contact_person = 'Contact Person' OR contact_person = 'Contact';")
 
+                # Restore address from linked customer where empty
+                cursor.execute("""
+                    UPDATE crm_lead
+                    SET address = (
+                        SELECT billing_address FROM crm_customer
+                        WHERE (crm_customer.linked_lead_id = crm_lead.id OR crm_customer.linked_lead_id = crm_lead.lead_no OR crm_lead.converted_customer_id = crm_customer.id OR LOWER(TRIM(crm_customer.company_name)) = LOWER(TRIM(crm_lead.company_name)))
+                          AND crm_customer.billing_address != ''
+                        LIMIT 1
+                    )
+                    WHERE (address IS NULL OR address = '')
+                      AND EXISTS (
+                        SELECT 1 FROM crm_customer
+                        WHERE (crm_customer.linked_lead_id = crm_lead.id OR crm_customer.linked_lead_id = crm_lead.lead_no OR crm_lead.converted_customer_id = crm_customer.id OR LOWER(TRIM(crm_customer.company_name)) = LOWER(TRIM(crm_lead.company_name)))
+                          AND crm_customer.billing_address != ''
+                      );
+                """)
+
                 # Auto-heal quotation contact_email from linked leads, enquiries, and customers
                 cursor.execute("""
                     UPDATE crm_quotation
@@ -308,10 +325,51 @@ class LeadViewSet(viewsets.ModelViewSet):
         data.pop('id', None)
         data.pop('lead_no', None)
         data.pop('leadNo', None)
-        if 'mobile' in data or 'phone' in data or 'contactMobile' in data or 'contact_mobile' in data or 'contactNumber' in data or 'mobileNo' in data:
-            data['mobile'] = str(data.get('mobile') or data.get('phone') or data.get('contactMobile') or data.get('contact_mobile') or data.get('contactNumber') or data.get('mobileNo') or '').strip()
-        if 'contactPerson' in data or 'contact_person' in data or 'contact' in data:
-            data['contact_person'] = str(data.get('contactPerson') or data.get('contact_person') or data.get('contact') or '').strip()
+
+        # 1. Normalize camelCase to snake_case field mappings
+        field_mappings = {
+            'companyName': 'company_name',
+            'contactPerson': 'contact_person',
+            'altMobile': 'alt_mobile',
+            'productName': 'product_name',
+            'machineType': 'machine_type',
+            'requirementDescription': 'requirement_description',
+            'expectedDelivery': 'expected_delivery',
+            'assignedSalesPersonId': 'assigned_sales_person_id',
+            'assignedSalesPersonName': 'assigned_sales_person_name',
+            'nextFollowUpDate': 'next_follow_up_date',
+            'createdDate': 'created_date',
+            'convertedCustomerId': 'converted_customer_id',
+            'convertedEnquiryId': 'converted_enquiry_id',
+            'convertedOpportunityId': 'converted_opportunity_id',
+            'billingAddress': 'address',
+            'billing_address': 'address',
+            'shippingAddress': 'address',
+            'shipping_address': 'address',
+        }
+        for camel, snake in field_mappings.items():
+            if camel in data and snake not in data:
+                data[snake] = data[camel]
+
+        if any(k in data for k in ['mobile', 'phone', 'contactMobile', 'contact_mobile', 'contactNumber', 'contact_number', 'mobileNo', 'contactPhone']):
+            val = (
+                data.get('mobile') or data.get('phone') or data.get('contactMobile') or
+                data.get('contact_mobile') or data.get('contactNumber') or data.get('contact_number') or
+                data.get('mobileNo') or data.get('contactPhone') or ''
+            )
+            data['mobile'] = str(val).strip()
+
+        if any(k in data for k in ['contactPerson', 'contact_person', 'contact']):
+            val = data.get('contactPerson') or data.get('contact_person') or data.get('contact') or ''
+            data['contact_person'] = str(val).strip()
+
+        if any(k in data for k in ['address', 'billing_address', 'billingAddress', 'shipping_address', 'shippingAddress']):
+            val = (
+                data.get('address') or data.get('billing_address') or data.get('billingAddress') or
+                data.get('shipping_address') or data.get('shippingAddress') or ''
+            )
+            data['address'] = str(val).strip()
+
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

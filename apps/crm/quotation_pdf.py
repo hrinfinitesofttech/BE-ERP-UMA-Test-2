@@ -641,8 +641,39 @@ def generate_quotation_pdf(quotation, active_revision=None, payload=None) -> byt
     story.append(Spacer(1, 4 * mm))
 
     # -------------------------------------------------------------
-    # 4. COMMERCIAL TERMS & SCOPE (Removed per user request)
+    # 4. TERMS & CONDITIONS (Only Terms & Conditions)
     # -------------------------------------------------------------
+    if not terms_and_conditions:
+        terms_and_conditions = (
+            "Prices Ex-Works Makarpura, Vadodara. Freight extra at actuals.\n"
+            "GST: 18% extra as applicable at the time of final invoicing / dispatch.\n"
+            "Payment Terms: 30% advance along with order confirmation, balance 70% against proforma invoice before dispatch.\n"
+            "Delivery Schedule: 6 to 8 weeks from date of technically and commercially clear purchase order and approved engineering drawings.\n"
+            "Warranty: 12 months from the date of commissioning or 18 months from delivery against manufacturing defects."
+        )
+
+    tc_lines = [line.strip().lstrip('0123456789.•- ').strip() for line in str(terms_and_conditions).split('\n') if line.strip()]
+    if tc_lines:
+        tc_flowables = [
+            Paragraph("TERMS & CONDITIONS", styles['SectionHeading']),
+            Spacer(1, 1.5 * mm),
+        ]
+        formatted_tc = "<br/>".join(f"{i+1}. {ln}" for i, ln in enumerate(tc_lines))
+        tc_table = Table(
+            [[Paragraph(formatted_tc, styles['TableCell'])]],
+            colWidths=[printable_width]
+        )
+        tc_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#FAF7F2')),
+            ('BOX', (0, 0), (-1, -1), 0.6, c_border),
+            ('LEFTPADDING', (0, 0), (-1, -1), 7),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 7),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        tc_flowables.append(tc_table)
+        story.append(KeepTogether(tc_flowables))
+        story.append(Spacer(1, 4 * mm))
 
     # -------------------------------------------------------------
     # 5. SIGNATURE & AUTHORIZATION BLOCK
