@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, date
 from rest_framework import serializers
 from apps.core.base_serializers import UniversalModelSerializerMixin
@@ -735,10 +736,25 @@ class WorkerDailyRoutineSerializer(UniversalModelSerializerMixin, serializers.Mo
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)
         date_val = data.get('date') or datetime.now().date().isoformat()
-        w_code = data.get('workerId') or data.get('worker_id_code') or data.get('id') or 'WRK-001'
+        
+        # Robustly extract worker ID (e.g. 'WRK-004')
+        raw_code = str(data.get('workerId') or data.get('worker_id') or data.get('worker_id_code') or data.get('worker') or data.get('id') or '')
+        w_code = raw_code
+        if 'WRK-' in raw_code:
+            m = re.search(r'WRK-\d+', raw_code)
+            if m:
+                w_code = m.group(0)
+        elif raw_code.startswith('RUT-'):
+            parts = raw_code.split('-')
+            w_code = f"WRK-{parts[-1]}" if parts[-1].isdigit() else parts[-1]
+
+        if not w_code:
+            w_code = 'WRK-001'
+
+        data['worker_id_code'] = w_code
         if not data.get('id'):
             data['id'] = f"RUT-{date_val}-{w_code}"
-        data['worker_id_code'] = w_code
+
         if 'workerName' in data and not data.get('worker_name'):
             data['worker_name'] = data.pop('workerName')
         if not data.get('worker_name'):
@@ -779,18 +795,30 @@ class WorkerDailyRoutineSerializer(UniversalModelSerializerMixin, serializers.Mo
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['workerId'] = instance.worker_id_code
+        raw_code = instance.worker_id_code or ''
+        clean_code = raw_code
+        if 'WRK-' in raw_code:
+            m = re.search(r'WRK-\d+', raw_code)
+            if m:
+                clean_code = m.group(0)
+        elif instance.id and 'WRK-' in instance.id:
+            m = re.search(r'WRK-\d+', instance.id)
+            if m:
+                clean_code = m.group(0)
+
+        data['workerId'] = clean_code
+        data['worker_id_code'] = clean_code
         data['workerName'] = instance.worker_name
         data['slNo'] = instance.sl_no
         data['shiftStatus'] = instance.shift_status
         data['shiftType'] = instance.shift_type
-        data['jobNo'] = instance.job_no
-        data['jobOrProjectNo'] = instance.job_no
-        data['workDetails'] = instance.work_details
-        data['quantityNos'] = instance.quantity_nos
+        data['jobNo'] = instance.job_no or ''
+        data['jobOrProjectNo'] = instance.job_no or ''
+        data['workDetails'] = instance.work_details or ''
+        data['quantityNos'] = instance.quantity_nos or ''
         data['hoursWorked'] = float(instance.hours_worked or 8)
         data['overtimeHours'] = float(instance.overtime_hours or 0)
-        data['isVerified'] = instance.is_verified
+        data['isVerified'] = bool(instance.is_verified)
         data['supervisorName'] = instance.supervisor_name
         data['updatedAt'] = str(instance.updated_at) if instance.updated_at else ''
         return data

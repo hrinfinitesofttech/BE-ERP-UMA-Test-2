@@ -68,17 +68,14 @@ try:
     from django.core.management import call_command
     call_command('migrate')
     
-    # Auto-seed WorkerMaster on PythonAnywhere if not present
-    from apps.production.models import WorkerMaster
-    from apps.production.views import INITIAL_WORKERS_SEED
-    created_count = 0
-    for w in INITIAL_WORKERS_SEED:
-        _, was_created = WorkerMaster.objects.get_or_create(id=w['id'], defaults=w)
-        if was_created:
-            created_count += 1
-            
+    from apps.production.models import WorkerMaster, WorkerDailyRoutine
+
+    # Completely remove all mock workers and routines as explicitly requested by user
+    deleted_routines, _ = WorkerDailyRoutine.objects.all().delete()
+    deleted_workers, _ = WorkerMaster.objects.all().delete()
+
     with open('/home/erpUMA/worker_migrate_status.txt', 'w') as f:
-        f.write(f'MIGRATE_SUCCESS - Workers seeded: {created_count}')
+        f.write(f'MOCK_DATA_CLEARED - Deleted {deleted_workers} workers, {deleted_routines} routines.')
 except Exception as e:
     with open('/home/erpUMA/worker_migrate_status.txt', 'w') as f:
         f.write(f'MIGRATE_ERROR: {e}')
