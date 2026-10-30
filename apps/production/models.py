@@ -481,3 +481,54 @@ class ProductionCompletion(models.Model):
         return f"{self.completion_number} - {self.product_name} ({self.qc_status})"
 
 
+class WorkerMaster(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    sl_no = models.IntegerField(default=1)
+    worker_name = models.CharField(max_length=128)
+    trade = models.CharField(max_length=128, default='Fitter / Fabricator')
+    default_shift = models.CharField(max_length=64, default='General')
+    phone = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sl_no', 'worker_name']
+        verbose_name = 'Worker Master'
+        verbose_name_plural = 'Worker Masters'
+
+    def __str__(self):
+        return f"{self.sl_no}. {self.worker_name} ({self.trade})"
+
+
+class WorkerDailyRoutine(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    date = models.DateField(db_index=True)
+    worker = models.ForeignKey(WorkerMaster, on_delete=models.CASCADE, related_name='routines', null=True, blank=True)
+    worker_id_code = models.CharField(max_length=64, db_index=True)
+    worker_name = models.CharField(max_length=128)
+    trade = models.CharField(max_length=128, blank=True)
+    sl_no = models.IntegerField(default=1)
+    shift_status = models.CharField(max_length=32, default='Present') # 'Present', 'Absent', 'Half Day', 'Weekly Off'
+    shift_type = models.CharField(max_length=64, default='General')
+    job_no = models.CharField(max_length=64, blank=True)
+    work_details = models.TextField(blank=True)
+    quantity_nos = models.CharField(max_length=64, blank=True)
+    hours_worked = models.DecimalField(max_digits=6, decimal_places=2, default=8)
+    overtime_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    is_verified = models.BooleanField(default=False)
+    supervisor_name = models.CharField(max_length=128, blank=True, default='Mahesh Parmar')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['date', 'sl_no']
+        unique_together = ('date', 'worker_id_code')
+        verbose_name = 'Worker Daily Routine'
+        verbose_name_plural = 'Worker Daily Routines'
+
+    def __str__(self):
+        return f"{self.date} - {self.worker_name}: {self.shift_status} ({self.job_no})"
+
+
+

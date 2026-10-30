@@ -10,7 +10,8 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion
+    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion,
+    WorkerMaster, WorkerDailyRoutine
 )
 from .serializers import (
     ManufacturingJobSerializer, ProductionPlanSerializer, WorkCenterSerializer,
@@ -18,7 +19,8 @@ from .serializers import (
     ProductionScheduleItemSerializer, ProductionEntrySerializer, WIPRecordSerializer,
     ProductionHoldSerializer, ReworkOrderSerializer, ProductionScrapSerializer,
     FinishedGoodsItemSerializer, ProductionMaterialRequestSerializer, DispatchOrderSerializer,
-    PackingOrderSerializer, ProductionCompletionSerializer
+    PackingOrderSerializer, ProductionCompletionSerializer,
+    WorkerMasterSerializer, WorkerDailyRoutineSerializer
 )
 
 
@@ -832,5 +834,184 @@ class ProductionDashboardStatsView(APIView):
             'entries_count': len(entries),
             'wip_count': len(wips),
         })
+
+
+INITIAL_WORKERS_SEED = [
+    {'id': 'WRK-001', 'sl_no': 1, 'worker_name': 'AJAY YADAV', 'trade': 'Fitter / Bending', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-002', 'sl_no': 2, 'worker_name': 'DHIRENDRA', 'trade': 'Fabricator', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-003', 'sl_no': 3, 'worker_name': 'YAKUB KHAN', 'trade': 'Fitter', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-004', 'sl_no': 4, 'worker_name': 'SURESH THAKOR', 'trade': 'Pipe Fabricator', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-005', 'sl_no': 5, 'worker_name': 'KANU BHAI DAMOR', 'trade': 'Plasma / Cutting', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-006', 'sl_no': 6, 'worker_name': 'KALUBHAI', 'trade': 'Plate Bending & Rolling', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-007', 'sl_no': 7, 'worker_name': 'DHIRAJ', 'trade': 'Argon Welder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-008', 'sl_no': 8, 'worker_name': 'GOLU', 'trade': 'Helper / Grinder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-009', 'sl_no': 9, 'worker_name': 'MOHAN', 'trade': 'Angle Cutting & Bending', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-010', 'sl_no': 10, 'worker_name': 'LAXMAN PATEL', 'trade': 'Laser / Bending', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-011', 'sl_no': 11, 'worker_name': 'BALDEV JI RAVAR', 'trade': 'Grinder / Helper', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-012', 'sl_no': 12, 'worker_name': 'JIGO DARBAR', 'trade': 'Glass Blasting / Grinding', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-013', 'sl_no': 13, 'worker_name': 'ABHISHEK', 'trade': 'Patti Cutting & Grinding', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-014', 'sl_no': 14, 'worker_name': 'CHANDAN', 'trade': 'Pipe Cutting & Fitting', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-015', 'sl_no': 15, 'worker_name': 'NARESH PLASMA', 'trade': 'CNC Plasma Operator', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-016', 'sl_no': 16, 'worker_name': 'GOLU / CHANDAN-2', 'trade': 'Welder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-017', 'sl_no': 17, 'worker_name': 'DHIRU BHAI', 'trade': 'Pin / Lathe Machining', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-018', 'sl_no': 18, 'worker_name': 'BHARAT BHAI', 'trade': 'Helper / Material Shifting', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-019', 'sl_no': 19, 'worker_name': 'RAHUL SINGH', 'trade': 'M.S. Arc Welder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-020', 'sl_no': 20, 'worker_name': 'UMA KANT', 'trade': 'Grinding / Bolting', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-021', 'sl_no': 21, 'worker_name': 'VIKASH WELDER', 'trade': 'TIG / Argon Welder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-022', 'sl_no': 22, 'worker_name': 'SOMA BHAI', 'trade': 'SS Plant Helper / Housekeeping', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-023', 'sl_no': 23, 'worker_name': 'PRAKASH SOLANKI', 'trade': 'Structural Fitter', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-024', 'sl_no': 24, 'worker_name': 'MUKESH BARIYA', 'trade': 'Hydraulic Press Operator', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-025', 'sl_no': 25, 'worker_name': 'VINOD PANCHAL', 'trade': 'Gas Cutter', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-026', 'sl_no': 26, 'worker_name': 'SANJAY VAGHELA', 'trade': 'MIG Welder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-027', 'sl_no': 27, 'worker_name': 'RAMESH NAYAK', 'trade': 'Flange Fitter', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-028', 'sl_no': 28, 'worker_name': 'HARESH PARMAR', 'trade': 'Surface Grinder', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-029', 'sl_no': 29, 'worker_name': 'ALPESH RATHOD', 'trade': 'Crane Operator', 'default_shift': 'General', 'is_active': True},
+    {'id': 'WRK-030', 'sl_no': 30, 'worker_name': 'JAGDISH PRAJAPATI', 'trade': 'Plate Marker', 'default_shift': 'General', 'is_active': True},
+]
+
+
+class WorkerMasterViewSet(viewsets.ModelViewSet):
+    queryset = WorkerMaster.objects.all().order_by('sl_no', 'worker_name')
+    serializer_class = WorkerMasterSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['worker_name', 'trade', 'id']
+    filterset_fields = ['is_active', 'trade']
+
+    def list(self, request, *args, **kwargs):
+        # Auto-seed if table is completely empty
+        if not WorkerMaster.objects.exists():
+            for w in INITIAL_WORKERS_SEED:
+                WorkerMaster.objects.create(**w)
+        return super().list(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('id'):
+            count = WorkerMaster.objects.count() + 1
+            data['id'] = f"WRK-{str(count).zfill(3)}"
+            if not data.get('sl_no') and not data.get('slNo'):
+                data['sl_no'] = count
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class WorkerDailyRoutineViewSet(viewsets.ModelViewSet):
+    queryset = WorkerDailyRoutine.objects.all().order_by('date', 'sl_no')
+    serializer_class = WorkerDailyRoutineSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['worker_name', 'job_no', 'work_details', 'trade']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        date_param = self.request.query_params.get('date')
+        if date_param:
+            qs = qs.filter(date=date_param)
+
+        month_param = self.request.query_params.get('month')
+        if month_param:
+            try:
+                parts = month_param.split('-')
+                if len(parts) == 2:
+                    qs = qs.filter(date__year=int(parts[0]), date__month=int(parts[1]))
+            except Exception:
+                pass
+
+        start_date = self.request.query_params.get('start_date')
+        end_date = self.request.query_params.get('end_date')
+        if start_date and end_date:
+            qs = qs.filter(date__gte=start_date, date__lte=end_date)
+
+        worker_id = self.request.query_params.get('worker_id') or self.request.query_params.get('workerId')
+        if worker_id:
+            qs = qs.filter(worker_id_code=worker_id)
+
+        job_no = self.request.query_params.get('job_no') or self.request.query_params.get('jobNo')
+        if job_no:
+            qs = qs.filter(job_no__icontains=job_no)
+
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        date_val = data.get('date') or datetime.now().date().isoformat()
+        worker_id_code = data.get('workerId') or data.get('worker_id_code') or data.get('worker')
+        
+        # Upsert if record for same date and worker exists
+        if date_val and worker_id_code:
+            existing = WorkerDailyRoutine.objects.filter(date=date_val, worker_id_code=worker_id_code).first()
+            if existing:
+                serializer = self.get_serializer(existing, data=data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                self.perform_update(serializer)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='bulk-upsert')
+    def bulk_upsert(self, request):
+        items = request.data
+        if isinstance(items, dict):
+            if 'entries' in items and isinstance(items['entries'], list):
+                items = items['entries']
+            else:
+                items = list(items.values())
+
+        if not isinstance(items, list):
+            return Response({'error': 'Expected a list of routine entries'}, status=status.HTTP_400_BAD_REQUEST)
+
+        saved = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            date_val = item.get('date') or datetime.now().date().isoformat()
+            w_code = item.get('workerId') or item.get('worker_id_code') or item.get('id')
+            if not w_code:
+                continue
+
+            existing = WorkerDailyRoutine.objects.filter(date=date_val, worker_id_code=w_code).first()
+            if existing:
+                serializer = self.get_serializer(existing, data=item, partial=True)
+            else:
+                serializer = self.get_serializer(data=item)
+
+            if serializer.is_valid():
+                obj = serializer.save()
+                saved.append(serializer.data)
+
+        return Response({'success': True, 'count': len(saved), 'results': saved}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='mark-all-present')
+    def mark_all_present(self, request):
+        date_val = request.data.get('date') or datetime.now().date().isoformat()
+        workers = WorkerMaster.objects.filter(is_active=True)
+        updated_count = 0
+        for w in workers:
+            entry, created = WorkerDailyRoutine.objects.get_or_create(
+                date=date_val,
+                worker_id_code=w.id,
+                defaults={
+                    'id': f"RUT-{date_val}-{w.id}",
+                    'worker': w,
+                    'worker_name': w.worker_name,
+                    'trade': w.trade,
+                    'sl_no': w.sl_no,
+                    'shift_status': 'Present',
+                    'work_details': '',
+                }
+            )
+            if not created and entry.shift_status != 'Present':
+                entry.shift_status = 'Present'
+                if entry.work_details in ['Absent', 'Weekly Off']:
+                    entry.work_details = ''
+                entry.save()
+            updated_count += 1
+
+        return Response({'success': True, 'date': date_val, 'marked_count': updated_count}, status=status.HTTP_200_OK)
+
 
 

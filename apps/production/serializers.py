@@ -5,7 +5,8 @@ from .models import (
     ManufacturingJob, ProductionPlan, WorkCenter, RoutingOperation,
     WorkOrder, ProductionOrder, ProductionScheduleItem, ProductionEntry,
     WIPRecord, ProductionHold, ReworkOrder, ProductionScrap, FinishedGoodsItem,
-    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion
+    ProductionMaterialRequest, DispatchOrder, PackingOrder, ProductionCompletion,
+    WorkerMaster, WorkerDailyRoutine
 )
 
 
@@ -697,5 +698,102 @@ class ProductionCompletionSerializer(serializers.ModelSerializer):
         data['equipmentSerialNumber'] = instance.equipment_serial_number
         data['createdAt'] = str(instance.created_at) if instance.created_at else ''
         return data
+
+
+class WorkerMasterSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = WorkerMaster
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if not data.get('id'):
+            sl = data.get('slNo') or data.get('sl_no') or 1
+            data['id'] = f"WRK-{str(sl).zfill(3)}"
+        if 'workerName' in data and not data.get('worker_name'):
+            data['worker_name'] = data.pop('workerName')
+        if 'defaultShift' in data and not data.get('default_shift'):
+            data['default_shift'] = data.pop('defaultShift')
+        if 'isActive' in data and not data.get('is_active'):
+            data['is_active'] = data.pop('isActive')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['slNo'] = instance.sl_no
+        data['workerName'] = instance.worker_name
+        data['defaultShift'] = instance.default_shift
+        data['isActive'] = instance.is_active
+        return data
+
+
+class WorkerDailyRoutineSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = WorkerDailyRoutine
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        date_val = data.get('date') or datetime.now().date().isoformat()
+        w_code = data.get('workerId') or data.get('worker_id_code') or data.get('id') or 'WRK-001'
+        if not data.get('id'):
+            data['id'] = f"RUT-{date_val}-{w_code}"
+        data['worker_id_code'] = w_code
+        if 'workerName' in data and not data.get('worker_name'):
+            data['worker_name'] = data.pop('workerName')
+        if not data.get('worker_name'):
+            w_obj = WorkerMaster.objects.filter(id=w_code).first()
+            if w_obj:
+                data['worker_name'] = w_obj.worker_name
+                if not data.get('trade'):
+                    data['trade'] = w_obj.trade
+                if not data.get('sl_no'):
+                    data['sl_no'] = w_obj.sl_no
+            else:
+                data['worker_name'] = w_code
+        if not data.get('trade'):
+            data['trade'] = 'General'
+        if not data.get('sl_no'):
+            data['sl_no'] = 1
+        if 'shiftStatus' in data and not data.get('shift_status'):
+            data['shift_status'] = data.pop('shiftStatus')
+        if 'shiftType' in data and not data.get('shift_type'):
+            data['shift_type'] = data.pop('shiftType')
+        if 'jobNo' in data and not data.get('job_no'):
+            data['job_no'] = data.pop('jobNo')
+        if 'jobOrProjectNo' in data and not data.get('job_no'):
+            data['job_no'] = data.pop('jobOrProjectNo')
+        if 'workDetails' in data and not data.get('work_details'):
+            data['work_details'] = data.pop('workDetails')
+        if 'quantityNos' in data and not data.get('quantity_nos'):
+            data['quantity_nos'] = data.pop('quantityNos')
+        if 'hoursWorked' in data and not data.get('hours_worked'):
+            data['hours_worked'] = data.pop('hoursWorked')
+        if 'overtimeHours' in data and not data.get('overtime_hours'):
+            data['overtime_hours'] = data.pop('overtimeHours')
+        if 'isVerified' in data and not data.get('is_verified'):
+            data['is_verified'] = data.pop('isVerified')
+        if 'supervisorName' in data and not data.get('supervisor_name'):
+            data['supervisor_name'] = data.pop('supervisorName')
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['workerId'] = instance.worker_id_code
+        data['workerName'] = instance.worker_name
+        data['slNo'] = instance.sl_no
+        data['shiftStatus'] = instance.shift_status
+        data['shiftType'] = instance.shift_type
+        data['jobNo'] = instance.job_no
+        data['jobOrProjectNo'] = instance.job_no
+        data['workDetails'] = instance.work_details
+        data['quantityNos'] = instance.quantity_nos
+        data['hoursWorked'] = float(instance.hours_worked or 8)
+        data['overtimeHours'] = float(instance.overtime_hours or 0)
+        data['isVerified'] = instance.is_verified
+        data['supervisorName'] = instance.supervisor_name
+        data['updatedAt'] = str(instance.updated_at) if instance.updated_at else ''
+        return data
+
 
 

@@ -101,6 +101,8 @@ from apps.production.views import (
     DispatchOrderViewSet,
     PackingOrderViewSet,
     ProductionCompletionViewSet,
+    WorkerMasterViewSet,
+    WorkerDailyRoutineViewSet,
 )
 from apps.maintenance.views import (
     InternalAssetViewSet,
@@ -271,6 +273,8 @@ api_router.register(r'dispatch-orders', DispatchOrderViewSet, basename='dispatch
 api_router.register(r'dispatch', DispatchOrderViewSet, basename='dispatch')
 api_router.register(r'packing-orders', PackingOrderViewSet, basename='packing-order')
 api_router.register(r'packing', PackingOrderViewSet, basename='packing')
+api_router.register(r'workers', WorkerMasterViewSet, basename='worker')
+api_router.register(r'worker-routines', WorkerDailyRoutineViewSet, basename='worker-routine')
 
 # Maintenance & Plant Service
 api_router.register(r'internal-assets', InternalAssetViewSet, basename='internal-asset')
