@@ -9,14 +9,15 @@ from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
     JournalEntry, JobCostingSummary, CreditNote, DebitNote,
-    BankAccount, ContraVoucher, ExpenseEntry, FixedAsset
+    BankAccount, ContraVoucher, ExpenseEntry, FixedAsset, EWayBill
 )
 from .serializers import (
     FinancialYearSerializer, ChartOfAccountSerializer, TaxMasterSerializer,
     CostCenterSerializer, SalesInvoiceSerializer, PurchaseInvoiceSerializer,
     CustomerReceiptSerializer, SupplierPaymentSerializer, JournalEntrySerializer,
     JobCostingSummarySerializer, CreditNoteSerializer, DebitNoteSerializer,
-    BankAccountSerializer, ContraVoucherSerializer, ExpenseEntrySerializer, FixedAssetSerializer
+    BankAccountSerializer, ContraVoucherSerializer, ExpenseEntrySerializer, FixedAssetSerializer,
+    EWayBillSerializer
 )
 
 
@@ -477,6 +478,50 @@ class AccountingDashboardMetricsView(APIView):
             'total_receipts': len(receipts),
             'total_payments': len(payments),
         })
+
+
+class EWayBillViewSet(viewsets.ModelViewSet):
+    queryset = EWayBill.objects.all().order_by('-created_at', '-id')
+    serializer_class = EWayBillSerializer
+    permission_classes = [permissions.AllowAny]
+    search_fields = ['eway_bill_no', 'invoice_number', 'delivery_challan_number', 'customer_name', 'vehicle_number', 'transporter_name']
+    filterset_fields = ['status', 'customer_id', 'vehicle_number']
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        ewb_no = data.get('eway_bill_no') or data.get('ewayBillNo') or f"24{int(datetime.now().timestamp())}"
+        data['id'] = data.get('id') or ewb_no
+        data['eway_bill_no'] = ewb_no
+        data['invoice_number'] = data.get('invoice_number') or data.get('invoiceNumber', '')
+        data['delivery_challan_number'] = data.get('delivery_challan_number') or data.get('deliveryChallanNumber', '')
+        data['customer_id'] = data.get('customer_id') or data.get('customerId', '')
+        data['customer_name'] = data.get('customer_name') or data.get('customerName', 'Customer')
+        data['customer_gstin'] = data.get('customer_gstin') or data.get('customerGstin', '')
+        data['delivery_address'] = data.get('delivery_address') or data.get('deliveryAddress', '')
+        data['delivery_pincode'] = data.get('delivery_pincode') or data.get('deliveryPincode', '')
+        data['transporter_name'] = data.get('transporter_name') or data.get('transporterName', 'Direct Transport')
+        data['transporter_id'] = data.get('transporter_id') or data.get('transporterId', '')
+        data['vehicle_number'] = data.get('vehicle_number') or data.get('vehicleNumber', '')
+        data['distance_km'] = int(data.get('distance_km') or data.get('distanceKm') or 100)
+        data['consignment_value'] = float(data.get('consignment_value') or data.get('consignmentValue') or 0.0)
+        data['status'] = data.get('status', 'Active')
+        data['remarks'] = data.get('remarks', '')
+
+        if not data.get('valid_upto'):
+            days = max(1, (data['distance_km'] + 199) // 200)
+            data['valid_upto'] = (timezone.now() + timedelta(days=days)).isoformat()
+
+        existing = EWayBill.objects.filter(id=data['id']).first() or EWayBill.objects.filter(eway_bill_no=ewb_no).first()
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 

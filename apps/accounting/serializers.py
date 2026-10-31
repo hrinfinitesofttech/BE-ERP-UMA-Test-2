@@ -4,7 +4,7 @@ from .models import (
     FinancialYear, ChartOfAccount, TaxMaster, CostCenter,
     SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPayment,
     JournalEntry, JobCostingSummary, CreditNote, DebitNote,
-    BankAccount, ContraVoucher, ExpenseEntry, FixedAsset
+    BankAccount, ContraVoucher, ExpenseEntry, FixedAsset, EWayBill
 )
 
 
@@ -58,6 +58,9 @@ class SalesInvoiceSerializer(UniversalModelSerializerMixin, serializers.ModelSer
             'customerPoNumber': 'customer_po_number',
             'projectId': 'project_id',
             'jobNumber': 'job_number',
+            'deliveryChallanNumber': 'delivery_challan_number',
+            'deliveryChallanNo': 'delivery_challan_number',
+            'eWayBillNumber': 'e_way_bill_number',
             'paymentTerms': 'payment_terms',
             'termsAndConditions': 'terms_and_conditions',
             'subTotal': 'taxable_amount',
@@ -416,5 +419,68 @@ class FixedAssetSerializer(serializers.ModelSerializer):
         if 'currentBookValue' in data and 'current_book_value' not in ret:
             ret['current_book_value'] = data['currentBookValue']
         return ret
+
+
+class EWayBillSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = EWayBill
+        fields = '__all__'
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        field_map = {
+            'ewayBillNo': 'eway_bill_no',
+            'ewayBillNumber': 'eway_bill_no',
+            'invoiceNumber': 'invoice_number',
+            'invoiceDate': 'invoice_date',
+            'deliveryChallanNumber': 'delivery_challan_number',
+            'deliveryChallanNo': 'delivery_challan_number',
+            'customerId': 'customer_id',
+            'customerName': 'customer_name',
+            'customerGstin': 'customer_gstin',
+            'deliveryAddress': 'delivery_address',
+            'deliveryPincode': 'delivery_pincode',
+            'destinationPincode': 'delivery_pincode',
+            'transporterName': 'transporter_name',
+            'transporterId': 'transporter_id',
+            'vehicleNumber': 'vehicle_number',
+            'distanceKm': 'distance_km',
+            'consignmentValue': 'consignment_value',
+            'validFrom': 'valid_from',
+            'validUpto': 'valid_upto',
+        }
+        for camel, snake in field_map.items():
+            if camel in data and snake not in data:
+                data[snake] = data.pop(camel)
+        if not data.get('eway_bill_no'):
+            data['eway_bill_no'] = data.get('id') or f"24{int(datetime.now().timestamp())}"
+        if not data.get('id'):
+            data['id'] = data['eway_bill_no']
+        if not data.get('customer_name'):
+            data['customer_name'] = data.get('customerName') or 'Valued Customer'
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['ewayBillNo'] = instance.eway_bill_no
+        data['invoiceNumber'] = instance.invoice_number
+        data['invoiceDate'] = str(instance.invoice_date) if instance.invoice_date else ''
+        data['deliveryChallanNumber'] = instance.delivery_challan_number
+        data['customerId'] = instance.customer_id
+        data['customerName'] = instance.customer_name
+        data['customerGstin'] = instance.customer_gstin
+        data['deliveryAddress'] = instance.delivery_address
+        data['deliveryPincode'] = instance.delivery_pincode
+        data['destinationPincode'] = instance.delivery_pincode
+        data['transporterName'] = instance.transporter_name
+        data['transporterId'] = instance.transporter_id
+        data['vehicleNumber'] = instance.vehicle_number
+        data['distanceKm'] = instance.distance_km
+        data['consignmentValue'] = float(instance.consignment_value or 0)
+        data['validFrom'] = str(instance.valid_from) if instance.valid_from else ''
+        data['validUpto'] = str(instance.valid_upto) if instance.valid_upto else ''
+        data['status'] = instance.status
+        data['remarks'] = instance.remarks
+        return data
 
 

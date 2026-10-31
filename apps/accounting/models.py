@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class FinancialYear(models.Model):
@@ -76,6 +77,8 @@ class SalesInvoice(models.Model):
     customer_po_number = models.CharField(max_length=64, blank=True)
     project_id = models.CharField(max_length=64, blank=True)
     job_number = models.CharField(max_length=64, blank=True)
+    delivery_challan_number = models.CharField(max_length=64, blank=True, default='')
+    e_way_bill_number = models.CharField(max_length=64, blank=True, default='')
     payment_terms = models.CharField(max_length=128, blank=True)
     terms_and_conditions = models.TextField(blank=True, default='')
     items = models.JSONField(default=list)
@@ -374,5 +377,36 @@ class FixedAsset(models.Model):
 
     def __str__(self):
         return f"{self.asset_code} - {self.asset_name} (₹{self.current_book_value})"
+
+
+class EWayBill(models.Model):
+    id = models.CharField(max_length=64, primary_key=True)
+    eway_bill_no = models.CharField(max_length=32, unique=True)
+    invoice_number = models.CharField(max_length=64, blank=True, default='')
+    invoice_date = models.DateField(null=True, blank=True)
+    delivery_challan_number = models.CharField(max_length=64, blank=True, default='')
+    customer_id = models.CharField(max_length=64, blank=True, default='')
+    customer_name = models.CharField(max_length=255)
+    customer_gstin = models.CharField(max_length=32, blank=True, default='')
+    delivery_address = models.TextField(blank=True, default='')
+    delivery_pincode = models.CharField(max_length=16, blank=True, default='')
+    transporter_name = models.CharField(max_length=255, blank=True, default='')
+    transporter_id = models.CharField(max_length=64, blank=True, default='')
+    vehicle_number = models.CharField(max_length=64, blank=True, default='')
+    distance_km = models.IntegerField(default=100)
+    consignment_value = models.DecimalField(max_digits=16, decimal_places=2, default=0.0)
+    valid_from = models.DateTimeField(default=timezone.now)
+    valid_upto = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=32, default='Active')
+    remarks = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'GST E-Way Bill'
+        verbose_name_plural = 'GST E-Way Bills'
+
+    def __str__(self):
+        return f"{self.eway_bill_no} - {self.customer_name} ({self.vehicle_number})"
 
 

@@ -163,6 +163,7 @@ from apps.accounting.views import (
     ContraVoucherViewSet,
     ExpenseEntryViewSet,
     FixedAssetViewSet,
+    EWayBillViewSet,
 )
 from apps.integration.views import (
     ApprovalItemViewSet,
@@ -342,6 +343,8 @@ api_router.register(r'contra-vouchers', ContraVoucherViewSet, basename='contra-v
 api_router.register(r'expenses', ExpenseEntryViewSet, basename='expense')
 api_router.register(r'expense-entries', ExpenseEntryViewSet, basename='expense-entry')
 api_router.register(r'fixed-assets', FixedAssetViewSet, basename='fixed-asset')
+api_router.register(r'eway-bills', EWayBillViewSet, basename='eway-bill')
+api_router.register(r'ewaybills', EWayBillViewSet, basename='ewaybill')
 
 # Integration & Approvals
 api_router.register(r'approvals', ApprovalItemViewSet, basename='approval')

@@ -633,10 +633,14 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
         disp_num = (
             data.get('dispatch_number')
             or data.get('dispatchNumber')
+            or data.get('challan_number')
+            or data.get('challanNo')
             or f"DISP-{datetime.now().year}-{DispatchOrder.objects.count() + 1:04d}"
         )
         data['id'] = data.get('id') or disp_num
         data['dispatch_number'] = disp_num
+        data['challan_number'] = data.get('challan_number') or data.get('challanNo') or disp_num
+        data['copy_number'] = data.get('copy_number') or data.get('copyNumber', '1')
         data['dispatch_date'] = data.get('dispatch_date') or data.get('dispatchDate') or datetime.now().strftime('%Y-%m-%d')
         data['job_id'] = data.get('job_id') or data.get('jobId', '')
         data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
@@ -666,6 +670,25 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
         data['dispatched_by'] = data.get('dispatched_by') or data.get('dispatchedBy', 'Dispatch Officer')
         data['status'] = data.get('status', 'Ready for Dispatch')
         data['remarks'] = data.get('remarks', '')
+        data['total_quantity_text'] = data.get('total_quantity_text') or data.get('totalQuantityText', '')
+        data['total_amount_text'] = data.get('total_amount_text') or data.get('totalAmountText', '')
+        data['department'] = data.get('department', 'Dispatch / Heavy Fabrication Store')
+        data['receiver_sign'] = data.get('receiver_sign') or data.get('receiverSign', '')
+        data['authorized_signatory'] = data.get('authorized_signatory') or data.get('authorizedSignatory', 'UMA Technofab Dispatch Officer')
+        data['qc_report_no'] = data.get('qc_report_no') or data.get('qcReportNo', '')
+        data['packing_slip_no'] = data.get('packing_slip_no') or data.get('packingSlipNo', '')
+        if 'items' in request.data:
+            data['items'] = request.data['items']
+
+        existing = (
+            DispatchOrder.objects.filter(id=data['id']).first()
+            or DispatchOrder.objects.filter(dispatch_number=disp_num).first()
+        )
+        if existing:
+            serializer = self.get_serializer(existing, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -729,7 +752,11 @@ class PackingOrderViewSet(viewsets.ModelViewSet):
         data['packed_by'] = data.get('packed_by') or data.get('packedBy', 'Packing Supervisor')
         data['verified_by'] = data.get('verified_by') or data.get('verifiedBy', 'Quality Inspector')
         data['status'] = data.get('status', 'Packed')
-        data['remarks'] = data.get('remarks', '')
+        data['customer_address'] = data.get('customer_address') or data.get('customerAddress', '')
+        data['destination_city'] = data.get('destination_city') or data.get('destinationCity', '')
+        data['delivery_challan_no'] = data.get('delivery_challan_no') or data.get('deliveryChallanNo', '')
+        if 'boxes' in request.data:
+            data['boxes'] = request.data['boxes']
         if 'items' in request.data:
             data['items'] = request.data['items']
 

@@ -362,6 +362,8 @@ class ProductionMaterialRequest(models.Model):
 class DispatchOrder(models.Model):
     id = models.CharField(max_length=64, primary_key=True)
     dispatch_number = models.CharField(max_length=64, unique=True)
+    challan_number = models.CharField(max_length=64, blank=True, default='')
+    copy_number = models.CharField(max_length=16, blank=True, default='1')
     dispatch_date = models.DateField(default=timezone.now)
     job_id = models.CharField(max_length=64, blank=True)
     job_number = models.CharField(max_length=64, blank=True)
@@ -392,6 +394,14 @@ class DispatchOrder(models.Model):
     dispatched_by = models.CharField(max_length=128, blank=True, default='Dispatch Officer')
     status = models.CharField(max_length=64, default='Ready for Dispatch')
     remarks = models.TextField(blank=True)
+    items = models.JSONField(default=list, blank=True)
+    total_quantity_text = models.CharField(max_length=64, blank=True, default='')
+    total_amount_text = models.CharField(max_length=64, blank=True, default='')
+    department = models.CharField(max_length=128, blank=True, default='Dispatch / Heavy Fabrication Store')
+    receiver_sign = models.CharField(max_length=128, blank=True, default='')
+    authorized_signatory = models.CharField(max_length=128, blank=True, default='UMA Technofab Dispatch Officer')
+    qc_report_no = models.CharField(max_length=64, blank=True, default='')
+    packing_slip_no = models.CharField(max_length=64, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -409,6 +419,8 @@ class PackingOrder(models.Model):
     packing_date = models.DateField(default=timezone.now)
     customer_id = models.CharField(max_length=64, blank=True)
     customer_name = models.CharField(max_length=255)
+    customer_address = models.TextField(blank=True, default='')
+    destination_city = models.CharField(max_length=128, blank=True, default='')
     sales_order_id = models.CharField(max_length=64, blank=True)
     sales_order_number = models.CharField(max_length=64, blank=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -430,7 +442,9 @@ class PackingOrder(models.Model):
     packed_by = models.CharField(max_length=128, blank=True, default='Packing Supervisor')
     verified_by = models.CharField(max_length=128, blank=True, default='Quality Inspector')
     status = models.CharField(max_length=64, default='Packed')
+    boxes = models.JSONField(default=list, blank=True)
     items = models.JSONField(default=list, blank=True)
+    delivery_challan_no = models.CharField(max_length=64, blank=True, default='')
     remarks = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

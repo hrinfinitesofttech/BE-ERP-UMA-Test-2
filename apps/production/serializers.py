@@ -476,6 +476,9 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
         field_map = {
             'dispatchNumber': 'dispatch_number',
             'dispatchDate': 'dispatch_date',
+            'challanNumber': 'challan_number',
+            'challanNo': 'challan_number',
+            'copyNumber': 'copy_number',
             'jobId': 'job_id',
             'jobNumber': 'job_number',
             'salesOrderNumber': 'sales_order_number',
@@ -500,12 +503,20 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
             'dispatchType': 'dispatch_type',
             'qcClearanceBy': 'qc_clearance_by',
             'dispatchedBy': 'dispatched_by',
+            'totalQuantityText': 'total_quantity_text',
+            'totalAmountText': 'total_amount_text',
+            'receiverSign': 'receiver_sign',
+            'authorizedSignatory': 'authorized_signatory',
+            'qcReportNo': 'qc_report_no',
+            'packingSlipNo': 'packing_slip_no',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
         if not data.get('dispatch_number'):
-            data['dispatch_number'] = data.get('id') or f"DISP-{int(datetime.now().timestamp())}"
+            data['dispatch_number'] = data.get('challan_number') or data.get('id') or f"DISP-{int(datetime.now().timestamp())}"
+        if not data.get('challan_number'):
+            data['challan_number'] = data.get('dispatch_number') or ''
         if not data.get('dispatch_date'):
             data['dispatch_date'] = datetime.now().date().isoformat()
         if not data.get('customer_name'):
@@ -519,6 +530,9 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['dispatchNumber'] = instance.dispatch_number
+        data['challanNumber'] = instance.challan_number or instance.dispatch_number
+        data['challanNo'] = instance.challan_number or instance.dispatch_number
+        data['copyNumber'] = instance.copy_number
         data['dispatchDate'] = str(instance.dispatch_date) if instance.dispatch_date else ''
         data['jobId'] = instance.job_id
         data['jobNumber'] = instance.job_number
@@ -549,6 +563,14 @@ class DispatchOrderSerializer(serializers.ModelSerializer):
         data['dispatchedBy'] = instance.dispatched_by
         data['status'] = instance.status
         data['remarks'] = instance.remarks
+        data['items'] = instance.items or []
+        data['totalQuantityText'] = instance.total_quantity_text
+        data['totalAmountText'] = instance.total_amount_text
+        data['department'] = instance.department
+        data['receiverSign'] = instance.receiver_sign
+        data['authorizedSignatory'] = instance.authorized_signatory
+        data['qcReportNo'] = instance.qc_report_no
+        data['packingSlipNo'] = instance.packing_slip_no
         return data
 
 
@@ -561,9 +583,13 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
         data = data.copy() if hasattr(data, 'copy') else dict(data)
         field_map = {
             'packingNumber': 'packing_number',
+            'packingSlipNo': 'packing_number',
             'packingDate': 'packing_date',
+            'date': 'packing_date',
             'customerId': 'customer_id',
             'customerName': 'customer_name',
+            'customerAddress': 'customer_address',
+            'destinationCity': 'destination_city',
             'salesOrderId': 'sales_order_id',
             'salesOrderNumber': 'sales_order_number',
             'jobId': 'job_id',
@@ -571,6 +597,7 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
             'projectId': 'project_id',
             'projectNumber': 'project_number',
             'qcInspectionNumber': 'qc_inspection_number',
+            'qcReportNo': 'qc_inspection_number',
             'finishedGoodsNumber': 'finished_goods_number',
             'productName': 'product_name',
             'totalQuantity': 'total_quantity',
@@ -579,15 +606,19 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
             'packageType': 'package_type',
             'packageDimensions': 'package_dimensions',
             'grossWeightKg': 'gross_weight_kg',
+            'totalGrossWeightKg': 'gross_weight_kg',
             'netWeightKg': 'net_weight_kg',
+            'totalNetWeightKg': 'net_weight_kg',
             'packedBy': 'packed_by',
             'verifiedBy': 'verified_by',
+            'deliveryChallanNo': 'delivery_challan_no',
+            'deliveryChallanNumber': 'delivery_challan_no',
         }
         for camel, snake in field_map.items():
             if camel in data and snake not in data:
                 data[snake] = data.pop(camel)
         if not data.get('packing_number'):
-            data['packing_number'] = data.get('id') or f"PACK-{int(datetime.now().timestamp())}"
+            data['packing_number'] = data.get('id') or f"PKG-{int(datetime.now().timestamp())}"
         if not data.get('packing_date'):
             data['packing_date'] = datetime.now().date().isoformat()
         if not data.get('customer_name'):
@@ -601,9 +632,13 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['packingNumber'] = instance.packing_number
+        data['packingSlipNo'] = instance.packing_number
         data['packingDate'] = str(instance.packing_date) if instance.packing_date else ''
+        data['date'] = str(instance.packing_date) if instance.packing_date else ''
         data['customerId'] = instance.customer_id
         data['customerName'] = instance.customer_name
+        data['customerAddress'] = instance.customer_address
+        data['destinationCity'] = instance.destination_city
         data['salesOrderId'] = instance.sales_order_id
         data['salesOrderNumber'] = instance.sales_order_number
         data['jobId'] = instance.job_id
@@ -621,11 +656,15 @@ class PackingOrderSerializer(UniversalModelSerializerMixin, serializers.ModelSer
         data['packageType'] = instance.package_type
         data['packageDimensions'] = instance.package_dimensions
         data['grossWeightKg'] = float(instance.gross_weight_kg or 0)
+        data['totalGrossWeightKg'] = float(instance.gross_weight_kg or 0)
         data['netWeightKg'] = float(instance.net_weight_kg or 0)
+        data['totalNetWeightKg'] = float(instance.net_weight_kg or 0)
         data['packedBy'] = instance.packed_by
         data['verifiedBy'] = instance.verified_by
         data['status'] = instance.status
-        data['items'] = instance.items
+        data['boxes'] = instance.boxes or []
+        data['items'] = instance.items or []
+        data['deliveryChallanNo'] = instance.delivery_challan_no
         data['remarks'] = instance.remarks
         return data
 
