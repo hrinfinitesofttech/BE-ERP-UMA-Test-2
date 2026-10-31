@@ -260,6 +260,7 @@ api_router.register(r'manufacturing-jobs', ManufacturingJobViewSet, basename='ma
 api_router.register(r'production-plans', ProductionPlanViewSet, basename='production-plan')
 api_router.register(r'work-centers', WorkCenterViewSet, basename='work-center')
 api_router.register(r'routing-operations', RoutingOperationViewSet, basename='routing-operation')
+api_router.register(r'work-orders', WorkOrderViewSet, basename='work-order')
 api_router.register(r'production-orders', ProductionOrderViewSet, basename='production-order')
 api_router.register(r'production-schedules', ProductionScheduleItemViewSet, basename='production-schedule')
 api_router.register(r'production-entries', ProductionEntryViewSet, basename='production-entry')
