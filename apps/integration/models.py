@@ -62,7 +62,7 @@ class Job360Overview(models.Model):
     current_status = models.CharField(max_length=50, default='planning')
     progress_percent = models.IntegerField(default=0)
     priority = models.CharField(max_length=30, default='high')
-    project_manager = models.CharField(max_length=150, blank=True, default='Bhavin Shah')
+    project_manager = models.CharField(max_length=150, blank=True, default='')
     steps = models.JSONField(default=list, blank=True)
     linked_records = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(default=timezone.now, blank=True, null=True)

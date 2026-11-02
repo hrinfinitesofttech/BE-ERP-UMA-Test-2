@@ -26,3 +26,4 @@ db.sqlite3-journal
 .vscode/
 .idea/
 *.swp
+.django_secret_key

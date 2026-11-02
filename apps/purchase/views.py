@@ -37,7 +37,7 @@ from .serializers import (
 class MaterialRequirementViewSet(viewsets.ModelViewSet):
     queryset = MaterialRequirement.objects.all().order_by('-created_at')
     serializer_class = MaterialRequirementSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -52,13 +52,13 @@ class MaterialRequirementViewSet(viewsets.ModelViewSet):
 class SupplierViewSet(viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class SupplierContactViewSet(viewsets.ModelViewSet):
     queryset = SupplierContact.objects.all().order_by('-id')
     serializer_class = SupplierContactSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 from django.db.models import Q
@@ -68,7 +68,7 @@ from django.http import Http404
 class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     queryset = PurchaseRequisition.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseRequisitionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         pk = self.kwargs.get('pk')
@@ -210,7 +210,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 class RequestForQuotationViewSet(viewsets.ModelViewSet):
     queryset = RequestForQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = RequestForQuotationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -582,7 +582,7 @@ Web: www.umatechnofab.com | Email: info@umatechnofab.com
 class SupplierQuotationViewSet(viewsets.ModelViewSet):
     queryset = SupplierQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierQuotationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -599,13 +599,13 @@ class SupplierQuotationViewSet(viewsets.ModelViewSet):
 class QuotationComparisonViewSet(viewsets.ModelViewSet):
     queryset = QuotationComparison.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationComparisonSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class PurchaseOrderViewSet(viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         pk = self.kwargs.get('pk')
@@ -1119,4 +1119,4 @@ Web: www.umatechnofab.com | Email: info@umatechnofab.com
 class PurchaseReturnViewSet(viewsets.ModelViewSet):
     queryset = PurchaseReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseReturnSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]

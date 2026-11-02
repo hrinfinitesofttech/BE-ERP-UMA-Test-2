@@ -28,7 +28,7 @@ from .serializers import (
 class ManufacturingJobViewSet(viewsets.ModelViewSet):
     queryset = ManufacturingJob.objects.all().order_by('-created_at', '-id')
     serializer_class = ManufacturingJobSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['job_number', 'product_name', 'customer_name', 'project_number']
     filterset_fields = ['status', 'customer_id', 'project_id']
 
@@ -80,7 +80,7 @@ class ManufacturingJobViewSet(viewsets.ModelViewSet):
 class ProductionPlanViewSet(viewsets.ModelViewSet):
     queryset = ProductionPlan.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionPlanSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['plan_number', 'job_number', 'product_name']
     filterset_fields = ['status', 'job_id']
 
@@ -88,7 +88,7 @@ class ProductionPlanViewSet(viewsets.ModelViewSet):
 class WorkCenterViewSet(viewsets.ModelViewSet):
     queryset = WorkCenter.objects.all().order_by('-id')
     serializer_class = WorkCenterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['work_center_code', 'work_center_name', 'machine_name']
     filterset_fields = ['status', 'department']
 
@@ -96,7 +96,7 @@ class WorkCenterViewSet(viewsets.ModelViewSet):
 class RoutingOperationViewSet(viewsets.ModelViewSet):
     queryset = RoutingOperation.objects.all().order_by('-id')
     serializer_class = RoutingOperationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['operation_name', 'work_center_name']
     filterset_fields = ['status', 'department']
 
@@ -132,7 +132,7 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
 class WorkOrderViewSet(viewsets.ModelViewSet):
     queryset = WorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = WorkOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['work_order_number', 'job_number', 'customer_name', 'product_name']
     filterset_fields = ['status', 'priority', 'job_id']
 
@@ -205,7 +205,7 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
 class ProductionOrderViewSet(viewsets.ModelViewSet):
     queryset = ProductionOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['production_order_number', 'job_number', 'work_order_number']
     filterset_fields = ['status', 'work_order_id']
 
@@ -241,7 +241,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
 class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
     queryset = ProductionScheduleItem.objects.all().order_by('-id')
     serializer_class = ProductionScheduleItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['schedule_number', 'job_number', 'work_order_number', 'operation_name']
     filterset_fields = ['status', 'work_center_code']
 
@@ -282,7 +282,7 @@ class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
 class ProductionEntryViewSet(viewsets.ModelViewSet):
     queryset = ProductionEntry.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionEntrySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['production_entry_number', 'job_number', 'work_order_number', 'operation_name', 'operator_name']
     filterset_fields = ['job_id', 'entry_date']
 
@@ -361,7 +361,7 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
 class WIPRecordViewSet(viewsets.ModelViewSet):
     queryset = WIPRecord.objects.all().order_by('-start_date', '-id')
     serializer_class = WIPRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['job_number', 'work_order_number', 'current_operation_name']
     filterset_fields = ['status', 'location']
 
@@ -391,7 +391,7 @@ class WIPRecordViewSet(viewsets.ModelViewSet):
 class ProductionHoldViewSet(viewsets.ModelViewSet):
     queryset = ProductionHold.objects.all().order_by('-start_date', '-id')
     serializer_class = ProductionHoldSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['hold_number', 'job_number', 'reason']
     filterset_fields = ['status']
 
@@ -439,7 +439,7 @@ class ProductionHoldViewSet(viewsets.ModelViewSet):
 class ReworkOrderViewSet(viewsets.ModelViewSet):
     queryset = ReworkOrder.objects.all().order_by('-start_date', '-id')
     serializer_class = ReworkOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['rework_number', 'job_number', 'item_name', 'work_order_number']
     filterset_fields = ['status']
 
@@ -475,7 +475,7 @@ class ReworkOrderViewSet(viewsets.ModelViewSet):
 class ProductionScrapViewSet(viewsets.ModelViewSet):
     queryset = ProductionScrap.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionScrapSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['scrap_number', 'job_number', 'material_name', 'work_order_number']
     filterset_fields = ['scrap_type']
 
@@ -510,7 +510,7 @@ class ProductionScrapViewSet(viewsets.ModelViewSet):
 class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
     queryset = FinishedGoodsItem.objects.all().order_by('-created_at', '-id')
     serializer_class = FinishedGoodsItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['finished_goods_number', 'job_number', 'product_name', 'serial_number']
     filterset_fields = ['status', 'qc_status', 'warehouse_id']
 
@@ -545,7 +545,7 @@ class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
 class ProductionCompletionViewSet(viewsets.ModelViewSet):
     queryset = ProductionCompletion.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionCompletionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['completion_number', 'work_order_number', 'job_number', 'equipment_serial_number', 'certificate_number']
     filterset_fields = ['qc_status', 'hydro_test_status', 'dp_test_status']
 
@@ -588,7 +588,7 @@ class ProductionCompletionViewSet(viewsets.ModelViewSet):
 class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
     queryset = ProductionMaterialRequest.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionMaterialRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['request_number', 'job_number', 'work_order_number', 'requested_by', 'issued_to']
     filterset_fields = ['status', 'production_stage', 'warehouse_id']
 
@@ -624,7 +624,7 @@ class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
 class DispatchOrderViewSet(viewsets.ModelViewSet):
     queryset = DispatchOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = DispatchOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['dispatch_number', 'job_number', 'work_order_number', 'customer_name', 'product_name', 'vehicle_number', 'lr_number']
     filterset_fields = ['status', 'customer_id', 'job_id']
 
@@ -713,7 +713,7 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
 class PackingOrderViewSet(viewsets.ModelViewSet):
     queryset = PackingOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = PackingOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['packing_number', 'customer_name', 'job_number', 'sales_order_number', 'product_name']
     filterset_fields = ['status', 'customer_id', 'job_id', 'sales_order_id']
 
@@ -784,7 +784,7 @@ class PackingOrderViewSet(viewsets.ModelViewSet):
 
 
 class ProductionDashboardStatsView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         jobs = list(ManufacturingJob.objects.all())
@@ -867,7 +867,7 @@ class ProductionDashboardStatsView(APIView):
 class WorkerMasterViewSet(viewsets.ModelViewSet):
     queryset = WorkerMaster.objects.all().order_by('sl_no', 'worker_name')
     serializer_class = WorkerMasterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['worker_name', 'trade', 'id']
     filterset_fields = ['is_active', 'trade']
 
@@ -889,7 +889,7 @@ class WorkerMasterViewSet(viewsets.ModelViewSet):
 class WorkerDailyRoutineViewSet(viewsets.ModelViewSet):
     queryset = WorkerDailyRoutine.objects.all().order_by('date', 'sl_no')
     serializer_class = WorkerDailyRoutineSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['worker_name', 'job_no', 'work_details', 'trade']
 
     def get_queryset(self):

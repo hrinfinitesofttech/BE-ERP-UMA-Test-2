@@ -43,7 +43,7 @@ from .serializers import (
 class ItemCategoryViewSet(viewsets.ModelViewSet):
     queryset = ItemCategory.objects.all().order_by('-id')
     serializer_class = ItemCategorySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -64,7 +64,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
 class UOMMasterViewSet(viewsets.ModelViewSet):
     queryset = UOMMaster.objects.all().order_by('-id')
     serializer_class = UOMMasterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -85,7 +85,7 @@ class UOMMasterViewSet(viewsets.ModelViewSet):
 class ItemMasterViewSet(viewsets.ModelViewSet):
     queryset = ItemMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ItemMasterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -129,19 +129,19 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
 class WarehouseViewSet(viewsets.ModelViewSet):
     queryset = Warehouse.objects.all().order_by('-id')
     serializer_class = WarehouseSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class WarehouseLocationViewSet(viewsets.ModelViewSet):
     queryset = WarehouseLocation.objects.all().order_by('-id')
     serializer_class = WarehouseLocationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
     queryset = GoodsReceiptNote.objects.all().order_by('-created_at', '-id')
     serializer_class = GoodsReceiptNoteSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import threading
@@ -261,7 +261,7 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
 class QCInspectionViewSet(viewsets.ModelViewSet):
     queryset = QCInspection.objects.all().order_by('-created_at', '-id')
     serializer_class = QCInspectionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -319,13 +319,13 @@ class QCInspectionViewSet(viewsets.ModelViewSet):
 class StockBalanceViewSet(viewsets.ModelViewSet):
     queryset = StockBalance.objects.all().order_by('item_code')
     serializer_class = StockBalanceSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class StockReservationViewSet(viewsets.ModelViewSet):
     queryset = StockReservation.objects.all().order_by('-reserved_date')
     serializer_class = StockReservationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -353,7 +353,7 @@ class StockReservationViewSet(viewsets.ModelViewSet):
 class MaterialIssueViewSet(viewsets.ModelViewSet):
     queryset = MaterialIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialIssueSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -381,7 +381,7 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
         if 'issued_to' not in data:
             data['issued_to'] = data.get('requestedBy') or data.get('issuedTo') or data.get('issued_to') or 'Production Head'
         if 'issued_by' not in data:
-            data['issued_by'] = data.get('issuedBy') or data.get('issued_by') or 'Hitesh Rawal (Store Head)'
+            data['issued_by'] = data.get('issuedBy') or data.get('issued_by') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', ''))
         if 'issue_date' not in data:
             data['issue_date'] = data.get('issueDate') or data.get('issue_date') or datetime.now().strftime('%Y-%m-%d')
         if 'warehouse_id' not in data:
@@ -490,7 +490,7 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
 class MaterialReturnViewSet(viewsets.ModelViewSet):
     queryset = MaterialReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialReturnSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -514,7 +514,7 @@ class MaterialReturnViewSet(viewsets.ModelViewSet):
         if 'returned_by' not in data:
             data['returned_by'] = data.get('returnedBy') or data.get('returned_by') or 'Ketan Parmar (Shop Supervisor)'
         if 'received_by' not in data:
-            data['received_by'] = data.get('receivedBy') or data.get('received_by') or 'Hitesh Rawal (Store Head)'
+            data['received_by'] = data.get('receivedBy') or data.get('received_by') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', ''))
         if 'department' not in data:
             data['department'] = data.get('department') or 'Production'
         if 'return_date' not in data:
@@ -592,19 +592,19 @@ class MaterialReturnViewSet(viewsets.ModelViewSet):
 class StockLedgerEntryViewSet(viewsets.ModelViewSet):
     queryset = StockLedgerEntry.objects.all().order_by('-created_at')
     serializer_class = StockLedgerEntrySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ScrapEntryViewSet(viewsets.ModelViewSet):
     queryset = ScrapEntry.objects.all().order_by('-date', '-id')
     serializer_class = ScrapEntrySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class StockTransferViewSet(viewsets.ModelViewSet):
     queryset = StockTransfer.objects.all().order_by('-created_at')
     serializer_class = StockTransferSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -634,9 +634,9 @@ class StockTransferViewSet(viewsets.ModelViewSet):
         if 'reason' not in data:
             data['reason'] = data.get('reason') or ''
         if 'requested_by' not in data:
-            data['requested_by'] = data.get('requestedBy') or 'Bhavin Shah (Production Manager)'
+            data['requested_by'] = data.get('requestedBy') or ''
         if 'approved_by' not in data:
-            data['approved_by'] = data.get('approvedBy') or 'Hitesh Rawal (Store Head)'
+            data['approved_by'] = data.get('approvedBy') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', ''))
         if 'status' not in data:
             data['status'] = data.get('status') or 'Completed'
 
@@ -702,7 +702,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
 class StockAdjustmentViewSet(viewsets.ModelViewSet):
     queryset = StockAdjustment.objects.all().order_by('-created_at')
     serializer_class = StockAdjustmentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -745,7 +745,7 @@ class StockAdjustmentViewSet(viewsets.ModelViewSet):
         if 'remarks' not in data:
             data['remarks'] = data.get('remarks') or ''
         if 'approved_by' not in data:
-            data['approved_by'] = data.get('approvedBy') or 'Hitesh Rawal (Store Head)'
+            data['approved_by'] = data.get('approvedBy') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', ''))
         if 'status' not in data:
             data['status'] = data.get('status') or 'Approved'
 

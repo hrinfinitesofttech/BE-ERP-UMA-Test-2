@@ -1,9 +1,10 @@
+import os
 import requests
 import time
 import re
 
 USERNAME = 'umaERP'
-PASSWORD = 'AAaa@123456@'
+PASSWORD = os.environ.get('PA_PASSWORD', '')
 DOMAIN = 'umaERP.pythonanywhere.com'
 
 session = requests.Session()

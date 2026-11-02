@@ -37,22 +37,22 @@ from .serializers import (
 )
 
 STANDARD_16_STAGE_DEFINITIONS = [
-    {'num': 1, 'name': 'Order Confirmation & Kickoff', 'dept': 'crm', 'emp': 'Pravin Patel', 'desc': 'Sales Order confirmed, commercial terms agreed, customer PO received and internal kickoff.'},
-    {'num': 2, 'name': 'Project Creation & Job Allocation', 'dept': 'project', 'emp': 'Bhavin Shah', 'desc': 'Job Number and Project File created. PM, Design lead and Shop supervisor assigned.'},
-    {'num': 3, 'name': 'Design CAD 3D & GA Drawings', 'dept': 'designer', 'emp': 'Dharmesh Joshi', 'desc': 'Mechanical 3D modeling, General Arrangement (GA) drawing and nozzle orientation details.'},
-    {'num': 4, 'name': 'Customer Design Approval & Sign-off', 'dept': 'designer', 'emp': 'Dharmesh Joshi', 'desc': 'GA Drawing submitted to customer engineering for official approval and revision lock.'},
-    {'num': 5, 'name': 'BOM Finalization & Indent Release', 'dept': 'designer', 'emp': 'Dharmesh Joshi', 'desc': 'BOM exploded into raw plates, forgings, pipes, fasteners and bought-out components.'},
-    {'num': 6, 'name': 'Material Planning & Stock Reservation', 'dept': 'store', 'emp': 'Hitesh Rawal', 'desc': 'Warehouse inventory check, stock reservation, and purchase requisition trigger.'},
-    {'num': 7, 'name': 'Purchase Requisitions & Supplier POs', 'dept': 'purchase', 'emp': 'Vikram Solanki', 'desc': 'Supplier quotations, commercial comparison, PO release for steel plates, motors & seals.'},
-    {'num': 8, 'name': 'Material Receipt & GRN Inspection', 'dept': 'store', 'emp': 'Hitesh Rawal', 'desc': 'Material arrival, Mill Test Certificate (MTC) verification, and GRN inward clearance.'},
-    {'num': 9, 'name': 'Production Planning & Routing Card', 'dept': 'production', 'emp': 'Bhavin Shah', 'desc': 'Fabrication bay allocation, CNC cutting plans, welding procedure specification (WPS).'},
-    {'num': 10, 'name': 'Raw Material Cutting & Rolling', 'dept': 'production', 'emp': 'Bhavin Shah', 'desc': 'Shell plate CNC plasma cutting, bevelling, and plate rolling machine operation.'},
-    {'num': 11, 'name': 'Fabrication, Fit-up & Welding', 'dept': 'production', 'emp': 'Bhavin Shah', 'desc': 'Long-seam and circ-seam SAW/TIG welding, dish end fit-up and nozzle orientation welding.'},
-    {'num': 12, 'name': 'Intermediate NDT & Quality Stage Inspection', 'dept': 'production', 'emp': 'Ketan Patel', 'desc': '100% Radiography Testing (RT), Dye Penetrant (DP) and Ultrasonic Testing (UT) on joints.'},
-    {'num': 13, 'name': 'Assembly, Agitator & Drive Integration', 'dept': 'production', 'emp': 'Bhavin Shah', 'desc': 'Internal cooling coils, anchor agitator shaft alignment, mechanical seal and gearbox mounting.'},
-    {'num': 14, 'name': 'Hydro Testing, FAT & Customer Inspection', 'dept': 'production', 'emp': 'Ketan Patel', 'desc': 'Hydrostatic pressure test at 12.5 Bar shell, hold for 4 hours and joint customer inspection.'},
-    {'num': 15, 'name': 'Surface Finishing, Painting & Packaging', 'dept': 'production', 'emp': 'Bhavin Shah', 'desc': 'Internal electro-polishing to mirror finish (Ra < 0.4 um), external epoxy primer and PU paint.'},
-    {'num': 16, 'name': 'Commercial Invoicing & Dispatch Handover', 'dept': 'accounting', 'emp': 'Pravin Patel', 'desc': 'Final tax invoice raised, dispatch clearance note issued, transit insurance and truck loading.'},
+    {'num': 1, 'name': 'Order Confirmation & Kickoff', 'dept': 'crm', 'emp': '', 'desc': 'Sales Order confirmed, commercial terms agreed, customer PO received and internal kickoff.'},
+    {'num': 2, 'name': 'Project Creation & Job Allocation', 'dept': 'project', 'emp': '', 'desc': 'Job Number and Project File created. PM, Design lead and Shop supervisor assigned.'},
+    {'num': 3, 'name': 'Design CAD 3D & GA Drawings', 'dept': 'designer', 'emp': '', 'desc': 'Mechanical 3D modeling, General Arrangement (GA) drawing and nozzle orientation details.'},
+    {'num': 4, 'name': 'Customer Design Approval & Sign-off', 'dept': 'designer', 'emp': '', 'desc': 'GA Drawing submitted to customer engineering for official approval and revision lock.'},
+    {'num': 5, 'name': 'BOM Finalization & Indent Release', 'dept': 'designer', 'emp': '', 'desc': 'BOM exploded into raw plates, forgings, pipes, fasteners and bought-out components.'},
+    {'num': 6, 'name': 'Material Planning & Stock Reservation', 'dept': 'store', 'emp': '', 'desc': 'Warehouse inventory check, stock reservation, and purchase requisition trigger.'},
+    {'num': 7, 'name': 'Purchase Requisitions & Supplier POs', 'dept': 'purchase', 'emp': '', 'desc': 'Supplier quotations, commercial comparison, PO release for steel plates, motors & seals.'},
+    {'num': 8, 'name': 'Material Receipt & GRN Inspection', 'dept': 'store', 'emp': '', 'desc': 'Material arrival, Mill Test Certificate (MTC) verification, and GRN inward clearance.'},
+    {'num': 9, 'name': 'Production Planning & Routing Card', 'dept': 'production', 'emp': '', 'desc': 'Fabrication bay allocation, CNC cutting plans, welding procedure specification (WPS).'},
+    {'num': 10, 'name': 'Raw Material Cutting & Rolling', 'dept': 'production', 'emp': '', 'desc': 'Shell plate CNC plasma cutting, bevelling, and plate rolling machine operation.'},
+    {'num': 11, 'name': 'Fabrication, Fit-up & Welding', 'dept': 'production', 'emp': '', 'desc': 'Long-seam and circ-seam SAW/TIG welding, dish end fit-up and nozzle orientation welding.'},
+    {'num': 12, 'name': 'Intermediate NDT & Quality Stage Inspection', 'dept': 'production', 'emp': '', 'desc': '100% Radiography Testing (RT), Dye Penetrant (DP) and Ultrasonic Testing (UT) on joints.'},
+    {'num': 13, 'name': 'Assembly, Agitator & Drive Integration', 'dept': 'production', 'emp': '', 'desc': 'Internal cooling coils, anchor agitator shaft alignment, mechanical seal and gearbox mounting.'},
+    {'num': 14, 'name': 'Hydro Testing, FAT & Customer Inspection', 'dept': 'production', 'emp': '', 'desc': 'Hydrostatic pressure test at 12.5 Bar shell, hold for 4 hours and joint customer inspection.'},
+    {'num': 15, 'name': 'Surface Finishing, Painting & Packaging', 'dept': 'production', 'emp': '', 'desc': 'Internal electro-polishing to mirror finish (Ra < 0.4 um), external epoxy primer and PU paint.'},
+    {'num': 16, 'name': 'Commercial Invoicing & Dispatch Handover', 'dept': 'accounting', 'emp': '', 'desc': 'Final tax invoice raised, dispatch clearance note issued, transit insurance and truck loading.'},
 ]
 
 
@@ -82,7 +82,7 @@ def auto_generate_16_stages(project_id):
 class ProjectJobMasterViewSet(viewsets.ModelViewSet):
     queryset = ProjectJobMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectJobMasterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -159,7 +159,7 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
         if not data.get('start_date') and not data.get('startDate'):
             data['start_date'] = datetime.now().strftime('%Y-%m-%d')
         if not data.get('project_manager_name') and not data.get('projectManagerName'):
-            data['project_manager_name'] = data.get('projectManager') or 'Bhavin Shah'
+            data['project_manager_name'] = data.get('projectManager') or ''
         if not data.get('current_status') and not data.get('currentStatus'):
             data['current_status'] = data.get('status') or 'planning'
 
@@ -204,7 +204,7 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
 class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
     queryset = ProjectPlanningStage.objects.all().order_by('stage_number')
     serializer_class = ProjectPlanningStageSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -317,7 +317,7 @@ class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
 class ProjectMilestoneViewSet(viewsets.ModelViewSet):
     queryset = ProjectMilestone.objects.all().order_by('planned_date', 'target_date')
     serializer_class = ProjectMilestoneSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -338,7 +338,7 @@ class ProjectMilestoneViewSet(viewsets.ModelViewSet):
         if 'target_date' not in data:
             data['target_date'] = data['planned_date']
         if 'owner' not in data:
-            data['owner'] = data.get('owner') or 'Bhavin Shah'
+            data['owner'] = data.get('owner') or ''
         if 'status' not in data:
             data['status'] = 'pending'
 
@@ -601,7 +601,7 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
 class ProjectDocumentViewSet(viewsets.ModelViewSet):
     queryset = ProjectDocument.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectDocumentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -636,25 +636,25 @@ class ProjectDocumentViewSet(viewsets.ModelViewSet):
 class DepartmentAssignmentViewSet(viewsets.ModelViewSet):
     queryset = DepartmentAssignment.objects.all().order_by('-id')
     serializer_class = DepartmentAssignmentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ProjectIssueViewSet(viewsets.ModelViewSet):
     queryset = ProjectIssue.objects.all().order_by('-created_date', '-id')
     serializer_class = ProjectIssueSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ProjectDelayViewSet(viewsets.ModelViewSet):
     queryset = ProjectDelay.objects.all().order_by('-date', '-id')
     serializer_class = ProjectDelaySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
     queryset = CustomerChangeRequest.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerChangeRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -706,11 +706,11 @@ class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
 class ProjectCostViewSet(viewsets.ModelViewSet):
     queryset = ProjectCost.objects.all().order_by('-id')
     serializer_class = ProjectCostSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ProjectsDashboardSummaryView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         today = datetime.now().date()
@@ -832,7 +832,7 @@ class ProjectsDashboardSummaryView(APIView):
 class MasterTaskViewSet(viewsets.ModelViewSet):
     queryset = MasterTask.objects.all()
     serializer_class = MasterTaskSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()

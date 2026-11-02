@@ -8,6 +8,8 @@ from .models import SalesInvoice, PurchaseInvoice, CustomerReceipt, SupplierPaym
 class AccountingTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
 
     def test_sales_invoice_and_record_payment(self):
         inv = SalesInvoice.objects.create(

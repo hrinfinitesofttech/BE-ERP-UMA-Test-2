@@ -9,6 +9,9 @@ from apps.production.models import ManufacturingJob
 class IntegrationTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.user = get_user_model().objects.create_user(username='api_test_user', password='Test@12345')
+        self.client.force_authenticate(self.user)
 
     def test_approval_lifecycle(self):
         appr = ApprovalItem.objects.create(
@@ -51,6 +54,12 @@ class IntegrationTests(TestCase):
             production_progress=40,
             status='In Production'
         )
+
+        # Job 360 requires authentication
+        self.client.force_authenticate(None)
+        anon = self.client.get(f'/api/job-360/{job.job_number}/')
+        self.assertEqual(anon.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.client.force_authenticate(self.user)
 
         res = self.client.get(f'/api/job-360/{job.job_number}/')
         self.assertEqual(res.status_code, status.HTTP_200_OK)

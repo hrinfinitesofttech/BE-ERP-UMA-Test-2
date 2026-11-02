@@ -33,12 +33,13 @@ from .serializers import (
 )
 
 # Module models
-from apps.crm.models import Customer, Lead, Quotation, CustomerPO, SalesOrder
-from apps.projects.models import ProjectJobMaster, ProjectMilestone, ProjectTask, ProjectIssue
+from django.db.models import Q
+from apps.crm.models import Customer, Lead, FollowUp, Quotation, CustomerPO, SalesOrder
+from apps.projects.models import ProjectJobMaster, ProjectMilestone, ProjectTask, ProjectIssue, ProjectPlanningStage
 from apps.designer.models import DesignJob, BOMHeader
 from apps.purchase.models import PurchaseRequisition, PurchaseOrder
 from apps.store.models import StockBalance, MaterialIssue, GoodsReceiptNote, QCInspection
-from apps.production.models import ManufacturingJob, WorkOrder, ProductionOrder, ProductionEntry, WIPRecord
+from apps.production.models import ManufacturingJob, WorkOrder, ProductionOrder, ProductionEntry, WIPRecord, ProductionScheduleItem, DispatchOrder, PackingOrder
 from apps.maintenance.models import CustomerMachine, ServiceRequest, BreakdownRecord, ServiceVisit, AMCContract
 from apps.accounting.models import SalesInvoice, CustomerReceipt, JobCostingSummary
 
@@ -46,7 +47,7 @@ from apps.accounting.models import SalesInvoice, CustomerReceipt, JobCostingSumm
 class ApprovalItemViewSet(viewsets.ModelViewSet):
     queryset = ApprovalItem.objects.all().order_by('-created_at', '-id')
     serializer_class = ApprovalItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['title', 'record_number', 'requester_name', 'related_job_number']
     filterset_fields = ['status', 'category', 'urgency']
 
@@ -68,7 +69,7 @@ class ApprovalItemViewSet(viewsets.ModelViewSet):
 class ERPAlertItemViewSet(viewsets.ModelViewSet):
     queryset = ERPAlertItem.objects.all().order_by('-timestamp', '-id')
     serializer_class = ERPAlertItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['title', 'description', 'module']
     filterset_fields = ['module', 'severity', 'is_read']
 
@@ -80,239 +81,344 @@ class ERPAlertItemViewSet(viewsets.ModelViewSet):
         return Response(ERPAlertItemSerializer(alert).data)
 
 
+def _num(value, default=0.0):
+    try:
+        return float(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+
+
+def _s(value, default=''):
+    return default if value is None else str(value)
+
+
 class Job360APIView(APIView):
-    permission_classes = [permissions.AllowAny]
+    """
+    Job 360° dossier. Every value is read from live ERP tables for the given
+    job number; nothing is fabricated. Missing data comes back as 0 / '' / [].
+    Without a job number it returns the list of known jobs for the selector.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, job_number=None):
         job_no = job_number or request.query_params.get('jobNumber') or request.query_params.get('job_number')
-        if not job_no:
-            # Return first available job or default
-            first_job = ManufacturingJob.objects.first()
-            job_no = first_job.job_number if first_job else 'JOB-2026-001'
 
-        # Look up records across modules
+        if not job_no:
+            jobs = {}
+            for pj in ProjectJobMaster.objects.all().order_by('-created_at'):
+                jobs[pj.job_number] = {
+                    'jobNumber': pj.job_number,
+                    'projectNumber': pj.project_number,
+                    'customerName': pj.customer_name,
+                    'productName': pj.product_name,
+                }
+            for mj in ManufacturingJob.objects.all().order_by('-created_at'):
+                jobs.setdefault(mj.job_number, {
+                    'jobNumber': mj.job_number,
+                    'projectNumber': mj.project_number or '',
+                    'customerName': mj.customer_name,
+                    'productName': mj.product_name,
+                })
+            return Response(list(jobs.values()), status=status.HTTP_200_OK)
+
         mfg_job = ManufacturingJob.objects.filter(job_number=job_no).first()
         prj = ProjectJobMaster.objects.filter(job_number=job_no).first()
+        if not mfg_job and not prj:
+            return Response({'detail': f'Job {job_no} not found.'}, status=status.HTTP_404_NOT_FOUND)
+
         des_job = DesignJob.objects.filter(job_number=job_no).first()
-        so = SalesOrder.objects.filter(sales_order_number=getattr(mfg_job, 'sales_order_number', '')).first() or SalesOrder.objects.first()
-        cpo = CustomerPO.objects.filter(po_number=getattr(mfg_job, 'customer_po_number', '')).first() or CustomerPO.objects.first()
-        quot = Quotation.objects.first()
+        so_number = (mfg_job.sales_order_number if mfg_job else '') or (prj.sales_order_number if prj else '')
+        so = SalesOrder.objects.filter(sales_order_number=so_number).first() if so_number else None
+        if not so:
+            so = SalesOrder.objects.filter(job_number=job_no).first()
+        po_number = (mfg_job.customer_po_number if mfg_job else '') or (prj.customer_po_number if prj else '') or getattr(so, 'customer_po_number', '')
+        cpo = CustomerPO.objects.filter(po_number=po_number).first() if po_number else None
+        quot = None
+        if so and so.quotation_number:
+            quot = Quotation.objects.filter(quotation_number=so.quotation_number).first()
+        lead = Lead.objects.filter(id=quot.lead_id).first() if quot and quot.lead_id else None
+        follow_ups = FollowUp.objects.filter(lead_or_customer_id=lead.id) if lead else FollowUp.objects.none()
+        last_follow = follow_ups.order_by('-date').first()
+
+        costing = JobCostingSummary.objects.filter(job_number=job_no).first()
+        invoices = SalesInvoice.objects.filter(job_number=job_no)
         wo = WorkOrder.objects.filter(job_number=job_no).first()
         prod_order = ProductionOrder.objects.filter(job_number=job_no).first()
-        wip = WIPRecord.objects.filter(job_number=job_no).first()
-        costing = JobCostingSummary.objects.filter(job_number=job_no).first()
-        sales_inv = SalesInvoice.objects.filter(job_number=job_no).first()
-        cust_mach = CustomerMachine.objects.filter(job_number=job_no).first()
+        machine = CustomerMachine.objects.filter(job_number=job_no).first()
 
-        # Construct Header
-        total_value = float(getattr(so, 'total_amount', 0.0) or (getattr(costing, 'sales_order_value', 0.0) if costing else 9500000.0))
-        total_cost = float(getattr(costing, 'total_actual_cost', 0.0) or 6840000.0)
-        profit = max(0.0, total_value - total_cost)
-        margin = round((profit / total_value * 100), 1) if total_value > 0 else 28.0
+        total_value = _num(getattr(so, 'order_value', 0)) or _num(getattr(so, 'grand_total', 0)) \
+            or _num(getattr(prj, 'order_value', 0)) or _num(getattr(costing, 'sales_order_value', 0))
+        total_cost = _num(getattr(costing, 'total_actual_cost', 0))
+        profit = (total_value - total_cost) if costing else 0.0
+        margin = round(profit / total_value * 100, 1) if total_value > 0 and costing else 0.0
 
         header = {
-            'jobId': getattr(mfg_job, 'id', f"MJ-{job_no}"),
+            'jobId': _s(getattr(mfg_job, 'id', None) or getattr(prj, 'id', '')),
             'jobNumber': job_no,
-            'projectNumber': getattr(prj, 'project_number', 'PRJ-2026-001'),
-            'customerName': getattr(mfg_job, 'customer_name', getattr(prj, 'customer_name', 'Reliance Industries Limited (Jamnagar)')),
-            'salesOrderNumber': getattr(mfg_job, 'sales_order_number', getattr(so, 'sales_order_number', 'SO-2026-001')),
-            'customerPoNumber': getattr(mfg_job, 'customer_po_number', getattr(cpo, 'po_number', 'RIL/PO/450098231')),
-            'productName': getattr(mfg_job, 'product_name', 'High Pressure Hydrogen De-Sulphurization Reactor (50 KL)'),
-            'machineModel': 'ASME-HDS-50KL',
-            'projectManager': getattr(prj, 'project_manager', getattr(mfg_job, 'project_manager', 'Priya Nair')),
-            'jobStatus': getattr(mfg_job, 'status', 'In_Production'),
-            'priority': 'High',
-            'plannedDeliveryDate': str(getattr(mfg_job, 'planned_completion_date', timezone.now().date() + timedelta(days=40))),
-            'overallProgressPercent': int(getattr(mfg_job, 'production_progress', 65)),
+            'projectNumber': _s(getattr(prj, 'project_number', None) or getattr(mfg_job, 'project_number', '')),
+            'customerName': _s(getattr(mfg_job, 'customer_name', None) or getattr(prj, 'customer_name', '')),
+            'salesOrderNumber': _s(so_number),
+            'customerPoNumber': _s(po_number),
+            'productName': _s(getattr(mfg_job, 'product_name', None) or getattr(prj, 'product_name', '')),
+            'machineModel': _s(getattr(prj, 'product_code', '')),
+            'projectManager': _s(getattr(prj, 'project_manager_name', None) or getattr(mfg_job, 'project_manager', '')),
+            'jobStatus': _s(getattr(mfg_job, 'status', None) or getattr(prj, 'current_status', '')),
+            'priority': (_s(getattr(prj, 'priority', 'medium')) or 'medium').capitalize(),
+            'plannedDeliveryDate': _s(getattr(prj, 'target_delivery_date', None) or getattr(mfg_job, 'planned_completion_date', '')),
+            'actualDeliveryDate': _s(getattr(prj, 'actual_delivery_date', '')) or None,
+            'overallProgressPercent': int(getattr(mfg_job, 'production_progress', None) or getattr(prj, 'progress_percent', 0) or 0),
             'totalJobValue': total_value,
             'totalJobCost': total_cost,
             'profitAmount': profit,
             'marginPercent': margin,
         }
 
-        # CRM Tab
         crm = {
-            'leadNumber': 'LEAD-2026-001',
-            'leadSource': 'Direct Client Inquiry',
-            'enquiryDate': '2026-01-10',
-            'followUpCount': 5,
-            'lastFollowUpDate': '2026-01-28',
-            'quotationNumber': getattr(quot, 'quotation_number', 'QUOT-2026-0042'),
-            'quotationValue': float(getattr(quot, 'grand_total', total_value)),
-            'quotationStatus': getattr(quot, 'status', 'Approved'),
-            'customerPoNumber': getattr(cpo, 'po_number', 'RIL/PO/450098231'),
-            'customerPoDate': str(getattr(cpo, 'po_date', '2026-02-05')),
-            'salesOrderNumber': getattr(so, 'sales_order_number', 'SO-2026-001'),
-            'salesOrderDate': str(getattr(so, 'order_date', '2026-02-08')),
-            'salesOrderValue': total_value,
+            'leadNumber': _s(getattr(lead, 'lead_no', '')),
+            'leadSource': _s(getattr(lead, 'source', '')),
+            'enquiryDate': _s(getattr(lead, 'created_at', ''))[:10],
+            'followUpCount': follow_ups.count(),
+            'lastFollowUpDate': _s(getattr(last_follow, 'date', '')),
+            'quotationNumber': _s(getattr(quot, 'quotation_number', '')),
+            'quotationValue': _num(getattr(quot, 'grand_total', 0)),
+            'quotationStatus': _s(getattr(quot, 'status', '')),
+            'customerPoNumber': _s(po_number),
+            'customerPoDate': _s(getattr(cpo, 'po_date', '')),
+            'salesOrderNumber': _s(so_number),
+            'salesOrderDate': _s(getattr(so, 'order_date', '')),
+            'salesOrderValue': _num(getattr(so, 'order_value', 0)) or _num(getattr(so, 'grand_total', 0)),
         }
 
-        # Project Tab
-        prj_id = getattr(prj, 'id', '')
-        milestones = ProjectMilestone.objects.filter(project_id=prj_id) if prj_id else ProjectMilestone.objects.all()
-        tasks = ProjectTask.objects.filter(project_id=prj_id) if prj_id else ProjectTask.objects.all()
+        prj_id = getattr(prj, 'id', '') or getattr(mfg_job, 'project_id', '') or ''
+        milestones = ProjectMilestone.objects.filter(project_id=prj_id) if prj_id else ProjectMilestone.objects.none()
+        tasks = ProjectTask.objects.filter(project_id=prj_id) if prj_id else ProjectTask.objects.none()
+        issues = ProjectIssue.objects.filter(project_id=prj_id) if prj_id else ProjectIssue.objects.none()
+        stages = ProjectPlanningStage.objects.filter(project_id=prj_id).order_by('stage_number') if prj_id else []
+        completed_tasks = tasks.filter(status__iexact='completed').count()
+        done_ms = milestones.filter(status__in=['completed', 'Completed', 'achieved']).count()
+        days_remaining = 0
+        try:
+            from datetime import datetime
+            tgt = _s(getattr(prj, 'target_delivery_date', ''))[:10]
+            if tgt:
+                days_remaining = (datetime.strptime(tgt, '%Y-%m-%d').date() - timezone.now().date()).days
+        except ValueError:
+            days_remaining = 0
         project = {
-            'projectId': getattr(prj, 'id', 'PRJ-2026-001'),
-            'projectNumber': getattr(prj, 'project_number', 'PRJ-2026-001'),
-            'projectName': getattr(prj, 'project_name', 'High Pressure Hydrogen De-Sulphurization Reactor (50 KL)'),
-            'totalTasks': tasks.count() or 18,
-            'completedTasks': tasks.filter(status='completed').count() or 12,
-            'milestonesCount': milestones.count() or 5,
-            'milestonesCompleted': milestones.filter(status='Completed').count() or 3,
-            'timelineDays': 90,
-            'daysRemaining': 35,
-            'openIssuesCount': 1,
-            'delaysCount': 0,
+            'projectId': _s(prj_id),
+            'projectNumber': header['projectNumber'],
+            'projectName': _s(getattr(prj, 'product_name', '')),
+            'totalTasks': tasks.count(),
+            'completedTasks': completed_tasks,
+            'milestonesCount': milestones.count(),
+            'milestonesCompleted': done_ms,
+            'timelineDays': 0,
+            'daysRemaining': days_remaining,
+            'openIssuesCount': issues.exclude(status__in=['resolved', 'closed', 'Resolved', 'Closed']).count(),
+            'delaysCount': sum(1 for st in stages if st.status == 'delayed'),
             'departmentAssignments': [
-                {'department': 'Design Engineering', 'head': 'Rajesh Patel', 'status': 'Completed'},
-                {'department': 'Procurement & Purchase', 'head': 'Pooja Shah', 'status': 'Completed'},
-                {'department': 'Store & Raw Materials', 'head': 'Nilesh Mehta', 'status': 'Completed'},
-                {'department': 'Fabrication & Production', 'head': 'Vikram Rathore', 'status': 'In Progress'},
-                {'department': 'Quality Assurance', 'head': 'Kavita Iyer', 'status': 'In Progress'},
-            ]
+                {'department': st.department, 'head': st.assigned_employee_name, 'status': st.status}
+                for st in stages
+            ],
         }
 
-        # Design Tab
+        bom = BOMHeader.objects.filter(job_number=job_no).first()
         design = {
-            'designJobNumber': getattr(des_job, 'design_job_number', 'DES-2026-0001'),
-            'requirementsSummary': 'ASME Sec VIII Div 2 design, SA387 Gr 11 Cl 2 alloy with 3mm SS347 weld overlay',
-            'designRevision': getattr(mfg_job, 'design_revision', 'R2'),
-            'cadFilesCount': 14,
-            'designStatus': getattr(des_job, 'status', 'Approved'),
-            'approvedBy': 'Rajesh Patel (Lead Design Engineer)',
-            'approvalDate': '2026-02-15',
-            'bomNumber': 'BOM-2026-001',
-            'bomRevision': 'R2',
-            'bomItemsCount': 28,
-            'bomApproved': True,
-            'documentsCount': 8,
+            'designJobNumber': _s(getattr(des_job, 'design_job_number', '')),
+            'requirementsSummary': _s(getattr(des_job, 'remarks', '')),
+            'designRevision': _s(getattr(des_job, 'active_revision', None) or getattr(mfg_job, 'design_revision', '')),
+            'cadFilesCount': len(getattr(des_job, 'attachments', None) or []),
+            'designStatus': _s(getattr(des_job, 'status', '')),
+            'approvedBy': _s(getattr(des_job, 'approved_by', '')),
+            'approvalDate': _s(getattr(des_job, 'approved_date', '')),
+            'bomNumber': _s(getattr(bom, 'bom_number', '')),
+            'bomRevision': _s(getattr(bom, 'active_revision', '')),
+            'bomItemsCount': int(getattr(bom, 'total_items', 0) or 0),
+            'bomApproved': bool(bom and bom.status and bom.status.lower() in ('approved', 'released')),
+            'documentsCount': len(getattr(des_job, 'attachments', None) or []),
         }
 
-        # Purchase Tab
+        prs = PurchaseRequisition.objects.filter(job_number=job_no)
+        pos = PurchaseOrder.objects.filter(job_number=job_no)
+        po_items = []
+        total_po_value = 0.0
+        delivered_value = 0.0
+        for po in pos:
+            total_po_value += _num(po.grand_total)
+            if (po.status or '').lower() in ('received', 'closed', 'delivered', 'completed'):
+                delivered_value += _num(po.grand_total)
+            for it in (po.items or []):
+                po_items.append({
+                    'itemCode': _s(it.get('itemCode') or it.get('item_code')),
+                    'description': _s(it.get('description') or it.get('itemName') or it.get('item_name')),
+                    'requiredQty': _num(it.get('quantity') or it.get('qty')),
+                    'orderedQty': _num(it.get('quantity') or it.get('qty')),
+                    'receivedQty': _num(it.get('receivedQty') or it.get('received_qty')),
+                    'poNumber': po.po_number,
+                    'supplierName': po.supplier_name,
+                    'status': po.status,
+                })
         purchase = {
-            'totalPrsCount': 3,
-            'totalRfqsCount': 5,
-            'totalPosCount': 4,
-            'totalPurchaseValue': 3850000.0,
-            'pendingPurchaseValue': 0.0,
-            'deliveredPurchaseValue': 3850000.0,
-            'items': [
-                {'itemCode': 'RM-PLT-01', 'description': 'SA 387 Gr 11 Cl 2 45mm Pressure Vessel Plate', 'requiredQty': 14.5, 'orderedQty': 14.5, 'receivedQty': 14.5, 'poNumber': 'PO-2026-0042', 'supplierName': 'Steel Authority of India Ltd (SAIL)', 'status': 'Delivered'},
-                {'itemCode': 'RM-NOZ-01', 'description': 'SA 182 F11 Heavy Forged Flanged Nozzle N1 16 inch 300#', 'requiredQty': 2.0, 'orderedQty': 2.0, 'receivedQty': 2.0, 'poNumber': 'PO-2026-0043', 'supplierName': 'Bharat Heavy Forgings Ltd', 'status': 'Delivered'},
-                {'itemCode': 'CONS-WLD-01', 'description': 'Bohler SAW Wire & Flux Combination EB2R / UV 420 TT', 'requiredQty': 850.0, 'orderedQty': 850.0, 'receivedQty': 850.0, 'poNumber': 'PO-2026-0044', 'supplierName': 'Voestalpine Bohler Welding India', 'status': 'Delivered'},
-            ]
+            'totalPrsCount': prs.count(),
+            'totalRfqsCount': 0,
+            'totalPosCount': pos.count(),
+            'totalPurchaseValue': total_po_value,
+            'pendingPurchaseValue': max(0.0, total_po_value - delivered_value),
+            'deliveredPurchaseValue': delivered_value,
+            'items': po_items,
         }
 
-        # Store Tab
+        issues_qs = MaterialIssue.objects.filter(job_number=job_no)
+        grns = GoodsReceiptNote.objects.filter(job_number=job_no)
+        materials = []
+        for iss in issues_qs:
+            for it in (iss.items or []):
+                materials.append({
+                    'itemCode': _s(it.get('itemCode') or it.get('item_code')),
+                    'itemName': _s(it.get('itemName') or it.get('item_name')),
+                    'requiredQty': _num(it.get('requestedQty') or it.get('quantity') or it.get('issuedQty')),
+                    'availableStock': 0,
+                    'reservedQty': 0,
+                    'issuedQty': _num(it.get('issuedQty') or it.get('quantity')),
+                    'status': 'Issued',
+                })
         store = {
-            'requiredItemsCount': 28,
-            'availableItemsCount': 28,
-            'reservedStockValue': 3850000.0,
-            'materialReceivedCount': 28,
-            'materialIssuedCount': 26,
+            'requiredItemsCount': len(materials),
+            'availableItemsCount': len(materials),
+            'reservedStockValue': 0.0,
+            'materialReceivedCount': grns.count(),
+            'materialIssuedCount': issues_qs.count(),
             'materialReturnedCount': 0,
-            'scrapGeneratedCost': 42000.0,
+            'scrapGeneratedCost': 0.0,
             'stockShortageItemsCount': 0,
-            'materials': [
-                {'itemCode': 'RM-PLT-01', 'itemName': 'SA 387 Gr 11 Cl 2 45mm Plate', 'requiredQty': 14.5, 'availableStock': 18.2, 'reservedQty': 14.5, 'issuedQty': 14.5, 'status': 'Issued'},
-                {'itemCode': 'RM-NOZ-01', 'itemName': 'Forged Nozzle 16 inch 300#', 'requiredQty': 2.0, 'availableStock': 4.0, 'reservedQty': 2.0, 'issuedQty': 2.0, 'status': 'Issued'},
-            ]
+            'issuedValue': sum(_num(i.total_issue_value) for i in issues_qs),
+            'materials': materials,
         }
 
-        # Production Tab
+        entries = ProductionEntry.objects.filter(job_number=job_no)
+        wips = WIPRecord.objects.filter(job_number=job_no)
+        schedule = ProductionScheduleItem.objects.filter(job_number=job_no)
+        completed_qty = sum(_num(e.good_quantity) for e in entries)
         production = {
-            'productionOrderId': getattr(prod_order, 'production_order_number', 'PO-PROD-2026-001'),
-            'workOrderNumber': getattr(wo, 'work_order_number', 'WO-2026-001-A'),
-            'targetQuantity': 1.0,
-            'completedQuantity': 0.65,
-            'reworkQuantity': 0.0,
-            'scrapQuantity': 0.05,
-            'wipQuantity': 1.0,
-            'workCenterName': 'Heavy Column & Boom SAW Station',
-            'operatorName': 'Kishore Jha',
-            'startDate': str(getattr(mfg_job, 'actual_start_date', '2026-09-08')),
-            'estimatedEndDate': str(getattr(mfg_job, 'planned_completion_date', '2026-11-05')),
-            'status': getattr(mfg_job, 'status', 'In Production'),
+            'productionOrderId': _s(getattr(prod_order, 'production_order_number', '')),
+            'workOrderNumber': _s(getattr(wo, 'work_order_number', '')),
+            'targetQuantity': _num(getattr(wo, 'production_quantity', 0)) or _num(getattr(mfg_job, 'quantity', 0)),
+            'completedQuantity': completed_qty,
+            'reworkQuantity': sum(_num(e.rework_quantity) for e in entries),
+            'scrapQuantity': sum(_num(e.scrap_quantity) for e in entries),
+            'wipQuantity': sum(_num(w.wip_quantity) for w in wips),
+            'workCenterName': _s(getattr(schedule.first(), 'work_center_name', '')),
+            'operatorName': _s(getattr(entries.order_by('-entry_date').first(), 'operator_name', '')),
+            'startDate': _s(getattr(mfg_job, 'actual_start_date', '')),
+            'estimatedEndDate': _s(getattr(mfg_job, 'planned_completion_date', '')),
+            'status': _s(getattr(mfg_job, 'status', '')),
             'operations': [
-                {'operationName': 'Raw Material Profiling & Plate CNC Plasma Cutting', 'workCenter': 'WC-PLASMA-01', 'status': 'Completed', 'progress': 100},
-                {'operationName': 'Plate Edge Beveling & 4-Roll Shell Rolling', 'workCenter': 'WC-ROLL-01', 'status': 'Completed', 'progress': 100},
-                {'operationName': 'Longitudinal & Circumferential SAW Seam Welding', 'workCenter': 'WC-SAW-01', 'status': 'In Progress', 'progress': 65},
-                {'operationName': 'Flange Facing & Nozzle Bore CNC Machining', 'workCenter': 'WC-BORING-01', 'status': 'Pending', 'progress': 0},
-                {'operationName': 'Hydrostatic Pressure Proof Test & Final Painting', 'workCenter': 'WC-TEST-01', 'status': 'Pending', 'progress': 0},
-            ]
+                {
+                    'operationName': s.operation_name,
+                    'workCenter': s.work_center_name or s.work_center_code,
+                    'status': s.status,
+                    'progress': 100 if (s.status or '').lower() == 'completed' else (50 if (s.status or '').lower() in ('in progress', 'in_progress') else 0),
+                }
+                for s in schedule
+            ],
         }
 
-        # Quality Tab
+        grn_numbers = list(grns.values_list('grn_number', flat=True))
+        qcs = QCInspection.objects.filter(grn_number__in=grn_numbers)
         quality = {
-            'incomingQcPassCount': 12,
-            'incomingQcFailCount': 0,
-            'inProcessQcPassCount': 8,
+            'incomingQcPassCount': qcs.filter(overall_result__iexact='Pass').count(),
+            'incomingQcFailCount': qcs.filter(overall_result__iexact='Fail').count(),
+            'inProcessQcPassCount': 0,
             'inProcessQcFailCount': 0,
             'finalQcStatus': 'Pending',
-            'inspectorName': 'Kavita Iyer (Lead NDT Level III)',
-            'inspectionDate': '2026-09-24',
-            'rejectedQuantity': 0.0,
+            'inspectorName': _s(getattr(qcs.order_by('-created_at').first(), 'inspector', '')),
+            'inspectionDate': _s(getattr(qcs.order_by('-created_at').first(), 'inspection_date', '')),
+            'rejectedQuantity': sum(_num(q.rejected_quantity) for q in qcs),
             'reworkHours': 0.0,
-            'qcCertificateNumber': 'PENDING-FINAL-TEST',
+            'qcCertificateNumber': '',
         }
 
-        # Dispatch Tab
+        disp = DispatchOrder.objects.filter(job_number=job_no).order_by('-dispatch_date').first()
+        packing = PackingOrder.objects.filter(job_number=job_no).first()
         dispatch = {
-            'packingListNumber': 'PL-PENDING',
-            'dispatchNoteNumber': 'DN-PENDING',
-            'dispatchDate': 'TBD upon completion',
-            'transporterName': 'Reshamwala Heavy Lift & Projects Logistics',
-            'vehicleNumber': 'GJ-06-AX-8912 (Hydraulic Multi-Axle)',
-            'lrNumber': 'LR-RHM-9912',
-            'deliveryStatus': 'Pending',
-            'customerSignOff': False,
+            'packingListNumber': _s(getattr(packing, 'packing_number', '')),
+            'dispatchNoteNumber': _s(getattr(disp, 'dispatch_number', '')),
+            'dispatchDate': _s(getattr(disp, 'dispatch_date', '')),
+            'transporterName': _s(getattr(disp, 'transporter_name', '')),
+            'vehicleNumber': _s(getattr(disp, 'vehicle_number', '')),
+            'lrNumber': _s(getattr(disp, 'lr_number', '')),
+            'deliveryStatus': 'Delivered' if disp and (disp.status or '').lower() == 'delivered' else ('In Transit' if disp and (disp.status or '').lower() in ('dispatched', 'in transit') else 'Pending'),
+            'installationDate': _s(getattr(machine, 'installation_date', '')) or None,
+            'commissioningDate': _s(getattr(machine, 'commissioning_date', '')) or None,
+            'installedByTech': _s(getattr(machine, 'service_engineer', '')) or None,
+            'customerSignOff': bool(disp and disp.receiver_sign),
         }
 
-        # Accounts Tab
-        inv_val = float(getattr(sales_inv, 'grand_total', 0.0) or 11210000.0)
-        rcvd_val = float(getattr(sales_inv, 'paid_amount', 0.0) or 4500000.0)
-        outstanding = float(getattr(sales_inv, 'outstanding_amount', 0.0) or (inv_val - rcvd_val))
-
+        inv = invoices.order_by('-invoice_date').first()
+        inv_total = sum(_num(i.grand_total) for i in invoices)
+        inv_received = sum(_num(i.paid_amount) for i in invoices)
         accounts = {
-            'salesInvoiceNumber': getattr(sales_inv, 'invoice_number', 'INV-2026-001'),
-            'invoiceDate': str(getattr(sales_inv, 'invoice_date', '2026-09-15')),
-            'invoiceValue': inv_val,
-            'gstAmount': round(inv_val * 0.18 / 1.18, 2),
-            'grandTotal': inv_val,
-            'receivedAmount': rcvd_val,
-            'outstandingBalance': outstanding,
-            'paymentStatus': getattr(sales_inv, 'payment_status', 'Partially Paid'),
+            'salesInvoiceNumber': _s(getattr(inv, 'invoice_number', '')),
+            'invoiceDate': _s(getattr(inv, 'invoice_date', '')),
+            'invoiceValue': sum(_num(i.taxable_amount) for i in invoices),
+            'gstAmount': sum(_num(i.tax_total) for i in invoices),
+            'grandTotal': inv_total,
+            'receivedAmount': inv_received,
+            'outstandingBalance': inv_total - inv_received,
+            'paymentStatus': _s(getattr(inv, 'payment_status', '')) or 'Unpaid',
             'totalActualCost': total_cost,
             'grossMarginAmount': profit,
             'grossMarginPercent': margin,
         }
 
-        # Service Tab
+        amc = AMCContract.objects.filter(customer_machine_id=getattr(machine, 'id', '__none__')).first() if machine else None
+        srs = ServiceRequest.objects.filter(job_number=job_no)
+        today = timezone.now().date()
+        warranty_end = getattr(machine, 'warranty_end', None)
+        if amc and amc.contract_end >= today:
+            warranty_state = 'Under AMC'
+        elif warranty_end and warranty_end >= today:
+            warranty_state = 'Active'
+        else:
+            warranty_state = 'Expired' if warranty_end else ''
         service = {
-            'warrantyStatus': 'Active (Standard 18 Months From Dispatch)',
-            'warrantyEndDate': '2027-11-30',
-            'amcContractNumber': 'AMC-2026-001',
-            'amcEndDate': '2027-11-30',
-            'serviceRequestsCount': 0,
-            'breakdownEventsCount': 0,
-            'serviceVisitsCount': 0,
-            'lastServiceDate': 'N/A',
+            'warrantyStatus': warranty_state,
+            'warrantyEndDate': _s(warranty_end),
+            'amcContractNumber': _s(getattr(amc, 'amc_number', '')) or None,
+            'amcEndDate': _s(getattr(amc, 'contract_end', '')) or None,
+            'serviceRequestsCount': srs.count(),
+            'breakdownEventsCount': BreakdownRecord.objects.filter(serial_number=getattr(machine, 'serial_number', '__none__')).count() if machine and machine.serial_number else 0,
+            'serviceVisitsCount': ServiceVisit.objects.filter(request_number__in=list(srs.values_list('request_number', flat=True))).count(),
+            'lastServiceDate': None,
         }
 
-        documents = [
-            {'id': 'DOC-01', 'documentType': 'ASME Data Sheet', 'fileName': 'MDS-SA387-GR11.pdf', 'fileSize': '2.4 MB', 'version': 'Rev 2', 'uploadedBy': 'Rajesh Patel', 'uploadDate': '2026-02-14', 'approvalStatus': 'Approved', 'confidential': False},
-            {'id': 'DOC-02', 'documentType': 'Mill Test Certificate (MTC)', 'fileName': 'SAIL-PLATE-MTC-8812.pdf', 'fileSize': '4.1 MB', 'version': 'Rev 0', 'uploadedBy': 'Nilesh Mehta', 'uploadDate': '2026-03-01', 'approvalStatus': 'Approved', 'confidential': False},
-            {'id': 'DOC-03', 'documentType': 'WPS / PQR Qualified', 'fileName': 'UMA-WPS-SAW-ALLOY-01.pdf', 'fileSize': '1.8 MB', 'version': 'Rev 1', 'uploadedBy': 'Kavita Iyer', 'uploadDate': '2026-03-10', 'approvalStatus': 'Approved', 'confidential': False},
-        ]
+        documents = []
+        for idx, att in enumerate(getattr(des_job, 'attachments', None) or []):
+            if isinstance(att, dict):
+                documents.append({
+                    'id': _s(att.get('id') or f'DOC-{idx + 1}'),
+                    'documentType': _s(att.get('type') or att.get('category') or 'Design'),
+                    'fileName': _s(att.get('name') or att.get('fileName')),
+                    'fileSize': _s(att.get('size') or att.get('fileSize')),
+                    'version': _s(att.get('version') or getattr(des_job, 'active_revision', '')),
+                    'uploadedBy': _s(att.get('uploadedBy') or getattr(des_job, 'assigned_designer', '')),
+                    'uploadDate': _s(att.get('uploadDate') or att.get('uploadedAt')),
+                    'approvalStatus': 'Approved' if getattr(des_job, 'approved_by', '') else 'Pending',
+                    'confidential': False,
+                })
 
-        timeline = [
-            {'id': 'TL-01', 'timestamp': '2026-02-08 11:30', 'module': 'CRM', 'user': 'Pooja Shah', 'action': 'Sales Order Confirmed', 'description': 'Customer PO RIL/PO/450098231 converted to Sales Order SO-2026-001'},
-            {'id': 'TL-02', 'timestamp': '2026-02-15 16:45', 'module': 'Engineering', 'user': 'Rajesh Patel', 'action': 'Design Released to Works', 'description': 'BOM-2026-001 Rev 2 approved and exploded for procurement'},
-            {'id': 'TL-03', 'timestamp': '2026-03-05 10:20', 'module': 'Procurement', 'user': 'Pooja Shah', 'action': 'Raw Materials GRN Inwarded', 'description': 'SAIL SA387 Gr 11 plates inspected and accepted into Raw Material Yard'},
-            {'id': 'TL-04', 'timestamp': '2026-09-08 08:00', 'module': 'Production', 'user': 'Vikram Rathore', 'action': 'Shopfloor Work Order Released', 'description': 'Work order WO-2026-001-A commenced cutting and rolling'},
-        ]
+        timeline = []
+        for log in GlobalActivityLog.objects.filter(Q(entity_id__in=[x for x in (job_no, _s(prj_id), _s(getattr(mfg_job, 'id', ''))) if x]) | Q(details__icontains=job_no)).order_by('-created_at')[:50]:
+            timeline.append({
+                'id': _s(log.id),
+                'timestamp': _s(log.created_at)[:16],
+                'module': _s(getattr(log, 'module', '')),
+                'user': _s(getattr(log, 'user_name', '')),
+                'action': _s(getattr(log, 'action', '')),
+                'description': _s(log.details),
+            })
 
-        full_payload = {
+        return Response({
             'header': header,
             'crm': crm,
             'project': project,
@@ -326,61 +432,59 @@ class Job360APIView(APIView):
             'service': service,
             'documents': documents,
             'timeline': timeline,
-        }
-
-        return Response(full_payload, status=status.HTTP_200_OK)
+        }, status=status.HTTP_200_OK)
 
 
 class Job360OverviewViewSet(viewsets.ModelViewSet):
     queryset = Job360Overview.objects.all().order_by('-created_at')
     serializer_class = Job360OverviewSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ExecutiveDashboardKPIViewSet(viewsets.ModelViewSet):
     queryset = ExecutiveDashboardKPI.objects.all().order_by('kpi_name')
     serializer_class = ExecutiveDashboardKPISerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class Customer360SummaryViewSet(viewsets.ModelViewSet):
     queryset = Customer360Summary.objects.all().order_by('customer_name')
     serializer_class = Customer360SummarySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class Supplier360SummaryViewSet(viewsets.ModelViewSet):
     queryset = Supplier360Summary.objects.all().order_by('supplier_name')
     serializer_class = Supplier360SummarySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ItemMaterial360SummaryViewSet(viewsets.ModelViewSet):
     queryset = ItemMaterial360Summary.objects.all().order_by('item_code')
     serializer_class = ItemMaterial360SummarySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class Employee360SummaryViewSet(viewsets.ModelViewSet):
     queryset = Employee360Summary.objects.all().order_by('employee_name')
     serializer_class = Employee360SummarySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class GlobalActivityLogViewSet(viewsets.ModelViewSet):
     queryset = GlobalActivityLog.objects.all().order_by('-created_at')
     serializer_class = GlobalActivityLogSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class ERPReportCenterItemViewSet(viewsets.ModelViewSet):
     queryset = ERPReportCenterItem.objects.all().order_by('report_code')
     serializer_class = ERPReportCenterItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class JobProfitabilityRecordViewSet(viewsets.ModelViewSet):
     queryset = JobProfitabilityRecord.objects.all().order_by('-created_at')
     serializer_class = JobProfitabilityRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 

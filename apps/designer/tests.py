@@ -6,6 +6,8 @@ from apps.designer.models import DesignJob, CustomerRequirement, Drawing2D, Desi
 class DesignerAPITestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
 
     def test_create_design_job_camel_case_and_persistence(self):
         payload = {

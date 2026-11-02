@@ -404,7 +404,7 @@ except Exception:
 class LeadViewSet(viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-created_at', '-id')
     serializer_class = LeadSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         try:
@@ -857,7 +857,7 @@ class LeadViewSet(viewsets.ModelViewSet):
 class CustomerViewSet(viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-created_at')
     serializer_class = CustomerSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import threading
@@ -893,13 +893,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all().order_by('-id')
     serializer_class = ContactSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class EnquiryViewSet(viewsets.ModelViewSet):
     queryset = Enquiry.objects.all().order_by('-created_at', '-id')
     serializer_class = EnquirySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -1076,7 +1076,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
 class OpportunityViewSet(viewsets.ModelViewSet):
     queryset = Opportunity.objects.all().order_by('-created_at', '-id')
     serializer_class = OpportunitySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -1094,7 +1094,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
 class FollowUpViewSet(viewsets.ModelViewSet):
     queryset = FollowUp.objects.all().order_by('-created_at', '-id')
     serializer_class = FollowUpSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -1145,7 +1145,7 @@ class FollowUpViewSet(viewsets.ModelViewSet):
 class SiteVisitViewSet(viewsets.ModelViewSet):
     queryset = SiteVisit.objects.all().order_by('-created_at', '-id')
     serializer_class = SiteVisitSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -1207,7 +1207,7 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
 class ExhibitionViewSet(viewsets.ModelViewSet):
     queryset = Exhibition.objects.all().order_by('-created_at', '-id')
     serializer_class = ExhibitionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -1251,7 +1251,7 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
 class QuotationViewSet(viewsets.ModelViewSet):
     queryset = Quotation.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import threading
@@ -2130,7 +2130,7 @@ Web: www.umatechnofab.com
 class CustomerPOViewSet(viewsets.ModelViewSet):
     queryset = CustomerPO.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerPOSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
@@ -2233,7 +2233,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
 class SalesOrderViewSet(viewsets.ModelViewSet):
     queryset = SalesOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = SalesOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
@@ -2326,5 +2326,5 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
 class ActivityViewSet(viewsets.ModelViewSet):
     queryset = Activity.objects.all().order_by('-created_at')
     serializer_class = ActivitySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 

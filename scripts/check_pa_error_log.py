@@ -1,7 +1,8 @@
+import os
 import requests
 
 usernames = ['erpuma', 'umaERP']
-passwords = ['AAaa@123456@']
+passwords = [os.environ.get('PA_PASSWORD', '')]
 
 for user in usernames:
     session = requests.Session()
@@ -10,7 +11,7 @@ for user in usernames:
     csrf = session.cookies.get('csrftoken')
     login_data = {
         'auth-username': user,
-        'auth-password': 'AAaa@123456@',
+        'auth-password': os.environ.get('PA_PASSWORD', ''),
         'login_view-current_step': 'auth',
         'csrfmiddlewaretoken': csrf
     }

@@ -34,7 +34,7 @@ from .version_diff import compute_version_diff
 
 
 class CompanySettingView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         setting = CompanySetting.objects.first()
@@ -96,7 +96,7 @@ class CompanySettingView(APIView):
 class NumberingSettingViewSet(viewsets.ModelViewSet):
     queryset = NumberingSetting.objects.all().order_by('-id')
     serializer_class = NumberingSettingSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     @action(detail=False, methods=['get', 'post'], url_path='next-number')
     def next_number(self, request):
@@ -135,7 +135,7 @@ class NumberingSettingViewSet(viewsets.ModelViewSet):
 class AuditLogViewSet(viewsets.ModelViewSet):
     queryset = AuditLog.objects.all().order_by('-timestamp')
     serializer_class = AuditLogSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         try:
@@ -182,7 +182,7 @@ class AuditLogViewSet(viewsets.ModelViewSet):
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all().order_by('-timestamp')
     serializer_class = NotificationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -210,7 +210,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
 class BugTicketViewSet(viewsets.ModelViewSet):
     queryset = BugTicket.objects.all().order_by('-created_at')
     serializer_class = BugTicketSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -240,7 +240,7 @@ class BugTicketViewSet(viewsets.ModelViewSet):
 class BackupRecordViewSet(viewsets.ModelViewSet):
     queryset = BackupRecord.objects.all().order_by('-created_at')
     serializer_class = BackupRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -266,7 +266,7 @@ class BackupRecordViewSet(viewsets.ModelViewSet):
 class DataImportLogViewSet(viewsets.ModelViewSet):
     queryset = DataImportLog.objects.all().order_by('-created_at')
     serializer_class = DataImportLogSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -292,13 +292,13 @@ class DataImportLogViewSet(viewsets.ModelViewSet):
 class SecurityCheckRecordViewSet(viewsets.ModelViewSet):
     queryset = SecurityCheckRecord.objects.all().order_by('-created_at')
     serializer_class = SecurityCheckRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class GoLiveChecklistItemViewSet(viewsets.ModelViewSet):
     queryset = GoLiveChecklistItem.objects.all().order_by('module_name')
     serializer_class = GoLiveChecklistItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class RecordVersionViewSet(viewsets.ModelViewSet):
@@ -307,7 +307,7 @@ class RecordVersionViewSet(viewsets.ModelViewSet):
     """
     queryset = RecordVersion.objects.all().order_by('-version_index', '-created_at')
     serializer_class = RecordVersionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -381,7 +381,7 @@ class FieldAuditHistoryViewSet(viewsets.ModelViewSet):
     """
     queryset = FieldAuditHistory.objects.all().order_by('-changed_at')
     serializer_class = FieldAuditHistorySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         qs = super().get_queryset()

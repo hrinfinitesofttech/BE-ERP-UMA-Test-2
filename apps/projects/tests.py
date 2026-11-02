@@ -8,6 +8,8 @@ from apps.designer.models import DesignJob, BOMHeader
 class Phase3ProjectDesignTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
         call_command('seed_phase1')
         call_command('seed_phase2')
         call_command('seed_phase3')

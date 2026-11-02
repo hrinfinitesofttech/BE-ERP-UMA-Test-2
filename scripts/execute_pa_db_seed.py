@@ -1,7 +1,8 @@
+import os
 import requests
 import time
 
-API_TOKEN = 'e023a655a10e258afcd2b8ff184bdc339fd4c30a'
+API_TOKEN = os.environ.get('PA_API_TOKEN', '')
 USERNAME = 'erpUMA'
 DOMAIN = 'erpUMA.pythonanywhere.com'
 BASE_URL = f'https://www.pythonanywhere.com/api/v0/user/{USERNAME}'

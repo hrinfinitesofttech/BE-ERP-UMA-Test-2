@@ -9,6 +9,8 @@ from apps.hr.models import Designation, LeaveRequest, PayrollRecord
 class ProductionMaintenanceHRTests(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
 
     def test_production_jobs_list(self):
         res = self.client.get('/api/manufacturing-jobs/')
@@ -103,7 +105,7 @@ class ProductionMaintenanceHRTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         leave.refresh_from_db()
         self.assertEqual(leave.status, 'Approved')
-        self.assertEqual(leave.approved_by, 'HR Lead')
+        self.assertEqual(leave.approved_by, 'api_test_user')  # approver is the authenticated user, not a client-supplied name
 
     def test_dispatch_order_lifecycle(self):
         # 1. Create a dispatch order

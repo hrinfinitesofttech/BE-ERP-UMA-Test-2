@@ -23,9 +23,9 @@ from pathlib import Path
 
 # Configuration defaults (can be overridden via environment variables)
 PA_USERNAME = os.environ.get('PA_USERNAME', 'erpUMA')
-PA_API_TOKEN = os.environ.get('PA_API_TOKEN', 'e023a655a10e258afcd2b8ff184bdc339fd4c30a')
+PA_API_TOKEN = os.environ.get('PA_API_TOKEN', '')
 PA_DOMAIN = os.environ.get('PA_DOMAIN', 'erpuma.pythonanywhere.com')
-DEPLOY_SECRET = os.environ.get('DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
+DEPLOY_SECRET = os.environ.get('DEPLOY_SECRET_KEY', '')
 GITHUB_REPO = os.environ.get('GITHUB_REPO', 'hrinfinitesofttech/BE-ERP-UMA-Test-2')
 BRANCH = os.environ.get('DEPLOY_BRANCH', 'main')
 

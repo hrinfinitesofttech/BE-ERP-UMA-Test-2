@@ -1,7 +1,8 @@
+import os
 import requests
 import time
 
-API_TOKEN = 'e023a655a10e258afcd2b8ff184bdc339fd4c30a'
+API_TOKEN = os.environ.get('PA_API_TOKEN', '')
 USERNAME = 'erpUMA'
 HEADERS = {'Authorization': f'Token {API_TOKEN}'}
 

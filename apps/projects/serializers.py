@@ -524,7 +524,7 @@ class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.Mode
             data['start_date'] = data.get('start_date') or now_date
             data['target_delivery_date'] = data.get('target_delivery_date') or now_date
             data['current_status'] = data.get('current_status') or 'planning'
-            data['project_manager_name'] = data.get('project_manager_name') or 'Bhavin Shah'
+            data['project_manager_name'] = data.get('project_manager_name') or ''
 
         lr = data.get('linked_records') or {}
         if not isinstance(lr, dict):
@@ -563,8 +563,8 @@ class ProjectJobMasterSerializer(UniversalModelSerializerMixin, serializers.Mode
             'currentStatus': ret.get('current_status', 'planning'),
             'status': ret.get('current_status', 'planning'),
             'progressPercent': ret.get('progress_percent', 0),
-            'projectManager': ret.get('project_manager_name', 'Bhavin Shah'),
-            'projectManagerName': ret.get('project_manager_name', 'Bhavin Shah'),
+            'projectManager': ret.get('project_manager_name', ''),
+            'projectManagerName': ret.get('project_manager_name', ''),
             'isPlanningSaved': is_plan_saved,
             'is_planning_saved': is_plan_saved,
             'createdAt': instance.created_at.isoformat() if getattr(instance, 'created_at', None) else (ret.get('created_at') or ''),

@@ -8,12 +8,44 @@ from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-_tw-q!k8uoy6r-pwiw4q$cb0v^#nxk2s!n0w*azzy7jbvlqs6c')
-DEPLOY_SECRET_KEY = os.environ.get('DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
+def _load_secret_key():
+    """
+    SECRET_KEY comes from the DJANGO_SECRET_KEY env var. If it is not set, a random key is
+    generated once and stored in an untracked file next to manage.py, so no secret lives in git.
+    """
+    env_key = os.environ.get('DJANGO_SECRET_KEY')
+    if env_key:
+        return env_key
+    key_file = BASE_DIR / '.django_secret_key'
+    try:
+        if key_file.exists():
+            stored = key_file.read_text().strip()
+            if stored:
+                return stored
+        from django.core.management.utils import get_random_secret_key
+        new_key = get_random_secret_key()
+        key_file.write_text(new_key)
+        return new_key
+    except OSError:
+        from django.core.management.utils import get_random_secret_key
+        return get_random_secret_key()
 
-DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = _load_secret_key()
+
+# Deploy / maintenance webhooks are DISABLED unless this is set in the environment.
+DEPLOY_SECRET_KEY = os.environ.get('DEPLOY_SECRET_KEY', '')
+# Destructive factory-reset endpoint stays off unless explicitly enabled.
+ALLOW_CLEAR_ALL_DATA = os.environ.get('ALLOW_CLEAR_ALL_DATA', '').lower() in ('1', 'true')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', '').lower() in ('1', 'true')
+
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get(
+        'DJANGO_ALLOWED_HOSTS',
+        'erpuma.pythonanywhere.com,localhost,127.0.0.1,testserver'
+    ).split(',') if h.strip()
+]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://erpuma.pythonanywhere.com',
@@ -429,7 +461,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ),
 }
 
@@ -448,9 +480,9 @@ EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() in ('true', '1')
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'hrinfinitesofttech@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'iffnmkqsdnvisoje')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'UMA TECHNO FAB <hrinfinitesofttech@gmail.com>')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'UMA TECHNO FAB <' + (os.environ.get('EMAIL_HOST_USER', '') or 'noreply@umatechnofab.com') + '>')
 EMAIL_TIMEOUT = 20
 
 

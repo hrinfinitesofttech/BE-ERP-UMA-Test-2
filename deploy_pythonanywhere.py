@@ -5,7 +5,7 @@ import re
 import json
 
 USERNAME = 'umaERP'
-PASSWORD = 'AAaa@123456@'
+PASSWORD = os.environ.get('PA_PASSWORD', '')
 DOMAIN = 'umaERP.pythonanywhere.com'
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'

@@ -7,7 +7,7 @@ import zipfile
 import io
 
 USERNAME = 'umaERP'
-PASSWORD = 'AAaa@123456@'
+PASSWORD = os.environ.get('PA_PASSWORD', '')
 DOMAIN = 'umaERP.pythonanywhere.com'
 REMOTE_BASE = '/home/umaERP/BE-ERP-UMA'
 LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))

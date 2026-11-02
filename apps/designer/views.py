@@ -67,7 +67,7 @@ except Exception:
 class AssemblyDrawingViewSet(viewsets.ModelViewSet):
     queryset = AssemblyDrawing.objects.all().order_by('-created_at')
     serializer_class = AssemblyDrawingSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import uuid
@@ -132,7 +132,7 @@ class AssemblyDrawingViewSet(viewsets.ModelViewSet):
 class DesignJobViewSet(viewsets.ModelViewSet):
     queryset = DesignJob.objects.all().order_by('-created_at')
     serializer_class = DesignJobSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -202,8 +202,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 product_name=data.get('productName') or data.get('product_name') or 'Custom Equipment',
                 delivery_date=data.get('deliveryDate') or data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d'),
                 created_date=data.get('createdDate') or data.get('created_date') or datetime.now().strftime('%Y-%m-%d'),
-                assigned_designer=data.get('assignedDesigner') or data.get('assigned_designer') or 'Dharmesh Joshi',
-                design_manager=data.get('designManager') or data.get('design_manager') or 'Ketan Patel',
+                assigned_designer=data.get('assignedDesigner') or data.get('assigned_designer') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', '')),
+                design_manager=data.get('designManager') or data.get('design_manager') or '',
                 active_revision=data.get('activeRevision') or data.get('active_revision') or 'REV-00',
                 status=data.get('status', 'in_progress'),
                 remarks=data.get('remarks', ''),
@@ -291,8 +291,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 product_name=request.data.get('productName') or 'Custom Equipment',
                 delivery_date=request.data.get('deliveryDate') or datetime.now().strftime('%Y-%m-%d'),
                 created_date=request.data.get('createdDate') or datetime.now().strftime('%Y-%m-%d'),
-                assigned_designer=request.data.get('assignedDesigner') or 'Dharmesh Joshi',
-                design_manager=request.data.get('designManager') or 'Ketan Patel',
+                assigned_designer=request.data.get('assignedDesigner') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', '')),
+                design_manager=request.data.get('designManager') or '',
                 active_revision=request.data.get('activeRevision') or 'REV-00',
                 status='approved',
                 approved_by=approver,
@@ -367,8 +367,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 product_name=request.data.get('productName') or 'Custom Equipment',
                 delivery_date=request.data.get('deliveryDate') or datetime.now().strftime('%Y-%m-%d'),
                 created_date=request.data.get('createdDate') or datetime.now().strftime('%Y-%m-%d'),
-                assigned_designer=request.data.get('assignedDesigner') or 'Dharmesh Joshi',
-                design_manager=request.data.get('designManager') or 'Ketan Patel',
+                assigned_designer=request.data.get('assignedDesigner') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', '')),
+                design_manager=request.data.get('designManager') or '',
                 active_revision=request.data.get('activeRevision') or 'REV-00',
                 status='disapproved',
                 disapproved_by=disapprover,
@@ -431,8 +431,8 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                 quantity=int(request.data.get('quantity') or 1),
                 delivery_date=request.data.get('deliveryDate') or request.data.get('delivery_date') or datetime.now().strftime('%Y-%m-%d'),
                 created_date=request.data.get('createdDate') or request.data.get('created_date') or datetime.now().strftime('%Y-%m-%d'),
-                assigned_designer=request.data.get('assignedDesigner') or request.data.get('assigned_designer') or 'Dharmesh Joshi',
-                design_manager=request.data.get('designManager') or request.data.get('design_manager') or 'Ketan Patel',
+                assigned_designer=request.data.get('assignedDesigner') or request.data.get('assigned_designer') or (getattr(request.user, 'name', '') or getattr(request.user, 'username', '')),
+                design_manager=request.data.get('designManager') or request.data.get('design_manager') or '',
                 active_revision=request.data.get('activeRevision') or request.data.get('active_revision') or 'REV-00',
                 status='released_to_production',
                 approved_by=releaser,
@@ -534,7 +534,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
 class CustomerRequirementViewSet(viewsets.ModelViewSet):
     queryset = CustomerRequirement.objects.all().order_by('-created_at')
     serializer_class = CustomerRequirementSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -584,7 +584,7 @@ class CustomerRequirementViewSet(viewsets.ModelViewSet):
 class Drawing2DViewSet(viewsets.ModelViewSet):
     queryset = Drawing2D.objects.all().order_by('-created_at')
     serializer_class = Drawing2DSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import uuid
@@ -656,7 +656,7 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
 class Design3DModelViewSet(viewsets.ModelViewSet):
     queryset = Design3DModel.objects.all().order_by('-created_at')
     serializer_class = Design3DModelSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         import uuid
@@ -714,7 +714,7 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
 class BOMHeaderViewSet(viewsets.ModelViewSet):
     queryset = BOMHeader.objects.all().order_by('-created_at', '-id')
     serializer_class = BOMHeaderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return BOMHeader.objects.all().order_by('-created_at', '-id')
@@ -1038,13 +1038,13 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
 class DesignRevisionLogViewSet(viewsets.ModelViewSet):
     queryset = DesignRevisionLog.objects.all().order_by('-date')
     serializer_class = DesignRevisionLogSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
     queryset = TechnicalDocumentItem.objects.all().order_by('-created_at')
     serializer_class = TechnicalDocumentItemSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -1070,7 +1070,7 @@ class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
 class DesignTaskViewSet(viewsets.ModelViewSet):
     queryset = DesignTask.objects.all().order_by('-created_at')
     serializer_class = DesignTaskSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)

@@ -35,7 +35,7 @@ from .serializers import (
 class DesignationViewSet(viewsets.ModelViewSet):
     queryset = Designation.objects.all().order_by('-id')
     serializer_class = DesignationSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['designation_code', 'designation_name', 'department']
     filterset_fields = ['status', 'department']
 
@@ -43,7 +43,7 @@ class DesignationViewSet(viewsets.ModelViewSet):
 class EmployeeDocumentViewSet(viewsets.ModelViewSet):
     queryset = EmployeeDocument.objects.all().order_by('-id')
     serializer_class = EmployeeDocumentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'document_type', 'document_number']
     filterset_fields = ['verification_status', 'employee_id']
 
@@ -51,7 +51,7 @@ class EmployeeDocumentViewSet(viewsets.ModelViewSet):
 class ShiftMasterViewSet(viewsets.ModelViewSet):
     queryset = ShiftMaster.objects.all().order_by('-id')
     serializer_class = ShiftMasterSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['shift_name']
     filterset_fields = ['status']
 
@@ -614,7 +614,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 class WFHRequestViewSet(viewsets.ModelViewSet):
     queryset = WFHRequest.objects.all().order_by('-id')
     serializer_class = WFHRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['wfh_number', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
@@ -767,7 +767,7 @@ class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
 class OvertimeRecordViewSet(viewsets.ModelViewSet):
     queryset = OvertimeRecord.objects.all().order_by('-id')
     serializer_class = OvertimeRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['overtime_no', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
@@ -790,7 +790,7 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
 class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
     queryset = EarlyCheckoutRequest.objects.all().order_by('-id')
     serializer_class = EarlyCheckoutRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['request_number', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
@@ -812,7 +812,7 @@ class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
 class SalaryComponentViewSet(viewsets.ModelViewSet):
     queryset = SalaryComponent.objects.all().order_by('-id')
     serializer_class = SalaryComponentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['component_code', 'component_name']
     filterset_fields = ['status', 'component_type']
 
@@ -820,7 +820,7 @@ class SalaryComponentViewSet(viewsets.ModelViewSet):
 class SalaryStructureViewSet(viewsets.ModelViewSet):
     queryset = SalaryStructure.objects.all().order_by('-id')
     serializer_class = SalaryStructureSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['structure_name', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
@@ -828,7 +828,7 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
 class PayrollRecordViewSet(viewsets.ModelViewSet):
     queryset = PayrollRecord.objects.all().order_by('-id')
     serializer_class = PayrollRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['payroll_number', 'employee_name', 'department', 'month_year']
     filterset_fields = ['status', 'month_year', 'financial_year', 'employee_id']
 
@@ -892,7 +892,7 @@ class PayrollRecordViewSet(viewsets.ModelViewSet):
 class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
     queryset = EmployeeAdvanceLoan.objects.all().order_by('-id')
     serializer_class = EmployeeAdvanceLoanSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['loan_number', 'employee_name', 'department']
     filterset_fields = ['status', 'employee_id']
 
@@ -900,7 +900,7 @@ class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
 class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
     queryset = ReimbursementExpense.objects.all().order_by('-id')
     serializer_class = ReimbursementExpenseSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['reimbursement_no', 'employee_name', 'category']
     filterset_fields = ['status', 'employee_id']
 
@@ -908,7 +908,7 @@ class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
 class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
     queryset = EmployeeOnboarding.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeOnboardingSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['candidate_name', 'email', 'mobile', 'department', 'designation']
     filterset_fields = ['status', 'department']
 
@@ -923,7 +923,7 @@ class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
 class EmployeeTransferViewSet(viewsets.ModelViewSet):
     queryset = EmployeeTransfer.objects.all().order_by('-id')
     serializer_class = EmployeeTransferSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'from_department', 'to_department']
     filterset_fields = ['status']
 
@@ -931,7 +931,7 @@ class EmployeeTransferViewSet(viewsets.ModelViewSet):
 class EmployeePromotionViewSet(viewsets.ModelViewSet):
     queryset = EmployeePromotion.objects.all().order_by('-id')
     serializer_class = EmployeePromotionSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'old_designation', 'new_designation']
     filterset_fields = ['status']
 
@@ -939,7 +939,7 @@ class EmployeePromotionViewSet(viewsets.ModelViewSet):
 class EmployeeExitViewSet(viewsets.ModelViewSet):
     queryset = EmployeeExit.objects.all().order_by('-id')
     serializer_class = EmployeeExitSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['employee_name', 'department', 'designation']
     filterset_fields = ['status']
 
@@ -947,7 +947,7 @@ class EmployeeExitViewSet(viewsets.ModelViewSet):
 class HolidayViewSet(viewsets.ModelViewSet):
     queryset = Holiday.objects.all().order_by('-created_at', '-id')
     serializer_class = HolidaySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['holiday_name', 'holiday_type', 'financial_year']
     filterset_fields = ['holiday_type', 'financial_year', 'is_optional']
 
@@ -962,7 +962,7 @@ class HolidayViewSet(viewsets.ModelViewSet):
 class EmployeeAppraisalViewSet(viewsets.ModelViewSet):
     queryset = EmployeeAppraisal.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeAppraisalSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['appraisal_number', 'employee_id', 'employee_name', 'department', 'cycle_period']
     filterset_fields = ['status', 'department', 'cycle_period', 'employee_id']
 

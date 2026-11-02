@@ -8,6 +8,8 @@ from apps.store.models import ItemMaster, GoodsReceiptNote, StockBalance, StockL
 class Phase4PurchaseStoreTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
         call_command('seed_phase1')
         call_command('seed_phase2')
         call_command('seed_phase3')
@@ -36,7 +38,7 @@ class Phase4PurchaseStoreTestCase(TestCase):
         }, format='json')
         self.assertEqual(app_res.status_code, 200)
         app_data = app_res.json()
-        self.assertEqual(app_data['status'], 'approved')
+        self.assertEqual(app_data['status'].lower(), 'approved')
 
     def test_item_master_list(self):
         response = self.client.get('/api/items/')

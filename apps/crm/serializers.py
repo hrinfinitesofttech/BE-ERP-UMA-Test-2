@@ -642,7 +642,7 @@ class EnquirySerializer(UniversalModelSerializerMixin, serializers.ModelSerializ
         rep['remarks'] = instance.remarks or ''
         rep['expectedDelivery'] = str(instance.expected_delivery) if instance.expected_delivery else ''
         rep['assignedPersonId'] = instance.assigned_person_id or ''
-        rep['assignedPersonName'] = instance.assigned_person_name or 'Pravin Patel'
+        rep['assignedPersonName'] = instance.assigned_person_name or ''
         rep['status'] = instance.status or 'new'
         rep['quotationId'] = instance.quotation_id or ''
         return rep

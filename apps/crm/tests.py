@@ -7,6 +7,8 @@ from apps.crm.models import Lead, Customer, Quotation, CustomerPO, SalesOrder
 class Phase2CrmApiTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
+        from django.contrib.auth import get_user_model
+        self.client.force_authenticate(user=get_user_model().objects.create_superuser(username="api_test_user", password="Test@12345"))
         call_command('seed_phase1')
         call_command('seed_phase2')
 

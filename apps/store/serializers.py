@@ -568,7 +568,7 @@ class MaterialReturnSerializer(serializers.ModelSerializer):
         data['workOrderNumber'] = getattr(instance, 'work_order_number', '') or ''
         data['materialIssueNumber'] = getattr(instance, 'material_issue_number', '') or ''
         data['returnedBy'] = instance.returned_by
-        data['receivedBy'] = getattr(instance, 'received_by', 'Hitesh Rawal (Store Head)')
+        data['receivedBy'] = getattr(instance, 'received_by', '')
         data['warehouseId'] = instance.warehouse_id
         data['warehouseName'] = getattr(instance, 'warehouse_name', 'Main Raw Material Warehouse')
         data['totalReturnValue'] = getattr(instance, 'total_return_value', 0)

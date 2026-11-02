@@ -20,7 +20,7 @@ from .serializers import (
 class InternalAssetViewSet(viewsets.ModelViewSet):
     queryset = InternalAsset.objects.all().order_by('-id')
     serializer_class = InternalAssetSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['asset_code', 'asset_name', 'model', 'manufacturer', 'serial_number']
     filterset_fields = ['status', 'asset_type', 'department', 'criticality']
 
@@ -28,7 +28,7 @@ class InternalAssetViewSet(viewsets.ModelViewSet):
 class CustomerMachineViewSet(viewsets.ModelViewSet):
     queryset = CustomerMachine.objects.all().order_by('-id')
     serializer_class = CustomerMachineSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['customer_machine_id', 'machine_name', 'customer_name', 'serial_number']
     filterset_fields = ['status', 'customer_id', 'job_id']
 
@@ -36,7 +36,7 @@ class CustomerMachineViewSet(viewsets.ModelViewSet):
 class ServiceRequestViewSet(viewsets.ModelViewSet):
     queryset = ServiceRequest.objects.all().order_by('-request_date', '-id')
     serializer_class = ServiceRequestSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['request_number', 'customer_name', 'machine_name', 'serial_number', 'applicant_name', 'contact_number', 'completed_by', 'approved_by']
     filterset_fields = ['status', 'priority', 'customer_id', 'request_type', 'urgency_level']
 
@@ -75,7 +75,7 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
 class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
     queryset = PreventiveMaintenancePlan.objects.all().order_by('-id')
     serializer_class = PreventiveMaintenancePlanSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['plan_number', 'asset_name', 'customer_name']
     filterset_fields = ['status', 'frequency', 'asset_id']
 
@@ -83,7 +83,7 @@ class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
 class BreakdownRecordViewSet(viewsets.ModelViewSet):
     queryset = BreakdownRecord.objects.all().order_by('-breakdown_date', '-id')
     serializer_class = BreakdownRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['breakdown_number', 'asset_name', 'customer_name', 'serial_number']
     filterset_fields = ['status', 'severity', 'asset_type']
 
@@ -98,7 +98,7 @@ class BreakdownRecordViewSet(viewsets.ModelViewSet):
 class ServiceVisitViewSet(viewsets.ModelViewSet):
     queryset = ServiceVisit.objects.all().order_by('-visit_date', '-id')
     serializer_class = ServiceVisitSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['visit_number', 'customer_name', 'machine_name', 'technician_name']
     filterset_fields = ['status', 'customer_id', 'service_request_id']
 
@@ -106,7 +106,7 @@ class ServiceVisitViewSet(viewsets.ModelViewSet):
 class AMCContractViewSet(viewsets.ModelViewSet):
     queryset = AMCContract.objects.all().order_by('-id')
     serializer_class = AMCContractSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['amc_number', 'customer_name', 'machine_name', 'serial_number']
     filterset_fields = ['status', 'customer_id']
 
@@ -125,7 +125,7 @@ class AMCContractViewSet(viewsets.ModelViewSet):
 class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
     queryset = ServiceWorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceWorkOrderSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['work_order_number', 'customer_name', 'machine_name', 'technician_name']
     filterset_fields = ['status', 'customer_id', 'service_request_id']
 
@@ -133,7 +133,7 @@ class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
 class ServicePartIssueViewSet(viewsets.ModelViewSet):
     queryset = ServicePartIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartIssueSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['issue_number', 'customer_name', 'work_order_number', 'technician_name']
     filterset_fields = ['status', 'technician_id', 'work_order_number']
 
@@ -141,7 +141,7 @@ class ServicePartIssueViewSet(viewsets.ModelViewSet):
 class ServicePartReturnViewSet(viewsets.ModelViewSet):
     queryset = ServicePartReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartReturnSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['return_number', 'work_order_number', 'original_issue_number', 'returned_by']
     filterset_fields = ['status', 'work_order_number']
 
@@ -149,7 +149,7 @@ class ServicePartReturnViewSet(viewsets.ModelViewSet):
 class ServiceReportViewSet(viewsets.ModelViewSet):
     queryset = ServiceReport.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceReportSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['report_number', 'customer_name', 'machine_name', 'technician_name', 'serial_number']
     filterset_fields = ['machine_status', 'customer_id', 'service_request_id']
 
@@ -157,7 +157,7 @@ class ServiceReportViewSet(viewsets.ModelViewSet):
 class WarrantyRecordViewSet(viewsets.ModelViewSet):
     queryset = WarrantyRecord.objects.all().order_by('-id')
     serializer_class = WarrantyRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['serial_number', 'customer_name', 'machine_name']
     filterset_fields = ['status', 'customer_id']
 
@@ -165,7 +165,7 @@ class WarrantyRecordViewSet(viewsets.ModelViewSet):
 class ServiceContractViewSet(viewsets.ModelViewSet):
     queryset = ServiceContract.objects.all().order_by('-id')
     serializer_class = ServiceContractSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['contract_number', 'customer_name', 'machine_name']
     filterset_fields = ['status', 'contract_type']
 
@@ -173,6 +173,6 @@ class ServiceContractViewSet(viewsets.ModelViewSet):
 class DowntimeRecordViewSet(viewsets.ModelViewSet):
     queryset = DowntimeRecord.objects.all().order_by('-start_time', '-id')
     serializer_class = DowntimeRecordSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     search_fields = ['downtime_number', 'asset_name', 'technician_name']
     filterset_fields = ['status', 'category', 'asset_id']

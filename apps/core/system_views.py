@@ -1,5 +1,6 @@
 import os
 import sys
+import hmac
 import json
 import subprocess
 from datetime import datetime, timezone
@@ -126,13 +127,13 @@ class SystemDeployView(View):
     """
     def post(self, request, *args, **kwargs):
         # 1. Security Authorization Check
-        expected_token = getattr(settings, 'DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
+        expected_token = getattr(settings, 'DEPLOY_SECRET_KEY', '')
         received_token = (
             request.headers.get('X-Deploy-Token')
             or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
         )
 
-        if not received_token or received_token != expected_token:
+        if not expected_token or not received_token or not hmac.compare_digest(received_token, expected_token):
             return JsonResponse({
                 "status": "FORBIDDEN",
                 "error": "Invalid or missing deployment authorization token."
@@ -297,13 +298,15 @@ class SystemClearDataView(View):
     POs, Store stock, Work Orders, Invoices, Service Requests, etc.) down to 0.
     """
     def post(self, request, *args, **kwargs):
-        expected_token = getattr(settings, 'DEPLOY_SECRET_KEY', 'uma-erp-deploy-key-2026-secure-sync')
+        if not getattr(settings, 'ALLOW_CLEAR_ALL_DATA', False):
+            return JsonResponse({"status": "DISABLED", "error": "Factory reset is disabled on this server."}, status=403)
+        expected_token = getattr(settings, 'DEPLOY_SECRET_KEY', '')
         received_token = (
             request.headers.get('X-Deploy-Token')
             or request.headers.get('Authorization', '').replace('Bearer ', '').strip()
         )
 
-        if not received_token or received_token != expected_token:
+        if not expected_token or not received_token or not hmac.compare_digest(received_token, expected_token):
             return JsonResponse({
                 "status": "FORBIDDEN",
                 "error": "Invalid or missing authorization token for clearing data."
