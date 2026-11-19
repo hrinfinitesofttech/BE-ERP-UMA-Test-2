@@ -125,6 +125,193 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=False, methods=['post'], url_path='import-excel')
+    def import_excel(self, request):
+        """
+        Batch imports items, categories, UOMs, and opening stock balances from an uploaded Excel (.xlsx/.xls) or CSV file,
+        or from a JSON array of items.
+        """
+        import re
+        import openpyxl
+
+        uploaded_file = request.FILES.get('file')
+        raw_items_json = request.data.get('items')
+
+        rows_to_process = []
+
+        if uploaded_file:
+            fname = uploaded_file.name.lower()
+            if fname.endswith(('.xlsx', '.xlsm', '.xltx')):
+                wb = openpyxl.load_workbook(uploaded_file, data_only=True)
+                ws = wb.active
+                for r in ws.iter_rows(values_only=True):
+                    if r and any(r):
+                        rows_to_process.append([str(c if c is not None else '').strip() for c in r])
+            elif fname.endswith('.csv'):
+                import csv
+                decoded_file = uploaded_file.read().decode('utf-8', errors='ignore').splitlines()
+                reader = csv.reader(decoded_file)
+                for r in reader:
+                    if r and any(r):
+                        rows_to_process.append([str(c if c is not None else '').strip() for c in r])
+            else:
+                return Response({'error': 'Unsupported file format. Please upload .xlsx or .csv'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Header detection and row parsing
+        items_to_save = []
+        if rows_to_process:
+            first_row = [c.lower() for c in rows_to_process[0]]
+            has_header = any('code' in c or 'name' in c or 'item' in c or 'particular' in c for c in first_row)
+            start_idx = 1 if has_header else 0
+
+            code_col = 0
+            name_col = 1
+            cat_col = 2
+            uom_col = 3
+            qty_col = 4
+            cost_col = 5
+
+            if has_header:
+                for idx, col_name in enumerate(first_row):
+                    if 'code' in col_name: code_col = idx
+                    elif 'name' in col_name or 'particular' in col_name or 'material' in col_name: name_col = idx
+                    elif 'cat' in col_name: cat_col = idx
+                    elif 'uom' in col_name or 'unit' in col_name: uom_col = idx
+                    elif 'qty' in col_name or 'stock' in col_name or 'quantity' in col_name: qty_col = idx
+                    elif 'cost' in col_name or 'rate' in col_name or 'price' in col_name: cost_col = idx
+
+            for r in rows_to_process[start_idx:]:
+                if not any(r): continue
+                c_name = r[name_col] if name_col < len(r) else ''
+                if not c_name or c_name.lower() in ['particulars', 'quantity', 'total', 'nan']:
+                    continue
+
+                c_code = r[code_col] if code_col < len(r) else ''
+                c_cat = r[cat_col] if cat_col < len(r) else ''
+                c_uom = r[uom_col] if uom_col < len(r) else ''
+                c_qty = r[qty_col] if qty_col < len(r) else '0'
+                c_cost = r[cost_col] if cost_col < len(r) else '0'
+
+                items_to_save.append({
+                    'item_code': c_code,
+                    'item_name': c_name,
+                    'category': c_cat or 'General',
+                    'uom': c_uom or 'NOS',
+                    'quantity': c_qty,
+                    'unit_cost': c_cost
+                })
+        elif isinstance(raw_items_json, list):
+            items_to_save = raw_items_json
+
+        if not items_to_save:
+            return Response({'error': 'No valid item rows found in the uploaded file.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        imported_count = 0
+        updated_count = 0
+
+        for idx, it in enumerate(items_to_save):
+            raw_name = str(it.get('item_name') or it.get('itemName') or it.get('name') or '').strip()
+            raw_name = re.sub(r'_x000D_', '', raw_name)
+            raw_name = re.sub(r'[\r\n\t]+', ' ', raw_name).strip()
+            if not raw_name: continue
+
+            raw_cat = str(it.get('category') or it.get('categoryName') or 'General Materials').strip()
+            raw_cat = re.sub(r'[\r\n\t]+', ' ', raw_cat).strip()
+
+            raw_uom = str(it.get('uom') or it.get('uomCode') or it.get('unit') or 'NOS').strip().upper()
+            if not raw_uom or raw_uom == 'NAN': raw_uom = 'NOS'
+
+            raw_code = str(it.get('item_code') or it.get('itemCode') or it.get('code') or '').strip()
+            if not raw_code or raw_code == 'NAN':
+                slug = re.sub(r'[^A-Z0-9]', '', raw_name.upper())[:12]
+                raw_code = f"ITM-{slug}-{idx+1:04d}"
+
+            # Ensure UOM exists
+            if not UOMMaster.objects.filter(code=raw_uom).exists():
+                UOMMaster.objects.create(
+                    id=f"UOM-{raw_uom}",
+                    code=raw_uom,
+                    name=raw_uom,
+                    description=f"Unit of measurement: {raw_uom}"
+                )
+
+            # Ensure Category exists
+            cat_code = re.sub(r'[^A-Z0-9]', '', raw_cat.upper())[:16] or 'GEN'
+            if not ItemCategory.objects.filter(name=raw_cat).exists() and not ItemCategory.objects.filter(code=cat_code).exists():
+                ItemCategory.objects.create(
+                    id=f"CAT-{cat_code}",
+                    code=cat_code,
+                    name=raw_cat,
+                    description=f"Category for {raw_cat}"
+                )
+
+            qty = 0.0
+            try:
+                qty = float(str(it.get('quantity') or it.get('stock') or 0).replace(',', '').strip())
+            except Exception:
+                qty = 0.0
+
+            cost = 0.0
+            try:
+                cost = float(str(it.get('unit_cost') or it.get('rate') or it.get('cost') or 0).replace(',', '').strip())
+            except Exception:
+                cost = 0.0
+
+            item, created = ItemMaster.objects.update_or_create(
+                item_code=raw_code,
+                defaults={
+                    'id': f"ITM-{raw_code}",
+                    'item_name': raw_name,
+                    'category': raw_cat,
+                    'uom': raw_uom,
+                    'unit_cost': cost,
+                    'status': 'Active'
+                }
+            )
+
+            StockBalance.objects.update_or_create(
+                id=f"STK-{raw_code}",
+                defaults={
+                    'item_id': item.id,
+                    'item_code': raw_code,
+                    'item_name': raw_name,
+                    'category': raw_cat,
+                    'uom': raw_uom,
+                    'warehouse_id': 'wh-main',
+                    'warehouse_name': 'Main Raw Material Warehouse',
+                    'quantity': qty,
+                    'available_quantity': qty,
+                    'unit_rate': cost,
+                    'total_value': round(qty * cost, 2)
+                }
+            )
+
+            if created:
+                imported_count += 1
+            else:
+                updated_count += 1
+
+        return Response({
+            'success': True,
+            'imported_count': imported_count,
+            'updated_count': updated_count,
+            'total_processed': imported_count + updated_count,
+            'message': f"Successfully processed {imported_count + updated_count} items ({imported_count} new imported, {updated_count} updated)!"
+        })
+
+    @action(detail=False, methods=['get'], url_path='download-template')
+    def download_template(self, request):
+        import csv
+        from django.http import HttpResponse
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="store_items_template.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Item Code', 'Item Name', 'Category', 'UOM', 'Opening Stock', 'Unit Cost', 'Minimum Stock'])
+        writer.writerow(['ALN-M10-20', 'ALN 02- M10 x 20 Allencap Screw', 'Allen Cap Screws', 'NOS', '128', '15.0', '20'])
+        writer.writerow(['BRG-6205', 'BRG - 6205 Skf Bearing', 'Bearings & Housings', 'NOS', '5', '350.0', '2'])
+        writer.writerow(['PLT-SS304-10', '10MM SS 304 Plate', 'SS 304 Plates', 'KG', '27.72', '240.0', '50'])
+        return response
+
 
 class WarehouseViewSet(viewsets.ModelViewSet):
     queryset = Warehouse.objects.all().order_by('-id')
