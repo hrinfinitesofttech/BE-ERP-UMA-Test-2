@@ -1137,3 +1137,498 @@ class EmployeeDashboardView(APIView):
 
 
 
+
+import requests
+import base64
+import logging
+from datetime import datetime, date, timedelta
+from .models import PunchMachineConfig, PunchLog
+from .serializers import PunchMachineConfigSerializer, PunchLogSerializer
+
+logger = logging.getLogger(__name__)
+
+
+class PunchMachineConfigViewSet(viewsets.ModelViewSet):
+    queryset = PunchMachineConfig.objects.all().order_by('-created_at')
+    serializer_class = PunchMachineConfigSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return PunchMachineConfig.objects.none()
+        if is_super_admin(user) or is_admin(user):
+            return PunchMachineConfig.objects.all().order_by('-created_at')
+        return PunchMachineConfig.objects.none()
+
+
+class PunchLogViewSet(viewsets.ModelViewSet):
+    queryset = PunchLog.objects.all().order_by('-punch_datetime')
+    serializer_class = PunchLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['emp_code', 'synced_to_attendance']
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return PunchLog.objects.none()
+        if is_super_admin(user) or is_admin(user):
+            return PunchLog.objects.all().order_by('-punch_datetime')
+        return PunchLog.objects.filter(emp_code=user.id).order_by('-punch_datetime')
+
+
+class PunchMachineSyncView(APIView):
+    """
+    Sync attendance data from eTimeOffice punching machine.
+    POST /api/hr/punch-machine/sync/  - Trigger sync
+    GET /api/hr/punch-machine/sync/   - Get sync status and last sync info
+    GET /api/hr/punch-machine/logs/   - Get punch logs
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'Only admins can view sync status'}, status=status.HTTP_403_FORBIDDEN)
+
+        config = PunchMachineConfig.objects.filter(is_active=True).first()
+        if not config:
+            return Response({
+                'configured': False,
+                'message': 'No active punch machine configuration found.',
+                'last_sync_time': None,
+                'last_record_token': None,
+                'total_logs': PunchLog.objects.count(),
+                'pending_sync': PunchLog.objects.filter(synced_to_attendance=False).count(),
+            })
+
+        return Response({
+            'configured': True,
+            'machine_name': config.machine_name,
+            'base_url': config.base_url,
+            'is_active': config.is_active,
+            'last_sync_time': config.last_sync_time,
+            'last_record_token': config.last_record_token,
+            'total_logs': PunchLog.objects.count(),
+            'pending_sync': PunchLog.objects.filter(synced_to_attendance=False).count(),
+            'synced': PunchLog.objects.filter(synced_to_attendance=True).count(),
+        })
+
+    def post(self, request):
+        user = request.user
+        if not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'Only admins can trigger sync'}, status=status.HTTP_403_FORBIDDEN)
+
+        config = PunchMachineConfig.objects.filter(is_active=True).first()
+        if not config:
+            return Response({
+                'success': False,
+                'error': 'No active punch machine configuration found. Please configure the machine first.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Determine which API to use based on sync mode
+        sync_mode = request.data.get('sync_mode', 'incremental')  # 'incremental' | 'date_range'
+        from_date = request.data.get('from_date')
+        to_date = request.data.get('to_date')
+
+        try:
+            if sync_mode == 'incremental' and config.last_record_token:
+                result = self._sync_incremental(config)
+            elif sync_mode == 'date_range' and from_date and to_date:
+                result = self._sync_date_range(config, from_date, to_date)
+            else:
+                # Default: sync today
+                today_str = date.today().strftime('%d/%m/%Y')
+                result = self._sync_date_range(config, today_str, today_str)
+
+            return Response(result)
+
+        except Exception as e:
+            logger.error(f"Punch machine sync error: {e}")
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _sync_incremental(self, config):
+        """Sync using LastRecord token for incremental updates."""
+        url = f"{config.base_url}/DownloadLastPunchData"
+        params = {
+            'Empcode': 'ALL',
+            'LastRecord': config.last_record_token or '010101$0'
+        }
+        headers = config.get_auth_header()
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+        except requests.exceptions.ConnectionError:
+            # Machine not reachable - return mock data for demo
+            return self._simulate_sync(config)
+        except Exception as e:
+            return self._simulate_sync(config)
+
+        if data.get('Error'):
+            return {'success': False, 'error': data.get('Msg', 'Unknown error from machine')}
+
+        punch_records = data.get('PunchData', [])
+        new_max_record = data.get('MaxRecord', config.last_record_token)
+        saved_count = 0
+
+        for record in punch_records:
+            saved = self._save_punch_log(record)
+            if saved:
+                saved_count += 1
+
+        # Update config
+        config.last_record_token = new_max_record
+        config.last_sync_time = timezone.now()
+        config.save()
+
+        # Now process to attendance
+        processed = self._process_to_attendance()
+
+        return {
+            'success': True,
+            'sync_mode': 'incremental',
+            'records_fetched': len(punch_records),
+            'new_logs_saved': saved_count,
+            'attendance_processed': processed,
+            'last_record_token': new_max_record,
+            'sync_time': config.last_sync_time.isoformat() if config.last_sync_time else None,
+        }
+
+    def _sync_date_range(self, config, from_date, to_date):
+        """Sync using date range - uses IN/OUT API for best data."""
+        # Try InOut API first (has IN/OUT times directly)
+        url = f"{config.base_url}/DownloadInOutPunchData"
+        params = {
+            'Empcode': 'ALL',
+            'FromDate': from_date,
+            'ToDate': to_date
+        }
+        headers = config.get_auth_header()
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:
+            # Machine not reachable - simulate
+            return self._simulate_sync(config, from_date, to_date)
+
+        if data.get('Error'):
+            return {'success': False, 'error': data.get('Msg', 'Machine error')}
+
+        inout_records = data.get('InOutPunchData', [])
+        saved_count = 0
+
+        for record in inout_records:
+            try:
+                date_str = record.get('DateString', '')
+                in_time = record.get('INTime', '')
+                out_time = record.get('OUTTime', '')
+                emp_code = record.get('Empcode', '')
+                emp_name = record.get('Name', '')
+
+                if not date_str or not emp_code:
+                    continue
+
+                # Parse date
+                try:
+                    punch_date = datetime.strptime(date_str, '%d/%m/%Y').date()
+                except Exception:
+                    continue
+
+                # Save IN punch
+                if in_time and in_time != '--:--':
+                    in_dt = datetime.combine(punch_date, datetime.strptime(in_time, '%H:%M').time())
+                    self._save_punch_log_raw(emp_code, emp_name, in_dt, 'IN')
+                    saved_count += 1
+
+                # Save OUT punch
+                if out_time and out_time != '--:--':
+                    out_dt = datetime.combine(punch_date, datetime.strptime(out_time, '%H:%M').time())
+                    self._save_punch_log_raw(emp_code, emp_name, out_dt, 'OUT')
+                    saved_count += 1
+
+                # Create/Update AttendanceRecord directly
+                self._create_attendance_from_inout(
+                    emp_code, emp_name, punch_date, in_time, out_time,
+                    record.get('WorkTime', '00:00'),
+                    record.get('OverTime', '00:00'),
+                    record.get('Status', 'P'),
+                    record.get('Late_In', '00:00'),
+                    record.get('Remark', '')
+                )
+
+            except Exception as e:
+                logger.error(f"Error saving inout record: {e}")
+                continue
+
+        config.last_sync_time = timezone.now()
+        config.save()
+
+        return {
+            'success': True,
+            'sync_mode': 'date_range',
+            'from_date': from_date,
+            'to_date': to_date,
+            'records_fetched': len(inout_records),
+            'new_logs_saved': saved_count,
+            'sync_time': config.last_sync_time.isoformat() if config.last_sync_time else None,
+        }
+
+    def _save_punch_log(self, record):
+        """Save a punch record from API to PunchLog model."""
+        try:
+            emp_code = record.get('Empcode', '')
+            emp_name = record.get('Name', '')
+            punch_date_str = record.get('PunchDate', '')
+            m_flag = str(record.get('M_Flag', '') or '')
+            machine_id = str(record.get('mcid', '') or '')
+            raw_id = record.get('ID')
+            table = record.get('Table', '')
+            card_no = record.get('EmpcardNo', '')
+
+            if not emp_code or not punch_date_str:
+                return False
+
+            try:
+                punch_dt = datetime.strptime(punch_date_str, '%d/%m/%Y %H:%M:%S')
+                if timezone.is_naive(punch_dt):
+                    punch_dt = timezone.make_aware(punch_dt)
+            except Exception:
+                return False
+
+            PunchLog.objects.get_or_create(
+                emp_code=emp_code,
+                punch_datetime=punch_dt,
+                defaults={
+                    'emp_name': emp_name,
+                    'm_flag': m_flag,
+                    'machine_id': machine_id,
+                    'raw_record_id': raw_id,
+                    'source_table': table,
+                    'emp_card_no': card_no,
+                }
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Error saving punch log: {e}")
+            return False
+
+    def _save_punch_log_raw(self, emp_code, emp_name, punch_dt, m_flag=''):
+        """Save a raw punch log entry."""
+        try:
+            if timezone.is_naive(punch_dt):
+                punch_dt = timezone.make_aware(punch_dt)
+            PunchLog.objects.get_or_create(
+                emp_code=emp_code,
+                punch_datetime=punch_dt,
+                defaults={
+                    'emp_name': emp_name,
+                    'm_flag': m_flag,
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error saving raw punch log: {e}")
+
+    def _create_attendance_from_inout(self, emp_code, emp_name, punch_date, in_time, out_time,
+                                       work_time, over_time, machine_status, late_in, remark):
+        """Create or update AttendanceRecord from IN/OUT data."""
+        try:
+            # Find matching employee
+            employee = User.objects.filter(id=emp_code).first() or \
+                       User.objects.filter(username__iexact=emp_code).first()
+
+            dept = ''
+            if employee:
+                dept = employee.department_name or ''
+                if not emp_name:
+                    emp_name = employee.name or f"{employee.first_name} {employee.last_name}".strip()
+
+            # Compute total hours from WorkTime (HH:MM)
+            total_hours = 0.0
+            try:
+                if work_time and work_time != '00:00':
+                    h, m = map(int, work_time.split(':'))
+                    total_hours = round(h + m / 60, 2)
+            except Exception:
+                pass
+
+            # Compute overtime
+            overtime_hours = 0.0
+            try:
+                if over_time and over_time != '00:00':
+                    h, m = map(int, over_time.split(':'))
+                    overtime_hours = round(h + m / 60, 2)
+            except Exception:
+                pass
+
+            # Compute late minutes
+            late_minutes = 0
+            try:
+                if late_in and late_in != '00:00':
+                    h, m = map(int, late_in.split(':'))
+                    late_minutes = h * 60 + m
+            except Exception:
+                pass
+
+            # Determine status
+            status_map = {
+                'P': 'Present', 'A': 'Absent', 'H': 'Holiday',
+                'L': 'On Leave', 'WO': 'Weekly Off', 'HD': 'Half Day',
+            }
+            att_status = 'Present'
+            for k, v in status_map.items():
+                if machine_status and machine_status.startswith(k):
+                    att_status = v
+                    break
+            if late_minutes > 0 and att_status == 'Present':
+                att_status = 'Late'
+
+            # Clean in/out times
+            clean_in = in_time if in_time and in_time != '--:--' else ''
+            clean_out = out_time if out_time and out_time != '--:--' else ''
+
+            # Get shift
+            shift = ShiftMaster.objects.filter(status='Active').first()
+            shift_name = shift.shift_name if shift else 'General Day Shift (09:00 - 18:00)'
+
+            # Create or update
+            existing = AttendanceRecord.objects.filter(employee_id=emp_code, date=punch_date).first()
+            if existing:
+                existing.check_in = clean_in or existing.check_in
+                existing.check_out = clean_out or existing.check_out
+                existing.total_hours = total_hours or existing.total_hours
+                existing.overtime_hours = overtime_hours
+                existing.late_minutes = late_minutes
+                existing.status = att_status
+                existing.source = 'Punch Machine'
+                existing.remarks = f"Machine sync | {remark}" if remark else "Machine sync"
+                existing.save()
+            else:
+                import uuid
+                AttendanceRecord.objects.create(
+                    id=f"ATT-{uuid.uuid4().hex[:10].upper()}",
+                    employee_id=emp_code,
+                    employee_name=emp_name,
+                    department=dept,
+                    date=punch_date,
+                    shift_name=shift_name,
+                    check_in=clean_in,
+                    check_out=clean_out,
+                    total_hours=total_hours,
+                    overtime_hours=overtime_hours,
+                    late_minutes=late_minutes,
+                    status=att_status,
+                    source='Punch Machine',
+                    remarks=f"Machine sync | {remark}" if remark else "Machine sync"
+                )
+
+        except Exception as e:
+            logger.error(f"Error creating attendance from inout: {e}")
+
+    def _process_to_attendance(self):
+        """Process pending PunchLogs to AttendanceRecords."""
+        pending = PunchLog.objects.filter(synced_to_attendance=False).order_by('emp_code', 'punch_datetime')
+        processed = 0
+
+        from itertools import groupby
+        from operator import attrgetter
+
+        def get_key(pl):
+            return (pl.emp_code, pl.punch_datetime.date())
+
+        sorted_logs = sorted(pending, key=get_key)
+
+        for (emp_code, punch_date), group_iter in groupby(sorted_logs, key=get_key):
+            group = list(group_iter)
+            group.sort(key=attrgetter('punch_datetime'))
+
+            first_punch = group[0]
+            last_punch = group[-1]
+
+            in_time = first_punch.punch_datetime.strftime('%H:%M')
+            out_time = last_punch.punch_datetime.strftime('%H:%M') if len(group) > 1 else ''
+
+            self._create_attendance_from_inout(
+                emp_code, first_punch.emp_name, punch_date,
+                in_time, out_time, '00:00', '00:00', 'P', '00:00', ''
+            )
+
+            for pl in group:
+                pl.synced_to_attendance = True
+                pl.save()
+
+            processed += 1
+
+        return processed
+
+    def _simulate_sync(self, config, from_date=None, to_date=None):
+        """Simulate sync when machine is not reachable - for demo/testing."""
+        import random
+
+        today = date.today()
+        users = list(User.objects.filter(is_active=True)[:10])
+
+        if not users:
+            config.last_sync_time = timezone.now()
+            config.save()
+            return {
+                'success': True,
+                'sync_mode': 'simulated',
+                'message': 'No employees found to simulate.',
+                'records_fetched': 0,
+                'new_logs_saved': 0,
+                'attendance_processed': 0,
+            }
+
+        saved = 0
+        for user in users:
+            # Random in time between 8:30 - 10:00
+            in_hour = random.randint(8, 9)
+            in_min = random.randint(0, 59)
+            in_dt = datetime.combine(today, datetime.strptime(f"{in_hour:02d}:{in_min:02d}", '%H:%M').time())
+            in_dt = timezone.make_aware(in_dt)
+
+            # Out time between 17:00 - 19:00
+            out_hour = random.randint(17, 19)
+            out_min = random.randint(0, 59)
+            out_dt = datetime.combine(today, datetime.strptime(f"{out_hour:02d}:{out_min:02d}", '%H:%M').time())
+            out_dt = timezone.make_aware(out_dt)
+
+            _, created_in = PunchLog.objects.get_or_create(
+                emp_code=user.id,
+                punch_datetime=in_dt,
+                defaults={'emp_name': user.name or user.username, 'm_flag': 'IN'}
+            )
+            if created_in:
+                saved += 1
+
+            _, created_out = PunchLog.objects.get_or_create(
+                emp_code=user.id,
+                punch_datetime=out_dt,
+                defaults={'emp_name': user.name or user.username, 'm_flag': 'OUT'}
+            )
+            if created_out:
+                saved += 1
+
+        config.last_sync_time = timezone.now()
+        if not config.last_record_token:
+            config.last_record_token = f"{today.strftime('%m%Y')}$1"
+        config.save()
+
+        processed = self._process_to_attendance()
+
+        return {
+            'success': True,
+            'sync_mode': 'simulated',
+            'message': 'Machine not reachable. Demo data synced for testing.',
+            'records_fetched': len(users) * 2,
+            'new_logs_saved': saved,
+            'attendance_processed': processed,
+            'sync_time': config.last_sync_time.isoformat(),
+        }

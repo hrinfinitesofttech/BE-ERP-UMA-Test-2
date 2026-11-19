@@ -21,6 +21,8 @@ from .models import (
     EmployeeExit,
     Holiday,
     EmployeeAppraisal,
+    PunchMachineConfig,
+    PunchLog,
 )
 
 @admin.register(Designation)
@@ -148,3 +150,18 @@ class EmployeeAppraisalAdmin(admin.ModelAdmin):
     list_display = ('id', 'appraisal_number', 'employee_name', 'department', 'cycle_period', 'final_score', 'promotion_recommended', 'status')
     search_fields = ('id', 'appraisal_number', 'employee_name', 'department')
     list_filter = ('cycle_period', 'status', 'promotion_recommended')
+
+
+@admin.register(PunchMachineConfig)
+class PunchMachineConfigAdmin(admin.ModelAdmin):
+    list_display = ('id', 'machine_name', 'base_url', 'corporate_id', 'is_active', 'last_sync_time')
+    search_fields = ('machine_name', 'base_url', 'corporate_id')
+    list_filter = ('is_active',)
+
+
+@admin.register(PunchLog)
+class PunchLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'emp_code', 'emp_name', 'punch_datetime', 'machine_id', 'm_flag', 'synced_to_attendance')
+    search_fields = ('emp_code', 'emp_name', 'machine_id', 'emp_card_no')
+    list_filter = ('synced_to_attendance', 'm_flag')
+

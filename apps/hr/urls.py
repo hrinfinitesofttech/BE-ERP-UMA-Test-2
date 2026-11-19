@@ -10,7 +10,8 @@ from .views import (
     EmployeeAdvanceLoanViewSet, ReimbursementExpenseViewSet,
     EmployeeOnboardingViewSet, EmployeeTransferViewSet,
     EmployeePromotionViewSet, EmployeeExitViewSet, HolidayViewSet,
-    EmployeeAppraisalViewSet, EmployeeDashboardView
+    EmployeeAppraisalViewSet, EmployeeDashboardView,
+    PunchMachineConfigViewSet, PunchLogViewSet, PunchMachineSyncView,
 )
 
 router = DefaultRouter()
@@ -37,10 +38,11 @@ router.register('employee-promotions', EmployeePromotionViewSet, basename='emplo
 router.register('employee-exits', EmployeeExitViewSet, basename='employee-exit')
 router.register('holidays', HolidayViewSet, basename='holiday')
 router.register('employee-appraisals', EmployeeAppraisalViewSet, basename='employee-appraisal')
+router.register('punch-machine-configs', PunchMachineConfigViewSet, basename='punch-machine-config')
+router.register('punch-logs', PunchLogViewSet, basename='punch-log')
 
 urlpatterns = [
     path('employee-dashboard/', EmployeeDashboardView.as_view(), name='employee-dashboard'),
+    path('punch-machine/sync/', PunchMachineSyncView.as_view(), name='punch-machine-sync'),
     path('', include(router.urls)),
 ]
-
-

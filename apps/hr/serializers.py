@@ -5,7 +5,7 @@ from .models import (
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
     EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
-    Holiday, EmployeeAppraisal
+    Holiday, EmployeeAppraisal, PunchMachineConfig, PunchLog
 )
 
 
@@ -619,3 +619,46 @@ class EmployeeAppraisalSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
+
+class PunchMachineConfigSerializer(serializers.ModelSerializer):
+    machineName = serializers.CharField(source='machine_name', required=False)
+    baseUrl = serializers.CharField(source='base_url', required=False)
+    corporateId = serializers.CharField(source='corporate_id', required=False)
+    isActive = serializers.BooleanField(source='is_active', required=False)
+    lastSyncTime = serializers.DateTimeField(source='last_sync_time', required=False, allow_null=True)
+    lastRecordToken = serializers.CharField(source='last_record_token', required=False, allow_blank=True)
+
+    class Meta:
+        model = PunchMachineConfig
+        fields = ['id', 'machine_name', 'base_url', 'corporate_id', 'username',
+                  'is_active', 'last_sync_time', 'last_record_token', 'created_at', 'updated_at',
+                  'machineName', 'baseUrl', 'corporateId', 'isActive', 'lastSyncTime', 'lastRecordToken']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        for camel, snake in [
+            ('machineName', 'machine_name'),
+            ('baseUrl', 'base_url'),
+            ('corporateId', 'corporate_id'),
+            ('isActive', 'is_active'),
+            ('lastRecordToken', 'last_record_token'),
+        ]:
+            if camel in data:
+                ret[snake] = data[camel]
+        return ret
+
+
+class PunchLogSerializer(serializers.ModelSerializer):
+    empCode = serializers.CharField(source='emp_code', required=False)
+    empName = serializers.CharField(source='emp_name', required=False, allow_blank=True)
+    punchDatetime = serializers.DateTimeField(source='punch_datetime', required=False)
+    machineId = serializers.CharField(source='machine_id', required=False, allow_blank=True)
+    mFlag = serializers.CharField(source='m_flag', required=False, allow_blank=True)
+    empCardNo = serializers.CharField(source='emp_card_no', required=False, allow_blank=True)
+    syncedToAttendance = serializers.BooleanField(source='synced_to_attendance', required=False)
+
+    class Meta:
+        model = PunchLog
+        fields = '__all__'

@@ -498,3 +498,62 @@ class EmployeeAppraisal(models.Model):
         return f"{self.appraisal_number} - {self.employee_name}"
 
 
+
+
+class PunchMachineConfig(models.Model):
+    """Configuration for eTimeOffice punching machine integration."""
+    id = models.CharField(max_length=64, primary_key=True)
+    machine_name = models.CharField(max_length=128, default='eTimeOffice Machine')
+    base_url = models.CharField(max_length=512, default='https://api.etimeoffice.com/api')
+    corporate_id = models.CharField(max_length=128, default='support')
+    username = models.CharField(max_length=128, default='support')
+    password = models.CharField(max_length=256, default='support')
+    is_active = models.BooleanField(default=True)
+    last_sync_time = models.DateTimeField(null=True, blank=True)
+    last_record_token = models.CharField(max_length=256, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.machine_name} ({self.base_url})"
+
+    def get_auth_header(self):
+        import base64
+        raw = f"{self.corporate_id}:{self.username}:{self.password}:true"
+        encoded = base64.b64encode(raw.encode()).decode()
+        return {'Authorization': encoded}
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"PMC-{uuid.uuid4().hex[:10].upper()}"
+        super().save(*args, **kwargs)
+
+
+class PunchLog(models.Model):
+    """Raw punch logs fetched from the punching machine."""
+    id = models.CharField(max_length=64, primary_key=True)
+    emp_code = models.CharField(max_length=64)
+    emp_name = models.CharField(max_length=128, blank=True)
+    punch_datetime = models.DateTimeField()
+    machine_id = models.CharField(max_length=64, blank=True)
+    m_flag = models.CharField(max_length=32, blank=True)
+    emp_card_no = models.CharField(max_length=64, blank=True)
+    source_table = models.CharField(max_length=128, blank=True)
+    raw_record_id = models.IntegerField(null=True, blank=True)
+    synced_to_attendance = models.BooleanField(default=False)
+    sync_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-punch_datetime']
+        unique_together = ('emp_code', 'punch_datetime')
+
+    def __str__(self):
+        return f"{self.emp_code} - {self.punch_datetime}"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"PL-{uuid.uuid4().hex[:10].upper()}"
+        super().save(*args, **kwargs)
