@@ -1794,39 +1794,48 @@ class PunchMachineSyncView(APIView):
         created_emps = []
 
         url = f"{config.base_url}/DownloadInOutPunchData"
-        today_str = date.today().strftime('%d/%m/%Y')
-        params = {'Empcode': 'ALL', 'FromDate': '01/01/2018', 'ToDate': today_str}
+        today = date.today()
+        from_date_str = (today - timedelta(days=45)).strftime('%d/%m/%Y')
+        to_date_str = today.strftime('%d/%m/%Y')
+        params = {'Empcode': 'ALL', 'FromDate': from_date_str, 'ToDate': to_date_str}
         headers = config.get_auth_header()
 
         machine_emps = {}
+        inout_records = []
         try:
-            data = _fetch_machine_json(url, params=params, headers=headers, timeout=20)
-            for r in data.get('InOutPunchData', []):
+            data = _fetch_machine_json(url, params=params, headers=headers, timeout=30)
+            inout_records = data.get('InOutPunchData', [])
+            for r in inout_records:
                 code = str(r.get('Empcode', '')).strip()
                 name = str(r.get('Name', '')).strip()
                 if code and name and code not in machine_emps:
                     machine_emps[code] = name
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error fetching machine employees: {e}")
 
         if not machine_emps:
-            machine_emps = {
-                '0001': 'JIGNESH PADHIYAR',
-                '0005': 'RAVI PARMAR',
-                '0010': 'TANAY MISTRY',
+            return {
+                'success': False,
+                'error': 'No employees found from eTimeOffice machine API. Please check credentials.',
+                'total_imported': 0
             }
+
+        shift = ShiftMaster.objects.filter(status='Active').first()
+        shift_title = shift.shift_name if shift else 'Factory General Shift'
 
         for code, full_name in machine_emps.items():
             parts = full_name.split()
             fname = parts[0] if parts else 'Staff'
             lname = ' '.join(parts[1:]) if len(parts) > 1 else ''
 
-            user = User.objects.filter(id=f"EMP-{code}").first() or                    User.objects.filter(id=code).first() or                    User.objects.filter(username=code).first()
+            user = User.objects.filter(id=f"EMP-{code}").first() or \
+                   User.objects.filter(id=code).first() or \
+                   User.objects.filter(username=f"user_{code}").first()
 
             if not user:
                 user = User.objects.create(
                     id=f"EMP-{code}",
-                    username=code,
+                    username=f"user_{code}",
                     first_name=fname,
                     last_name=lname,
                     department_name='Production & Operations',
@@ -1856,30 +1865,111 @@ class PunchMachineSyncView(APIView):
                 }
             )
 
-            today = date.today()
-            AttendanceRecord.objects.get_or_create(
-                employee_id=user.id,
-                date=today,
+        # Sync attendance records from machine in/out data
+        mapping_dict = {m.machine_emp_code: m.employee for m in BiometricEmployeeMapping.objects.select_related('employee').all()}
+        att_synced = 0
+        for rec in inout_records:
+            emp_code = str(rec.get('Empcode', '')).strip()
+            name = str(rec.get('Name', '')).strip()
+            date_str = rec.get('DateString', '')
+            in_time = rec.get('INTime', '')
+            out_time = rec.get('OUTTime', '')
+            work_time = rec.get('WorkTime', '00:00')
+            over_time = rec.get('OverTime', '00:00')
+            late_in = rec.get('Late_In', '00:00')
+            status_code = rec.get('Status', 'A')
+            remark = rec.get('Remark', '')
+
+            if not date_str or not emp_code:
+                continue
+
+            try:
+                p_date = datetime.strptime(date_str, '%d/%m/%Y').date()
+            except Exception:
+                continue
+
+            emp = mapping_dict.get(emp_code)
+            emp_id = emp.id if emp else f"EMP-{emp_code}"
+            dept_name = emp.department_name if emp and emp.department_name else 'Production & Operations'
+
+            if status_code == 'P':
+                att_status = 'Present'
+            elif status_code == 'A':
+                att_status = 'Absent'
+            elif status_code == 'HD':
+                att_status = 'Half Day'
+            elif status_code == 'WO':
+                att_status = 'Weekly Off'
+            elif status_code == 'HL':
+                att_status = 'Holiday'
+            else:
+                att_status = 'Present' if in_time != '--:--' else 'Absent'
+
+            wh = 0.0
+            if work_time and work_time != '--:--':
+                try:
+                    parts = work_time.split(':')
+                    wh = round(int(parts[0]) + int(parts[1]) / 60.0, 2)
+                except Exception:
+                    wh = 0.0
+
+            ot = 0.0
+            if over_time and over_time != '--:--':
+                try:
+                    parts = over_time.split(':')
+                    ot = round(int(parts[0]) + int(parts[1]) / 60.0, 2)
+                except Exception:
+                    ot = 0.0
+
+            lm = 0
+            if late_in and late_in != '--:--':
+                try:
+                    parts = late_in.split(':')
+                    lm = int(parts[0]) * 60 + int(parts[1])
+                except Exception:
+                    lm = 0
+
+            p_count = 0
+            clean_in = ''
+            clean_out = ''
+            if in_time and in_time != '--:--':
+                clean_in = in_time
+                p_count += 1
+            if out_time and out_time != '--:--':
+                clean_out = out_time
+                p_count += 1
+
+            is_missing = (p_count == 1 and att_status == 'Present')
+
+            AttendanceRecord.objects.update_or_create(
+                employee_id=emp_id,
+                date=p_date,
                 defaults={
-                    'employee_name': user.name,
-                    'department': user.department_name or 'Production & Operations',
-                    'shift_name': 'General Shift (09:00 - 18:00)',
-                    'check_in': '09:30',
-                    'check_out': '18:15',
-                    'first_in': '09:30',
-                    'last_out': '18:15',
-                    'punch_count': 2,
-                    'total_hours': 8.75,
-                    'status': 'Present',
-                    'source': 'Biometric Machine'
+                    'employee_name': name or (emp.name if emp else f"Staff {emp_code}"),
+                    'department': dept_name,
+                    'shift_name': shift_title,
+                    'check_in': clean_in,
+                    'check_out': clean_out,
+                    'first_in': clean_in,
+                    'last_out': clean_out,
+                    'punch_count': p_count,
+                    'total_hours': wh,
+                    'overtime_hours': ot,
+                    'late_minutes': lm,
+                    'status': att_status,
+                    'is_missing_punch': is_missing,
+                    'remarks': remark if remark != '--' else '',
+                    'source': 'eTimeOffice Machine'
                 }
             )
+            att_synced += 1
 
         return {
             'success': True,
-            'message': f"Imported/Updated {len(created_emps)} employees from Biometric Machine API.",
+            'message': f"Imported/Updated {len(created_emps)} employees and {att_synced} attendance records from eTimeOffice Machine API.",
             'total_imported': len(created_emps),
             'new_created': imported_count,
+            'attendance_synced': att_synced,
             'employees': created_emps
         }
 
