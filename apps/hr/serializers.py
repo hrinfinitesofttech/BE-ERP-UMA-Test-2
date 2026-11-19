@@ -5,7 +5,8 @@ from .models import (
     OvertimeRecord, EarlyCheckoutRequest, SalaryComponent, SalaryStructure,
     PayrollRecord, EmployeeAdvanceLoan, ReimbursementExpense,
     EmployeeOnboarding, EmployeeTransfer, EmployeePromotion, EmployeeExit,
-    Holiday, EmployeeAppraisal, PunchMachineConfig, PunchLog
+    Holiday, EmployeeAppraisal, PunchMachineConfig, PunchLog,
+    BiometricEmployeeMapping
 )
 
 
@@ -82,10 +83,15 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
     shiftName = serializers.CharField(source='shift_name', required=False, allow_blank=True)
     checkIn = serializers.CharField(source='check_in', required=False, allow_blank=True)
     checkOut = serializers.CharField(source='check_out', required=False, allow_blank=True)
+    firstIn = serializers.CharField(source='first_in', required=False, allow_blank=True)
+    lastOut = serializers.CharField(source='last_out', required=False, allow_blank=True)
+    punchCount = serializers.IntegerField(source='punch_count', required=False)
     totalHours = serializers.DecimalField(source='total_hours', max_digits=5, decimal_places=2, required=False)
     lateMinutes = serializers.IntegerField(source='late_minutes', required=False)
     earlyCheckoutMinutes = serializers.IntegerField(source='early_checkout_minutes', required=False)
     overtimeHours = serializers.DecimalField(source='overtime_hours', max_digits=5, decimal_places=2, required=False)
+    isManuallyApproved = serializers.BooleanField(source='is_manually_approved', required=False)
+    isMissingPunch = serializers.BooleanField(source='is_missing_punch', required=False)
 
     class Meta:
         model = AttendanceRecord
@@ -99,10 +105,15 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
             ('shiftName', 'shift_name'),
             ('checkIn', 'check_in'),
             ('checkOut', 'check_out'),
+            ('firstIn', 'first_in'),
+            ('lastOut', 'last_out'),
+            ('punchCount', 'punch_count'),
             ('totalHours', 'total_hours'),
             ('lateMinutes', 'late_minutes'),
             ('earlyCheckoutMinutes', 'early_checkout_minutes'),
-            ('overtimeHours', 'overtime_hours')
+            ('overtimeHours', 'overtime_hours'),
+            ('isManuallyApproved', 'is_manually_approved'),
+            ('isMissingPunch', 'is_missing_punch'),
         ]:
             if camel in data:
                 ret[snake] = data[camel]
@@ -654,11 +665,58 @@ class PunchLogSerializer(serializers.ModelSerializer):
     empCode = serializers.CharField(source='emp_code', required=False)
     empName = serializers.CharField(source='emp_name', required=False, allow_blank=True)
     punchDatetime = serializers.DateTimeField(source='punch_datetime', required=False)
+    punchDate = serializers.DateField(source='punch_date', required=False, allow_null=True)
     machineId = serializers.CharField(source='machine_id', required=False, allow_blank=True)
     mFlag = serializers.CharField(source='m_flag', required=False, allow_blank=True)
     empCardNo = serializers.CharField(source='emp_card_no', required=False, allow_blank=True)
+    isMapped = serializers.BooleanField(source='is_mapped', required=False)
+    erpEmployee = serializers.CharField(source='erp_employee_id', required=False, allow_null=True)
     syncedToAttendance = serializers.BooleanField(source='synced_to_attendance', required=False)
+    syncError = serializers.CharField(source='sync_error', required=False, allow_blank=True)
+    sourceTable = serializers.CharField(source='source_table', required=False, allow_blank=True)
 
     class Meta:
         model = PunchLog
         fields = '__all__'
+
+
+class BiometricEmployeeMappingSerializer(serializers.ModelSerializer):
+    machineEmpCode = serializers.CharField(source='machine_emp_code', required=True)
+    employeeId = serializers.CharField(source='employee_id', required=True)
+    employeeCode = serializers.CharField(source='employee_code', required=False, allow_blank=True)
+    employeeName = serializers.CharField(source='employee_name', required=False, allow_blank=True)
+    deviceCardNo = serializers.CharField(source='device_card_no', required=False, allow_blank=True)
+    isActive = serializers.BooleanField(source='is_active', required=False, default=True)
+    mappedBy = serializers.CharField(source='mapped_by', required=False, allow_blank=True)
+    createdAt = serializers.DateTimeField(source='created_at', read_only=True)
+    updatedAt = serializers.DateTimeField(source='updated_at', read_only=True)
+
+    class Meta:
+        model = BiometricEmployeeMapping
+        fields = [
+            'id', 'machine_emp_code', 'employee', 'employee_code', 'employee_name',
+            'device_card_no', 'is_active', 'mapped_by', 'notes', 'created_at', 'updated_at',
+            'machineEmpCode', 'employeeId', 'employeeCode', 'employeeName',
+            'deviceCardNo', 'isActive', 'mappedBy', 'createdAt', 'updatedAt'
+        ]
+
+    def to_internal_value(self, data):
+        ret = super().to_internal_value(data)
+        for camel, snake in [
+            ('machineEmpCode', 'machine_emp_code'),
+            ('employeeId', 'employee'),
+            ('employeeCode', 'employee_code'),
+            ('employeeName', 'employee_name'),
+            ('deviceCardNo', 'device_card_no'),
+            ('isActive', 'is_active'),
+            ('mappedBy', 'mapped_by'),
+        ]:
+            if camel in data:
+                if snake == 'employee':
+                    from apps.authentication.models import User
+                    emp = User.objects.filter(id=data[camel]).first()
+                    if emp:
+                        ret['employee'] = emp
+                else:
+                    ret[snake] = data[camel]
+        return ret

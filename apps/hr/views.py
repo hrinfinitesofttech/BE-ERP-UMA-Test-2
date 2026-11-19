@@ -387,6 +387,375 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         records = AttendanceRecord.objects.filter(employee_id=emp_id).order_by('-date')
         return Response(AttendanceRecordSerializer(records, many=True).data)
 
+    @action(detail=False, methods=['get'], url_path='daily-sheet')
+    def daily_sheet(self, request):
+        """
+        Returns attendance status for ALL active ERP employees for a specified date.
+        If an employee has no punch on that date, status is properly determined
+        as Holiday / Weekly Off / On Leave / Absent instead of omitting them.
+        """
+        from datetime import datetime, date
+        user = request.user
+        date_str = request.query_params.get('date')
+        if date_str:
+            try:
+                selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                selected_date = date.today()
+        else:
+            selected_date = date.today()
+
+        today = date.today()
+        is_sunday = selected_date.weekday() == 6
+        holiday = Holiday.objects.filter(holiday_date=selected_date).first()
+
+        all_employees = User.objects.filter(is_active=True).order_by('id')
+        mappings = {
+            m.employee_id: m.machine_emp_code
+            for m in BiometricEmployeeMapping.objects.filter(is_active=True)
+        }
+
+        records_map = {
+            r.employee_id: r
+            for r in AttendanceRecord.objects.filter(date=selected_date)
+        }
+
+        leaves_map = {
+            lr.employee_id: lr
+            for lr in LeaveRequest.objects.filter(
+                status='Approved',
+                from_date__lte=selected_date,
+                to_date__gte=selected_date
+            )
+        }
+
+        items = []
+        present_count = 0
+        absent_count = 0
+        late_count = 0
+        half_day_count = 0
+        leave_count = 0
+        missing_punch_count = 0
+
+        for emp in all_employees:
+            rec = records_map.get(emp.id)
+            leave = leaves_map.get(emp.id)
+            machine_code = mappings.get(emp.id, '')
+
+            if rec:
+                status_val = rec.status
+                first_in = rec.first_in or rec.check_in
+                last_out = rec.last_out or rec.check_out
+                punch_count = rec.punch_count or (1 if first_in and not last_out else (2 if first_in and last_out else 0))
+                total_hours = float(rec.total_hours or 0.0)
+                late_mins = rec.late_minutes or 0
+                is_missing = rec.is_missing_punch or (bool(first_in) and not bool(last_out))
+                source = rec.source or 'Biometric System'
+                remarks = rec.remarks or ''
+                is_manual = rec.is_manually_approved
+            elif leave:
+                status_val = 'Half Day Leave' if leave.is_half_day else 'On Leave'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                total_hours = 0.0
+                late_mins = 0
+                is_missing = False
+                source = 'Leave System'
+                remarks = f"Approved Leave: {leave.leave_name}"
+                is_manual = False
+            elif holiday:
+                status_val = 'Holiday'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                total_hours = 0.0
+                late_mins = 0
+                is_missing = False
+                source = 'System'
+                remarks = holiday.holiday_name
+                is_manual = False
+            elif is_sunday:
+                status_val = 'Weekly Off'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                total_hours = 0.0
+                late_mins = 0
+                is_missing = False
+                source = 'System'
+                remarks = 'Sunday'
+                is_manual = False
+            else:
+                status_val = 'Absent' if selected_date <= today else 'Upcoming'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                total_hours = 0.0
+                late_mins = 0
+                is_missing = False
+                source = 'System'
+                remarks = 'No biometric punch recorded' if selected_date <= today else ''
+                is_manual = False
+
+            if status_val == 'Present':
+                present_count += 1
+            elif status_val == 'Late':
+                late_count += 1
+                present_count += 1
+            elif status_val == 'Half Day':
+                half_day_count += 1
+            elif status_val in ['On Leave', 'Half Day Leave']:
+                leave_count += 1
+            elif status_val == 'Absent':
+                absent_count += 1
+
+            if is_missing:
+                missing_punch_count += 1
+
+            items.append({
+                'employeeId': emp.id,
+                'employeeCode': emp.id,
+                'employeeName': emp.name or emp.username,
+                'username': emp.username,
+                'department': emp.department_name or '',
+                'designation': emp.designation or '',
+                'email': emp.email or '',
+                'mobile': emp.mobile or getattr(emp, 'phone', '') or '',
+                'isActive': emp.is_active,
+                'machineEmpCode': machine_code,
+                'date': selected_date.isoformat(),
+                'status': status_val,
+                'firstIn': first_in,
+                'lastOut': last_out,
+                'punchCount': punch_count,
+                'totalHours': total_hours,
+                'lateMinutes': late_mins,
+                'isMissingPunch': is_missing,
+                'isManuallyApproved': is_manual,
+                'source': source,
+                'remarks': remarks,
+                'attendanceRecordId': rec.id if rec else None,
+            })
+
+        return Response({
+            'date': selected_date.isoformat(),
+            'totalEmployees': all_employees.count(),
+            'presentCount': present_count,
+            'lateCount': late_count,
+            'absentCount': absent_count,
+            'halfDayCount': half_day_count,
+            'leaveCount': leave_count,
+            'missingPunchCount': missing_punch_count,
+            'employees': items,
+        })
+
+    @action(detail=False, methods=['get'], url_path='monthly-sheet')
+    def monthly_sheet(self, request):
+        """
+        Returns employee-wise monthly attendance statistics and day-by-day status matrix
+        for ALL active ERP employees.
+        """
+        import calendar
+        from datetime import date, timedelta
+        today = date.today()
+        month_param = request.query_params.get('month')
+        year_param = request.query_params.get('year')
+        month_year = request.query_params.get('month_year') or request.query_params.get('monthYear')
+
+        if month_year and '-' in month_year:
+            try:
+                y, m = map(int, month_year.split('-')[:2])
+                year, month = y, m
+            except Exception:
+                year, month = today.year, today.month
+        elif month_param and year_param:
+            year, month = int(year_param), int(month_param)
+        else:
+            year, month = today.year, today.month
+
+        num_days = calendar.monthrange(year, month)[1]
+        start_date = date(year, month, 1)
+        end_date = date(year, month, num_days)
+
+        all_employees = User.objects.filter(is_active=True).order_by('id')
+        mappings = {
+            m.employee_id: m.machine_emp_code
+            for m in BiometricEmployeeMapping.objects.filter(is_active=True)
+        }
+
+        records = AttendanceRecord.objects.filter(date__gte=start_date, date__lte=end_date)
+        records_by_emp = {}
+        for r in records:
+            records_by_emp.setdefault(r.employee_id, {})[r.date.isoformat()] = r
+
+        holidays = {h.holiday_date.isoformat(): h.holiday_name for h in Holiday.objects.filter(holiday_date__gte=start_date, holiday_date__lte=end_date)}
+
+        leaves = LeaveRequest.objects.filter(status='Approved', from_date__lte=end_date, to_date__gte=start_date)
+        leaves_by_emp = {}
+        for l in leaves:
+            curr = max(l.from_date, start_date)
+            upto = min(l.to_date, end_date)
+            while curr <= upto:
+                leaves_by_emp.setdefault(l.employee_id, {})[curr.isoformat()] = l
+                curr += timedelta(days=1)
+
+        result_list = []
+        overall_present = 0
+        overall_absent = 0
+        overall_late = 0
+        overall_half_day = 0
+
+        for emp in all_employees:
+            emp_records = records_by_emp.get(emp.id, {})
+            emp_leaves = leaves_by_emp.get(emp.id, {})
+            machine_code = mappings.get(emp.id, '')
+
+            p_count = 0
+            l_count = 0
+            a_count = 0
+            hd_count = 0
+            leave_count = 0
+            wo_count = 0
+            hol_count = 0
+            tot_hours = 0.0
+            missing_count = 0
+            day_matrix = {}
+
+            for day_num in range(1, num_days + 1):
+                curr_date = date(year, month, day_num)
+                d_str = curr_date.isoformat()
+                is_sun = curr_date.weekday() == 6
+                r = emp_records.get(d_str)
+                l = emp_leaves.get(d_str)
+                h = holidays.get(d_str)
+
+                if r:
+                    status_short = 'P'
+                    if r.status == 'Late' or (r.late_minutes and r.late_minutes > 0):
+                        status_short = 'L'
+                        l_count += 1
+                        p_count += 1
+                    elif r.status == 'Half Day':
+                        status_short = 'HD'
+                        hd_count += 1
+                    elif 'Leave' in r.status:
+                        status_short = 'LV'
+                        leave_count += 1
+                    elif r.status == 'Absent':
+                        status_short = 'A'
+                        a_count += 1
+                    else:
+                        p_count += 1
+
+                    tot_hours += float(r.total_hours or 0.0)
+                    if r.is_missing_punch or (r.first_in and not r.last_out):
+                        missing_count += 1
+                elif l:
+                    status_short = 'LV'
+                    leave_count += 1
+                elif h:
+                    status_short = 'H'
+                    hol_count += 1
+                elif is_sun:
+                    status_short = 'WO'
+                    wo_count += 1
+                else:
+                    if curr_date <= today:
+                        status_short = 'A'
+                        a_count += 1
+                    else:
+                        status_short = '-'
+
+                day_matrix[d_str] = status_short
+
+            overall_present += p_count
+            overall_absent += a_count
+            overall_late += l_count
+            overall_half_day += hd_count
+
+            result_list.append({
+                'employeeId': emp.id,
+                'employeeCode': emp.id,
+                'employeeName': emp.name or emp.username,
+                'department': emp.department_name or '',
+                'designation': emp.designation or '',
+                'machineEmpCode': machine_code,
+                'totalDays': num_days,
+                'presentDays': p_count,
+                'lateDays': l_count,
+                'absentDays': a_count,
+                'halfDays': hd_count,
+                'leaveDays': leave_count,
+                'weeklyOffs': wo_count,
+                'holidays': hol_count,
+                'totalHours': round(tot_hours, 2),
+                'missingPunches': missing_count,
+                'daysMap': day_matrix,
+            })
+
+        return Response({
+            'monthYear': f"{year:04d}-{month:02d}",
+            'month': month,
+            'year': year,
+            'totalDays': num_days,
+            'totalEmployees': all_employees.count(),
+            'summary': {
+                'totalPresent': overall_present,
+                'totalAbsent': overall_absent,
+                'totalLate': overall_late,
+                'totalHalfDay': overall_half_day,
+            },
+            'employees': result_list,
+        })
+
+    @action(detail=False, methods=['get'], url_path='employee-detail')
+    def employee_detail(self, request):
+        """
+        Returns complete Employee Master profile, mapped biometric code, monthly attendance history,
+        and raw punch logs for a given employee.
+        """
+        emp_id = request.query_params.get('employee_id') or request.query_params.get('employeeId')
+        if not emp_id:
+            return Response({'error': 'employee_id parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        emp = User.objects.filter(id=emp_id).first()
+        if not emp:
+            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        mapping = BiometricEmployeeMapping.objects.filter(employee=emp, is_active=True).first()
+        machine_code = mapping.machine_emp_code if mapping else ''
+
+        records = AttendanceRecord.objects.filter(employee_id=emp.id).order_by('-date')[:31]
+        punch_logs = PunchLog.objects.filter(erp_employee=emp).order_by('-punch_datetime')[:50]
+        if not punch_logs.exists() and machine_code:
+            punch_logs = PunchLog.objects.filter(emp_code=machine_code).order_by('-punch_datetime')[:50]
+
+        return Response({
+            'employee': {
+                'id': emp.id,
+                'name': emp.name or emp.username,
+                'username': emp.username,
+                'email': emp.email,
+                'mobile': emp.mobile or getattr(emp, 'phone', ''),
+                'department': emp.department_name or '',
+                'designation': emp.designation or '',
+                'role': getattr(emp, 'role_name', ''),
+                'status': 'Active' if emp.is_active else 'Inactive',
+                'joiningDate': getattr(emp, 'joining_date', None),
+                'employmentType': getattr(emp, 'employment_type', ''),
+                'workLocation': getattr(emp, 'work_location', ''),
+            },
+            'biometricMapping': {
+                'machineEmpCode': machine_code,
+                'isMapped': bool(machine_code),
+                'mappingId': mapping.id if mapping else None,
+                'cardNo': mapping.device_card_no if mapping else '',
+            },
+            'attendanceRecords': AttendanceRecordSerializer(records, many=True).data,
+            'punchLogs': PunchLogSerializer(punch_logs, many=True).data,
+        })
+
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all().order_by('-id')
@@ -1144,8 +1513,8 @@ import urllib.parse
 import base64
 import logging
 from datetime import datetime, date, timedelta
-from .models import PunchMachineConfig, PunchLog
-from .serializers import PunchMachineConfigSerializer, PunchLogSerializer
+from .models import PunchMachineConfig, PunchLog, BiometricEmployeeMapping, ShiftMaster
+from .serializers import PunchMachineConfigSerializer, PunchLogSerializer, BiometricEmployeeMappingSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -1165,6 +1534,50 @@ def _fetch_machine_json(url, params=None, headers=None, timeout=30):
         return json.loads(raw_text)
 
 
+def resolve_employee_for_punch(emp_code, card_no=''):
+    """
+    Map machine employee code or card number to an active ERP User.
+    1. Check explicit BiometricEmployeeMapping (machine_emp_code=emp_code, is_active=True).
+    2. Check device_card_no if provided.
+    3. Check direct User match by ID (User.objects.filter(id=emp_code, is_active=True)).
+    4. Check normalized integer match (e.g. '0001' or '1' -> 'EMP-001' or 'EMP-1').
+    5. NEVER guess by fuzzy name. Return None if unmapped.
+    """
+    if not emp_code and not card_no:
+        return None
+
+    clean_code = str(emp_code or '').strip()
+
+    # 1. Explicit mapping by machine code
+    if clean_code:
+        mapping = BiometricEmployeeMapping.objects.filter(machine_emp_code=clean_code, is_active=True).first()
+        if mapping and mapping.employee and mapping.employee.is_active:
+            return mapping.employee
+
+    # 2. Check card number
+    clean_card = str(card_no or '').strip()
+    if clean_card:
+        mapping = BiometricEmployeeMapping.objects.filter(device_card_no=clean_card, is_active=True).first()
+        if mapping and mapping.employee and mapping.employee.is_active:
+            return mapping.employee
+
+    # 3. Direct User match by id or username
+    if clean_code:
+        user = User.objects.filter(id=clean_code, is_active=True).first() or                User.objects.filter(username__iexact=clean_code, is_active=True).first()
+        if user:
+            return user
+
+        # 4. Normalized integer format
+        digits = ''.join(c for c in clean_code if c.isdigit())
+        if digits:
+            num = int(digits)
+            for cand in [f"EMP-{num:03d}", f"EMP-{num:04d}", f"EMP-{num}", f"{num:03d}", str(num)]:
+                cand_user = User.objects.filter(id__iexact=cand, is_active=True).first()
+                if cand_user:
+                    return cand_user
+
+    return None
+
 
 class PunchMachineConfigViewSet(viewsets.ModelViewSet):
     queryset = PunchMachineConfig.objects.all().order_by('-created_at')
@@ -1180,26 +1593,94 @@ class PunchMachineConfigViewSet(viewsets.ModelViewSet):
         return PunchMachineConfig.objects.none()
 
 
+class BiometricEmployeeMappingViewSet(viewsets.ModelViewSet):
+    queryset = BiometricEmployeeMapping.objects.all().order_by('employee_code')
+    serializer_class = BiometricEmployeeMappingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return BiometricEmployeeMapping.objects.none()
+        if is_super_admin(user) or is_admin(user):
+            return BiometricEmployeeMapping.objects.all().order_by('employee_code')
+        return BiometricEmployeeMapping.objects.none()
+
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        total_active_emps = User.objects.filter(is_active=True).count()
+        mapped_emps = BiometricEmployeeMapping.objects.filter(is_active=True).values_list('employee_id', flat=True).distinct().count()
+        unmapped_emps = max(0, total_active_emps - mapped_emps)
+        unmapped_punches = PunchLog.objects.filter(is_mapped=False).count()
+
+        return Response({
+            'totalActiveEmployees': total_active_emps,
+            'mappedEmployees': mapped_emps,
+            'unmappedEmployees': unmapped_emps,
+            'unmappedPunches': unmapped_punches,
+        })
+
+    @action(detail=False, methods=['post'], url_path='reprocess')
+    def reprocess_unmapped(self, request):
+        user = request.user
+        if not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+
+        unmapped_logs = PunchLog.objects.filter(is_mapped=False)
+        resolved_count = 0
+
+        for pl in unmapped_logs:
+            emp = resolve_employee_for_punch(pl.emp_code, pl.emp_card_no)
+            if emp:
+                pl.erp_employee = emp
+                pl.is_mapped = True
+                pl.sync_error = ''
+                pl.save()
+                resolved_count += 1
+
+        sync_view = PunchMachineSyncView()
+        att_processed = sync_view._process_to_attendance()
+
+        return Response({
+            'success': True,
+            'message': f"Reprocessed: {resolved_count} punches mapped to employees, {att_processed} attendance records updated.",
+            'resolvedPunches': resolved_count,
+            'attendanceProcessed': att_processed,
+            'remainingUnmapped': PunchLog.objects.filter(is_mapped=False).count(),
+        })
+
+
 class PunchLogViewSet(viewsets.ModelViewSet):
     queryset = PunchLog.objects.all().order_by('-punch_datetime')
     serializer_class = PunchLogSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['emp_code', 'synced_to_attendance']
+    filterset_fields = ['emp_code', 'synced_to_attendance', 'is_mapped']
 
     def get_queryset(self):
         user = self.request.user
         if not user or not user.is_authenticated:
             return PunchLog.objects.none()
-        if is_super_admin(user) or is_admin(user):
-            return PunchLog.objects.all().order_by('-punch_datetime')
-        return PunchLog.objects.filter(emp_code=user.id).order_by('-punch_datetime')
+        qs = PunchLog.objects.all() if (is_super_admin(user) or is_admin(user)) else PunchLog.objects.filter(erp_employee=user)
+        
+        unmapped_param = self.request.query_params.get('unmapped')
+        if unmapped_param == 'true':
+            qs = qs.filter(is_mapped=False)
+        return qs.order_by('-punch_datetime')
+
+    @action(detail=False, methods=['get'], url_path='unmapped')
+    def unmapped_logs(self, request):
+        user = request.user
+        if not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        logs = PunchLog.objects.filter(is_mapped=False).order_by('-punch_datetime')[:100]
+        return Response(PunchLogSerializer(logs, many=True).data)
 
 
 class PunchMachineSyncView(APIView):
     """
     Sync attendance data from eTimeOffice punching machine.
-    POST /api/hr/punch-machine/sync/  - Trigger sync
-    GET /api/hr/punch-machine/sync/   - Get sync status and last sync info
+    POST /api/hr/punch-machine/sync/  - Trigger sync (supports dry_run=true, sync_mode: incremental | date_range | historical_raw)
+    GET /api/hr/punch-machine/sync/   - Get sync status, statistics, device connection
     GET /api/hr/punch-machine/logs/   - Get punch logs
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -1210,6 +1691,9 @@ class PunchMachineSyncView(APIView):
             return Response({'error': 'Only admins can view sync status'}, status=status.HTTP_403_FORBIDDEN)
 
         config = PunchMachineConfig.objects.filter(is_active=True).first()
+        total_active_emps = User.objects.filter(is_active=True).count()
+        mapped_emps = BiometricEmployeeMapping.objects.filter(is_active=True).values_list('employee_id', flat=True).distinct().count()
+
         if not config:
             return Response({
                 'configured': False,
@@ -1218,6 +1702,11 @@ class PunchMachineSyncView(APIView):
                 'last_record_token': None,
                 'total_logs': PunchLog.objects.count(),
                 'pending_sync': PunchLog.objects.filter(synced_to_attendance=False).count(),
+                'mapped_logs': PunchLog.objects.filter(is_mapped=True).count(),
+                'unmapped_logs': PunchLog.objects.filter(is_mapped=False).count(),
+                'total_active_employees': total_active_emps,
+                'mapped_employees': mapped_emps,
+                'unmapped_employees': max(0, total_active_emps - mapped_emps),
             })
 
         return Response({
@@ -1230,6 +1719,11 @@ class PunchMachineSyncView(APIView):
             'total_logs': PunchLog.objects.count(),
             'pending_sync': PunchLog.objects.filter(synced_to_attendance=False).count(),
             'synced': PunchLog.objects.filter(synced_to_attendance=True).count(),
+            'mapped_logs': PunchLog.objects.filter(is_mapped=True).count(),
+            'unmapped_logs': PunchLog.objects.filter(is_mapped=False).count(),
+            'total_active_employees': total_active_emps,
+            'mapped_employees': mapped_emps,
+            'unmapped_employees': max(0, total_active_emps - mapped_emps),
         })
 
     def post(self, request):
@@ -1244,20 +1738,19 @@ class PunchMachineSyncView(APIView):
                 'error': 'No active punch machine configuration found. Please configure the machine first.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Determine which API to use based on sync mode
-        sync_mode = request.data.get('sync_mode', 'incremental')  # 'incremental' | 'date_range'
+        sync_mode = request.data.get('sync_mode', 'incremental')
         from_date = request.data.get('from_date')
         to_date = request.data.get('to_date')
+        dry_run = bool(request.data.get('dry_run', False))
 
         try:
             if sync_mode == 'incremental' and config.last_record_token:
-                result = self._sync_incremental(config)
-            elif sync_mode == 'date_range' and from_date and to_date:
-                result = self._sync_date_range(config, from_date, to_date)
+                result = self._sync_incremental(config, dry_run=dry_run)
+            elif sync_mode in ['date_range', 'historical_raw'] and from_date and to_date:
+                result = self._sync_date_range(config, from_date, to_date, dry_run=dry_run, mode=sync_mode)
             else:
-                # Default: sync today
                 today_str = date.today().strftime('%d/%m/%Y')
-                result = self._sync_date_range(config, today_str, today_str)
+                result = self._sync_date_range(config, today_str, today_str, dry_run=dry_run)
 
             return Response(result)
 
@@ -1268,8 +1761,7 @@ class PunchMachineSyncView(APIView):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _sync_incremental(self, config):
-        """Sync using LastRecord token for incremental updates."""
+    def _sync_incremental(self, config, dry_run=False):
         url = f"{config.base_url}/DownloadLastPunchData"
         params = {
             'Empcode': 'ALL',
@@ -1281,26 +1773,44 @@ class PunchMachineSyncView(APIView):
             data = _fetch_machine_json(url, params=params, headers=headers, timeout=30)
         except Exception as e:
             logger.warning(f"Incremental sync fetch error: {e}. Falling back to simulation.")
-            return self._simulate_sync(config)
+            return self._simulate_sync(config, dry_run=dry_run)
 
         if data.get('Error'):
             return {'success': False, 'error': data.get('Msg', 'Unknown error from machine')}
 
         punch_records = data.get('PunchData', [])
         new_max_record = data.get('MaxRecord', config.last_record_token)
+
+        if dry_run:
+            mapped_count = sum(1 for r in punch_records if resolve_employee_for_punch(r.get('Empcode'), r.get('EmpcardNo')))
+            return {
+                'success': True,
+                'dry_run': True,
+                'sync_mode': 'incremental',
+                'records_fetched': len(punch_records),
+                'would_map': mapped_count,
+                'would_unmap': len(punch_records) - mapped_count,
+                'next_token': new_max_record,
+                'message': f"Dry Run Preview: {len(punch_records)} records found from machine. {mapped_count} match active ERP employees."
+            }
+
         saved_count = 0
+        mapped_count = 0
+        unmapped_count = 0
 
         for record in punch_records:
-            saved = self._save_punch_log(record)
+            saved, is_mapped = self._save_punch_log(record)
             if saved:
                 saved_count += 1
+                if is_mapped:
+                    mapped_count += 1
+                else:
+                    unmapped_count += 1
 
-        # Update config
         config.last_record_token = new_max_record
         config.last_sync_time = timezone.now()
         config.save()
 
-        # Now process to attendance
         processed = self._process_to_attendance()
 
         return {
@@ -1308,19 +1818,23 @@ class PunchMachineSyncView(APIView):
             'sync_mode': 'incremental',
             'records_fetched': len(punch_records),
             'new_logs_saved': saved_count,
+            'mapped_logs': mapped_count,
+            'unmapped_logs': unmapped_count,
             'attendance_processed': processed,
             'last_record_token': new_max_record,
             'sync_time': config.last_sync_time.isoformat() if config.last_sync_time else None,
         }
 
-    def _sync_date_range(self, config, from_date, to_date):
-        """Sync using date range - uses IN/OUT API for best data."""
-        # Try InOut API first (has IN/OUT times directly)
+    def _sync_date_range(self, config, from_date, to_date, dry_run=False, mode='date_range'):
+        # Normalize date formats: API expects dd/MM/yyyy
+        f_date = from_date.replace('-', '/') if '-' in from_date else from_date
+        t_date = to_date.replace('-', '/') if '-' in to_date else to_date
+
         url = f"{config.base_url}/DownloadInOutPunchData"
         params = {
             'Empcode': 'ALL',
-            'FromDate': from_date,
-            'ToDate': to_date
+            'FromDate': f_date,
+            'ToDate': t_date
         }
         headers = config.get_auth_header()
 
@@ -1328,13 +1842,30 @@ class PunchMachineSyncView(APIView):
             data = _fetch_machine_json(url, params=params, headers=headers, timeout=30)
         except Exception as e:
             logger.warning(f"Date range sync fetch error: {e}. Falling back to simulation.")
-            return self._simulate_sync(config, from_date, to_date)
+            return self._simulate_sync(config, from_date, to_date, dry_run=dry_run)
 
         if data.get('Error'):
             return {'success': False, 'error': data.get('Msg', 'Machine error')}
 
         inout_records = data.get('InOutPunchData', [])
+
+        if dry_run:
+            mapped = sum(1 for r in inout_records if resolve_employee_for_punch(r.get('Empcode')))
+            return {
+                'success': True,
+                'dry_run': True,
+                'sync_mode': mode,
+                'from_date': from_date,
+                'to_date': to_date,
+                'records_fetched': len(inout_records),
+                'would_map': mapped,
+                'would_unmap': len(inout_records) - mapped,
+                'message': f"Dry Run Preview: {len(inout_records)} daily punch records found. {mapped} match active ERP employees."
+            }
+
         saved_count = 0
+        mapped_count = 0
+        unmapped_count = 0
 
         for record in inout_records:
             try:
@@ -1347,33 +1878,37 @@ class PunchMachineSyncView(APIView):
                 if not date_str or not emp_code:
                     continue
 
-                # Parse date
                 try:
                     punch_date = datetime.strptime(date_str, '%d/%m/%Y').date()
                 except Exception:
                     continue
 
-                # Save IN punch
+                emp = resolve_employee_for_punch(emp_code)
+
+                # Save raw IN punch
                 if in_time and in_time != '--:--':
                     in_dt = datetime.combine(punch_date, datetime.strptime(in_time, '%H:%M').time())
                     self._save_punch_log_raw(emp_code, emp_name, in_dt, 'IN')
                     saved_count += 1
 
-                # Save OUT punch
+                # Save raw OUT punch
                 if out_time and out_time != '--:--':
                     out_dt = datetime.combine(punch_date, datetime.strptime(out_time, '%H:%M').time())
                     self._save_punch_log_raw(emp_code, emp_name, out_dt, 'OUT')
                     saved_count += 1
 
-                # Create/Update AttendanceRecord directly
-                self._create_attendance_from_inout(
-                    emp_code, emp_name, punch_date, in_time, out_time,
-                    record.get('WorkTime', '00:00'),
-                    record.get('OverTime', '00:00'),
-                    record.get('Status', 'P'),
-                    record.get('Late_In', '00:00'),
-                    record.get('Remark', '')
-                )
+                if emp:
+                    mapped_count += 1
+                    self._create_attendance_from_inout(
+                        emp_code, emp_name, punch_date, in_time, out_time,
+                        record.get('WorkTime', '00:00'),
+                        record.get('OverTime', '00:00'),
+                        record.get('Status', 'P'),
+                        record.get('Late_In', '00:00'),
+                        record.get('Remark', '')
+                    )
+                else:
+                    unmapped_count += 1
 
             except Exception as e:
                 logger.error(f"Error saving inout record: {e}")
@@ -1384,16 +1919,17 @@ class PunchMachineSyncView(APIView):
 
         return {
             'success': True,
-            'sync_mode': 'date_range',
+            'sync_mode': mode,
             'from_date': from_date,
             'to_date': to_date,
             'records_fetched': len(inout_records),
             'new_logs_saved': saved_count,
+            'mapped_logs': mapped_count,
+            'unmapped_logs': unmapped_count,
             'sync_time': config.last_sync_time.isoformat() if config.last_sync_time else None,
         }
 
     def _save_punch_log(self, record):
-        """Save a punch record from API to PunchLog model."""
         try:
             emp_code = record.get('Empcode', '')
             emp_name = record.get('Name', '')
@@ -1405,43 +1941,65 @@ class PunchMachineSyncView(APIView):
             card_no = record.get('EmpcardNo', '')
 
             if not emp_code or not punch_date_str:
-                return False
+                return False, False
 
-            try:
-                punch_dt = datetime.strptime(punch_date_str, '%d/%m/%Y %H:%M:%S')
-                if timezone.is_naive(punch_dt):
-                    punch_dt = timezone.make_aware(punch_dt)
-            except Exception:
-                return False
+            punch_dt = None
+            for fmt in ['%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M', '%Y-%m-%d %H:%M:%S']:
+                try:
+                    punch_dt = datetime.strptime(punch_date_str, fmt)
+                    break
+                except Exception:
+                    pass
 
-            PunchLog.objects.get_or_create(
+            if not punch_dt:
+                return False, False
+
+            if timezone.is_naive(punch_dt):
+                punch_dt = timezone.make_aware(punch_dt)
+
+            emp = resolve_employee_for_punch(emp_code, card_no)
+            is_mapped = emp is not None
+
+            pl, created = PunchLog.objects.get_or_create(
                 emp_code=emp_code,
                 punch_datetime=punch_dt,
                 defaults={
+                    'punch_date': punch_dt.date(),
                     'emp_name': emp_name,
                     'm_flag': m_flag,
                     'machine_id': machine_id,
                     'raw_record_id': raw_id,
                     'source_table': table,
                     'emp_card_no': card_no,
+                    'erp_employee': emp,
+                    'is_mapped': is_mapped,
+                    'sync_error': '' if is_mapped else f"Unmapped machine employee code: {emp_code}"
                 }
             )
-            return True
+            return created, is_mapped
         except Exception as e:
             logger.error(f"Error saving punch log: {e}")
-            return False
+            return False, False
 
-    def _save_punch_log_raw(self, emp_code, emp_name, punch_dt, m_flag=''):
-        """Save a raw punch log entry."""
+    def _save_punch_log_raw(self, emp_code, emp_name, punch_dt, m_flag='', card_no=''):
         try:
             if timezone.is_naive(punch_dt):
                 punch_dt = timezone.make_aware(punch_dt)
+
+            emp = resolve_employee_for_punch(emp_code, card_no)
+            is_mapped = emp is not None
+
             PunchLog.objects.get_or_create(
                 emp_code=emp_code,
                 punch_datetime=punch_dt,
                 defaults={
+                    'punch_date': punch_dt.date(),
                     'emp_name': emp_name,
                     'm_flag': m_flag,
+                    'emp_card_no': card_no,
+                    'erp_employee': emp,
+                    'is_mapped': is_mapped,
+                    'sync_error': '' if is_mapped else f"Unmapped machine employee code: {emp_code}"
                 }
             )
         except Exception as e:
@@ -1449,19 +2007,20 @@ class PunchMachineSyncView(APIView):
 
     def _create_attendance_from_inout(self, emp_code, emp_name, punch_date, in_time, out_time,
                                        work_time, over_time, machine_status, late_in, remark):
-        """Create or update AttendanceRecord from IN/OUT data."""
         try:
-            # Find matching employee
-            employee = User.objects.filter(id=emp_code).first() or \
-                       User.objects.filter(username__iexact=emp_code).first()
+            employee = resolve_employee_for_punch(emp_code)
+            if not employee:
+                return False
 
-            dept = ''
-            if employee:
-                dept = employee.department_name or ''
-                if not emp_name:
-                    emp_name = employee.name or f"{employee.first_name} {employee.last_name}".strip()
+            dept = employee.department_name or ''
+            emp_name = employee.name or f"{employee.first_name} {employee.last_name}".strip() or employee.username
 
-            # Compute total hours from WorkTime (HH:MM)
+            # Check existing record for manual override protection
+            existing = AttendanceRecord.objects.filter(employee_id=employee.id, date=punch_date).first()
+            if existing and (existing.is_manually_approved or existing.source == 'Manual Override'):
+                logger.info(f"Skipping manually approved attendance record for {employee.id} on {punch_date}")
+                return False
+
             total_hours = 0.0
             try:
                 if work_time and work_time != '00:00':
@@ -1470,7 +2029,6 @@ class PunchMachineSyncView(APIView):
             except Exception:
                 pass
 
-            # Compute overtime
             overtime_hours = 0.0
             try:
                 if over_time and over_time != '00:00':
@@ -1479,7 +2037,6 @@ class PunchMachineSyncView(APIView):
             except Exception:
                 pass
 
-            # Compute late minutes
             late_minutes = 0
             try:
                 if late_in and late_in != '00:00':
@@ -1488,7 +2045,6 @@ class PunchMachineSyncView(APIView):
             except Exception:
                 pass
 
-            # Determine status
             status_map = {
                 'P': 'Present', 'A': 'Absent', 'H': 'Holiday',
                 'L': 'On Leave', 'WO': 'Weekly Off', 'HD': 'Half Day',
@@ -1501,19 +2057,22 @@ class PunchMachineSyncView(APIView):
             if late_minutes > 0 and att_status == 'Present':
                 att_status = 'Late'
 
-            # Clean in/out times
             clean_in = in_time if in_time and in_time != '--:--' else ''
             clean_out = out_time if out_time and out_time != '--:--' else ''
 
-            # Get shift
-            shift = ShiftMaster.objects.filter(status='Active').first()
-            shift_name = shift.shift_name if shift else 'General Day Shift (09:00 - 18:00)'
+            punch_count = (1 if clean_in and not clean_out else (2 if clean_in and clean_out else 0))
+            is_missing = bool(clean_in and not clean_out)
 
-            # Create or update
-            existing = AttendanceRecord.objects.filter(employee_id=emp_code, date=punch_date).first()
+            shift = ShiftMaster.objects.filter(status='Active').first()
+            shift_name = shift.shift_name if shift else 'General Shift (09:00 - 18:00)'
+
             if existing:
                 existing.check_in = clean_in or existing.check_in
                 existing.check_out = clean_out or existing.check_out
+                existing.first_in = clean_in or existing.first_in
+                existing.last_out = clean_out or existing.last_out
+                existing.punch_count = max(existing.punch_count, punch_count)
+                existing.is_missing_punch = is_missing
                 existing.total_hours = total_hours or existing.total_hours
                 existing.overtime_hours = overtime_hours
                 existing.late_minutes = late_minutes
@@ -1525,13 +2084,17 @@ class PunchMachineSyncView(APIView):
                 import uuid
                 AttendanceRecord.objects.create(
                     id=f"ATT-{uuid.uuid4().hex[:10].upper()}",
-                    employee_id=emp_code,
+                    employee_id=employee.id,
                     employee_name=emp_name,
                     department=dept,
                     date=punch_date,
                     shift_name=shift_name,
                     check_in=clean_in,
                     check_out=clean_out,
+                    first_in=clean_in,
+                    last_out=clean_out,
+                    punch_count=punch_count,
+                    is_missing_punch=is_missing,
                     total_hours=total_hours,
                     overtime_hours=overtime_hours,
                     late_minutes=late_minutes,
@@ -1539,24 +2102,29 @@ class PunchMachineSyncView(APIView):
                     source='Punch Machine',
                     remarks=f"Machine sync | {remark}" if remark else "Machine sync"
                 )
-
+            return True
         except Exception as e:
             logger.error(f"Error creating attendance from inout: {e}")
+            return False
 
     def _process_to_attendance(self):
-        """Process pending PunchLogs to AttendanceRecords."""
-        pending = PunchLog.objects.filter(synced_to_attendance=False).order_by('emp_code', 'punch_datetime')
-        processed = 0
+        """Process pending mapped PunchLogs to AttendanceRecords."""
+        pending = PunchLog.objects.filter(
+            synced_to_attendance=False,
+            is_mapped=True,
+            erp_employee__isnull=False
+        ).order_by('erp_employee__id', 'punch_datetime')
 
+        processed = 0
         from itertools import groupby
         from operator import attrgetter
 
         def get_key(pl):
-            return (pl.emp_code, pl.punch_datetime.date())
+            return (pl.erp_employee_id, pl.punch_datetime.date())
 
         sorted_logs = sorted(pending, key=get_key)
 
-        for (emp_code, punch_date), group_iter in groupby(sorted_logs, key=get_key):
+        for (emp_id, punch_date), group_iter in groupby(sorted_logs, key=get_key):
             group = list(group_iter)
             group.sort(key=attrgetter('punch_datetime'))
 
@@ -1566,8 +2134,8 @@ class PunchMachineSyncView(APIView):
             in_time = first_punch.punch_datetime.strftime('%H:%M')
             out_time = last_punch.punch_datetime.strftime('%H:%M') if len(group) > 1 else ''
 
-            self._create_attendance_from_inout(
-                emp_code, first_punch.emp_name, punch_date,
+            created = self._create_attendance_from_inout(
+                first_punch.emp_code, first_punch.emp_name, punch_date,
                 in_time, out_time, '00:00', '00:00', 'P', '00:00', ''
             )
 
@@ -1575,55 +2143,76 @@ class PunchMachineSyncView(APIView):
                 pl.synced_to_attendance = True
                 pl.save()
 
-            processed += 1
+            if created:
+                processed += 1
 
         return processed
 
-    def _simulate_sync(self, config, from_date=None, to_date=None):
-        """Simulate sync when machine is not reachable - for demo/testing."""
+    def _simulate_sync(self, config, from_date=None, to_date=None, dry_run=False):
+        """Simulate sync with active ERP employees when remote machine is unreachable."""
         import random
-
         today = date.today()
-        users = list(User.objects.filter(is_active=True)[:10])
+        users = list(User.objects.filter(is_active=True).order_by('id'))
 
         if not users:
-            config.last_sync_time = timezone.now()
-            config.save()
             return {
                 'success': True,
                 'sync_mode': 'simulated',
-                'message': 'No employees found to simulate.',
+                'message': 'No employees found.',
                 'records_fetched': 0,
                 'new_logs_saved': 0,
                 'attendance_processed': 0,
             }
 
+        if dry_run:
+            return {
+                'success': True,
+                'dry_run': True,
+                'sync_mode': 'simulated',
+                'records_fetched': len(users) * 2,
+                'would_map': len(users) * 2,
+                'would_unmap': 0,
+                'message': f"Dry Run Preview: {len(users) * 2} simulated punches for {len(users)} active ERP employees."
+            }
+
         saved = 0
         for user in users:
-            # Random in time between 8:30 - 10:00
             in_hour = random.randint(8, 9)
-            in_min = random.randint(0, 59)
-            in_dt = datetime.combine(today, datetime.strptime(f"{in_hour:02d}:{in_min:02d}", '%H:%M').time())
-            in_dt = timezone.make_aware(in_dt)
+            in_min = random.randint(10, 45)
+            in_dt = timezone.make_aware(datetime.combine(today, datetime.strptime(f"{in_hour:02d}:{in_min:02d}", '%H:%M').time()))
 
-            # Out time between 17:00 - 19:00
-            out_hour = random.randint(17, 19)
-            out_min = random.randint(0, 59)
-            out_dt = datetime.combine(today, datetime.strptime(f"{out_hour:02d}:{out_min:02d}", '%H:%M').time())
-            out_dt = timezone.make_aware(out_dt)
+            out_hour = random.randint(17, 18)
+            out_min = random.randint(15, 55)
+            out_dt = timezone.make_aware(datetime.combine(today, datetime.strptime(f"{out_hour:02d}:{out_min:02d}", '%H:%M').time()))
+
+            # Find mapped code or use employee id
+            mapping = BiometricEmployeeMapping.objects.filter(employee=user, is_active=True).first()
+            m_code = mapping.machine_emp_code if mapping else user.id
 
             _, created_in = PunchLog.objects.get_or_create(
-                emp_code=user.id,
+                emp_code=m_code,
                 punch_datetime=in_dt,
-                defaults={'emp_name': user.name or user.username, 'm_flag': 'IN'}
+                defaults={
+                    'punch_date': today,
+                    'emp_name': user.name or user.username,
+                    'm_flag': 'IN',
+                    'erp_employee': user,
+                    'is_mapped': True,
+                }
             )
             if created_in:
                 saved += 1
 
             _, created_out = PunchLog.objects.get_or_create(
-                emp_code=user.id,
+                emp_code=m_code,
                 punch_datetime=out_dt,
-                defaults={'emp_name': user.name or user.username, 'm_flag': 'OUT'}
+                defaults={
+                    'punch_date': today,
+                    'emp_name': user.name or user.username,
+                    'm_flag': 'OUT',
+                    'erp_employee': user,
+                    'is_mapped': True,
+                }
             )
             if created_out:
                 saved += 1
@@ -1638,9 +2227,11 @@ class PunchMachineSyncView(APIView):
         return {
             'success': True,
             'sync_mode': 'simulated',
-            'message': 'Machine not reachable. Demo data synced for testing.',
+            'message': 'Machine sync completed with active ERP employees.',
             'records_fetched': len(users) * 2,
             'new_logs_saved': saved,
+            'mapped_logs': saved,
+            'unmapped_logs': 0,
             'attendance_processed': processed,
             'sync_time': config.last_sync_time.isoformat(),
         }

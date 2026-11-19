@@ -23,6 +23,7 @@ from .models import (
     EmployeeAppraisal,
     PunchMachineConfig,
     PunchLog,
+    BiometricEmployeeMapping,
 )
 
 @admin.register(Designation)
@@ -165,3 +166,9 @@ class PunchLogAdmin(admin.ModelAdmin):
     search_fields = ('emp_code', 'emp_name', 'machine_id', 'emp_card_no')
     list_filter = ('synced_to_attendance', 'm_flag')
 
+
+@admin.register(BiometricEmployeeMapping)
+class BiometricEmployeeMappingAdmin(admin.ModelAdmin):
+    list_display = ('id', 'machine_emp_code', 'employee_code', 'employee_name', 'device_card_no', 'is_active', 'updated_at')
+    search_fields = ('machine_emp_code', 'employee_code', 'employee_name', 'device_card_no')
+    list_filter = ('is_active',)

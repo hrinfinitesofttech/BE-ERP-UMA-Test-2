@@ -60,16 +60,22 @@ class AttendanceRecord(models.Model):
     shift_name = models.CharField(max_length=128, blank=True)
     check_in = models.CharField(max_length=32, blank=True)
     check_out = models.CharField(max_length=32, blank=True)
+    first_in = models.CharField(max_length=32, blank=True)
+    last_out = models.CharField(max_length=32, blank=True)
+    punch_count = models.IntegerField(default=0)
     total_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     late_minutes = models.IntegerField(default=0)
     early_checkout_minutes = models.IntegerField(default=0)
     overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     status = models.CharField(max_length=64, default='Present')
     source = models.CharField(max_length=64, default='Biometric System')
+    is_manually_approved = models.BooleanField(default=False)
+    is_missing_punch = models.BooleanField(default=False)
     remarks = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-date']
+        unique_together = ('employee_id', 'date')
 
     def __str__(self):
         return f"{self.date} - {self.employee_name} ({self.status})"
@@ -533,14 +539,23 @@ class PunchMachineConfig(models.Model):
 class PunchLog(models.Model):
     """Raw punch logs fetched from the punching machine."""
     id = models.CharField(max_length=64, primary_key=True)
-    emp_code = models.CharField(max_length=64)
+    emp_code = models.CharField(max_length=64)  # Machine employee code
     emp_name = models.CharField(max_length=128, blank=True)
     punch_datetime = models.DateTimeField()
+    punch_date = models.DateField(null=True, blank=True, db_index=True)
     machine_id = models.CharField(max_length=64, blank=True)
     m_flag = models.CharField(max_length=32, blank=True)
     emp_card_no = models.CharField(max_length=64, blank=True)
     source_table = models.CharField(max_length=128, blank=True)
     raw_record_id = models.IntegerField(null=True, blank=True)
+    erp_employee = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='punch_logs'
+    )
+    is_mapped = models.BooleanField(default=False, db_index=True)
     synced_to_attendance = models.BooleanField(default=False)
     sync_error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -556,4 +571,42 @@ class PunchLog(models.Model):
         if not self.id:
             import uuid
             self.id = f"PL-{uuid.uuid4().hex[:10].upper()}"
+        if self.punch_datetime and not self.punch_date:
+            self.punch_date = self.punch_datetime.date()
         super().save(*args, **kwargs)
+
+
+class BiometricEmployeeMapping(models.Model):
+    """Explicit mapping between eTimeOffice machine employee code and ERP Employee User."""
+    id = models.CharField(max_length=64, primary_key=True)
+    machine_emp_code = models.CharField(max_length=64, unique=True)
+    employee = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.CASCADE,
+        related_name='biometric_mappings'
+    )
+    employee_code = models.CharField(max_length=64, blank=True)
+    employee_name = models.CharField(max_length=128, blank=True)
+    device_card_no = models.CharField(max_length=64, blank=True)
+    is_active = models.BooleanField(default=True)
+    mapped_by = models.CharField(max_length=128, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['employee_code', 'machine_emp_code']
+
+    def __str__(self):
+        return f"{self.machine_emp_code} -> {self.employee_code} ({self.employee_name})"
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            import uuid
+            self.id = f"MAP-{uuid.uuid4().hex[:10].upper()}"
+        if self.employee:
+            self.employee_code = self.employee.id
+            if not self.employee_name:
+                self.employee_name = self.employee.name or self.employee.username
+        super().save(*args, **kwargs)
+
