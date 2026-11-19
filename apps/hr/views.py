@@ -710,31 +710,273 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=False, methods=['get'], url_path='employee-detail')
+    @action(detail=False, methods=['get'], url_path='employee-detail')
     def employee_detail(self, request):
         """
-        Returns complete Employee Master profile, mapped biometric code, monthly attendance history,
-        and raw punch logs for a given employee.
+        Returns complete Employee Master profile, mapped biometric code, monthly/date-range attendance history,
+        KPI summary calculations, and raw punch logs for a given employee.
+        Supports:
+          - employee_id / employeeId
+          - from_date & to_date (YYYY-MM-DD or DD/MM/YYYY)
+          - month (1-12) & year (e.g. 2026)
         """
+        import calendar
+        from datetime import datetime, date, timedelta
+        from django.db.models import Q
+
         emp_id = request.query_params.get('employee_id') or request.query_params.get('employeeId')
         if not emp_id:
             return Response({'error': 'employee_id parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        emp = User.objects.filter(id=emp_id).first()
+        emp = User.objects.filter(id=emp_id).first() or User.objects.filter(username=emp_id).first()
         if not emp:
-            return Response({'error': 'Employee not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': f'Employee with ID {emp_id} not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        today = date.today()
+
+        # Parse date range
+        from_str = request.query_params.get('from_date') or request.query_params.get('fromDate')
+        to_str = request.query_params.get('to_date') or request.query_params.get('toDate')
+        month_param = request.query_params.get('month')
+        year_param = request.query_params.get('year')
+
+        def parse_date_param(d_str):
+            if not d_str: return None
+            for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']:
+                try:
+                    return datetime.strptime(d_str.strip(), fmt).date()
+                except ValueError:
+                    continue
+            return None
+
+        start_date = parse_date_param(from_str)
+        end_date = parse_date_param(to_str)
+
+        if not start_date or not end_date:
+            try:
+                selected_year = int(year_param) if year_param else today.year
+                selected_month = int(month_param) if month_param else today.month
+                num_days = calendar.monthrange(selected_year, selected_month)[1]
+                start_date = date(selected_year, selected_month, 1)
+                end_date = date(selected_year, selected_month, num_days)
+            except Exception:
+                num_days = calendar.monthrange(today.year, today.month)[1]
+                start_date = date(today.year, today.month, 1)
+                end_date = date(today.year, today.month, num_days)
+
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+
+        # Active Shift Details
+        shift = ShiftMaster.objects.filter(status='Active').first()
+        shift_name = shift.shift_name if shift else 'Factory General Shift'
+        shift_start = shift.start_time if shift else '09:00'
+        shift_end = shift.end_time if shift else '18:00'
+
+        # Biometric Mapping
         mapping = BiometricEmployeeMapping.objects.filter(employee=emp, is_active=True).first()
         machine_code = mapping.machine_emp_code if mapping else ''
 
-        records = AttendanceRecord.objects.filter(employee_id=emp.id).order_by('-date')[:31]
-        punch_logs = PunchLog.objects.filter(erp_employee=emp).order_by('-punch_datetime')[:50]
-        if not punch_logs.exists() and machine_code:
-            punch_logs = PunchLog.objects.filter(emp_code=machine_code).order_by('-punch_datetime')[:50]
+        # Preload Attendance Records in Range
+        rec_filter = Q(employee_id=emp.id)
+        if machine_code:
+            rec_filter |= Q(employee_id=f"EMP-{machine_code}") | Q(employee_id=machine_code)
+
+        records = AttendanceRecord.objects.filter(
+            rec_filter,
+            date__gte=start_date,
+            date__lte=end_date
+        ).order_by('date')
+
+        rec_map = {r.date: r for r in records}
+
+        # Preload Holidays
+        holidays = Holiday.objects.filter(
+            holiday_date__gte=start_date,
+            holiday_date__lte=end_date
+        )
+        holiday_map = {h.holiday_date: h.holiday_name for h in holidays}
+
+        # Preload Approved Leaves
+        leaves = LeaveRequest.objects.filter(
+            employee_id=emp.id,
+            status='Approved',
+            from_date__lte=end_date,
+            to_date__gte=start_date
+        )
+        leave_map = {}
+        for l in leaves:
+            l_start = l.from_date if isinstance(l.from_date, date) else parse_date_param(str(l.from_date))
+            l_end = l.to_date if isinstance(l.to_date, date) else parse_date_param(str(l.to_date))
+            if l_start and l_end:
+                cur = max(l_start, start_date)
+                fin = min(l_end, end_date)
+                while cur <= fin:
+                    leave_map[cur] = l.leave_name or 'Approved Leave'
+                    cur += timedelta(days=1)
+
+        # Preload Raw Punch Logs
+        punch_filter = Q(erp_employee=emp)
+        if machine_code:
+            punch_filter |= Q(emp_code=machine_code)
+
+        punch_logs = PunchLog.objects.filter(
+            punch_filter,
+            punch_date__gte=start_date,
+            punch_date__lte=end_date
+        ).order_by('-punch_datetime')
+
+        # Generate Day-by-Day Calendar
+        days = []
+        present_count = 0
+        absent_count = 0
+        late_count = 0
+        half_day_count = 0
+        leave_count = 0
+        weekly_off_count = 0
+        holiday_count = 0
+        working_days_count = 0
+        total_working_hours = 0.0
+        total_overtime_hours = 0.0
+        missing_in_count = 0
+        missing_out_count = 0
+
+        curr_date = start_date
+        while curr_date <= end_date:
+            day_name = curr_date.strftime('%A')
+            is_sunday = curr_date.weekday() == 6
+            h_name = holiday_map.get(curr_date)
+            l_name = leave_map.get(curr_date)
+            rec = rec_map.get(curr_date)
+
+            is_working_day = not is_sunday and not bool(h_name)
+            if is_working_day:
+                working_days_count += 1
+
+            if rec:
+                first_in = rec.first_in or rec.check_in or ''
+                last_out = rec.last_out or rec.check_out or ''
+                wh = float(rec.total_hours or 0.0)
+                ot = float(rec.overtime_hours or 0.0)
+                lm = rec.late_minutes or 0
+                status_val = rec.status
+                is_missing = rec.is_missing_punch or (bool(first_in) and not bool(last_out))
+                punch_count = rec.punch_count or (2 if first_in and last_out else (1 if first_in or last_out else 0))
+                source = rec.source or 'eTimeOffice Machine'
+                remarks = rec.remarks or ''
+
+                if status_val == 'Present':
+                    present_count += 1
+                elif status_val == 'Late':
+                    late_count += 1
+                    present_count += 1
+                elif status_val == 'Half Day':
+                    half_day_count += 1
+                    present_count += 1
+                elif 'Leave' in status_val:
+                    leave_count += 1
+                elif status_val == 'Absent':
+                    absent_count += 1
+                else:
+                    if first_in:
+                        present_count += 1
+                    else:
+                        absent_count += 1
+
+                total_working_hours += wh
+                total_overtime_hours += ot
+
+                if is_missing or (not first_in and last_out):
+                    if not first_in: missing_in_count += 1
+                    if not last_out: missing_out_count += 1
+
+            elif l_name:
+                status_val = 'On Leave'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                wh = 0.0
+                ot = 0.0
+                lm = 0
+                is_missing = False
+                source = 'Leave System'
+                remarks = l_name
+                leave_count += 1
+
+            elif h_name:
+                status_val = 'Holiday'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                wh = 0.0
+                ot = 0.0
+                lm = 0
+                is_missing = False
+                source = 'Holiday Master'
+                remarks = h_name
+                holiday_count += 1
+
+            elif is_sunday:
+                status_val = 'Weekly Off'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                wh = 0.0
+                ot = 0.0
+                lm = 0
+                is_missing = False
+                source = 'Shift Roster'
+                remarks = 'Sunday'
+                weekly_off_count += 1
+
+            else:
+                status_val = 'Absent' if curr_date <= today else 'Upcoming'
+                first_in = ''
+                last_out = ''
+                punch_count = 0
+                wh = 0.0
+                ot = 0.0
+                lm = 0
+                is_missing = False
+                source = 'System'
+                remarks = 'No punch recorded' if curr_date <= today else ''
+                if curr_date <= today:
+                    absent_count += 1
+
+            days.append({
+                'date': curr_date.isoformat(),
+                'dateFormatted': curr_date.strftime('%d/%m/%Y'),
+                'dayName': day_name,
+                'shift': shift_name,
+                'shiftStartTime': shift_start,
+                'shiftEndTime': shift_end,
+                'firstIn': first_in,
+                'lastOut': last_out,
+                'punchCount': punch_count,
+                'totalHours': round(wh, 2),
+                'requiredHours': 8.0,
+                'lateMinutes': lm,
+                'overtimeHours': round(ot, 2),
+                'status': status_val,
+                'isWeeklyOff': is_sunday,
+                'isHoliday': bool(h_name),
+                'isLeave': bool(l_name),
+                'leaveType': l_name or '',
+                'isMissingPunch': is_missing,
+                'source': source,
+                'remarks': remarks,
+                'recordId': rec.id if rec else None,
+            })
+
+            curr_date += timedelta(days=1)
+
+        total_calendar_days = (end_date - start_date).days + 1
 
         return Response({
             'employee': {
                 'id': emp.id,
-                'name': emp.name or emp.username,
+                'code': emp.id,
+                'name': emp.name or f"{emp.first_name} {emp.last_name}".strip() or emp.username,
                 'username': emp.username,
                 'email': emp.email,
                 'mobile': emp.mobile or getattr(emp, 'phone', ''),
@@ -742,18 +984,45 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
                 'designation': emp.designation or '',
                 'role': getattr(emp, 'role_name', ''),
                 'status': 'Active' if emp.is_active else 'Inactive',
-                'joiningDate': getattr(emp, 'joining_date', None),
-                'employmentType': getattr(emp, 'employment_type', ''),
-                'workLocation': getattr(emp, 'work_location', ''),
+                'joiningDate': getattr(emp, 'joining_date', '') or '01/01/2024',
+                'employmentType': getattr(emp, 'employment_type', '') or 'full_time',
+                'workLocation': getattr(emp, 'work_location', '') or 'Main Factory, Vadodara',
+                'shiftName': shift_name,
+                'shiftStartTime': shift_start,
+                'shiftEndTime': shift_end,
+                'reportingManager': getattr(emp, 'reporting_manager_name', '') or 'General Management',
             },
             'biometricMapping': {
                 'machineEmpCode': machine_code,
                 'isMapped': bool(machine_code),
                 'mappingId': mapping.id if mapping else None,
-                'cardNo': mapping.device_card_no if mapping else '',
+                'cardNo': getattr(mapping, 'device_card_no', '') if mapping else 'Default',
             },
+            'period': {
+                'fromDate': start_date.isoformat(),
+                'toDate': end_date.isoformat(),
+                'month': start_date.month,
+                'year': start_date.year,
+                'totalCalendarDays': total_calendar_days,
+            },
+            'summary': {
+                'totalDays': total_calendar_days,
+                'workingDays': working_days_count,
+                'presentDays': present_count,
+                'absentDays': absent_count,
+                'lateDays': late_count,
+                'halfDays': half_day_count,
+                'leaveDays': leave_count,
+                'weeklyOffDays': weekly_off_count,
+                'holidays': holiday_count,
+                'totalWorkingHours': round(total_working_hours, 2),
+                'totalOvertimeHours': round(total_overtime_hours, 2),
+                'missingInPunches': missing_in_count,
+                'missingOutPunches': missing_out_count,
+            },
+            'days': days,
             'attendanceRecords': AttendanceRecordSerializer(records, many=True).data,
-            'punchLogs': PunchLogSerializer(punch_logs, many=True).data,
+            'punchLogs': PunchLogSerializer(punch_logs[:100], many=True).data,
         })
 
 
