@@ -1138,7 +1138,9 @@ class EmployeeDashboardView(APIView):
 
 
 
-import requests
+import json
+import urllib.request
+import urllib.parse
 import base64
 import logging
 from datetime import datetime, date, timedelta
@@ -1146,6 +1148,22 @@ from .models import PunchMachineConfig, PunchLog
 from .serializers import PunchMachineConfigSerializer, PunchLogSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def _fetch_machine_json(url, params=None, headers=None, timeout=30):
+    """Zero-dependency HTTP GET helper using standard library urllib."""
+    if params:
+        query_str = urllib.parse.urlencode(params)
+        sep = '&' if '?' in url else '?'
+        url = f"{url}{sep}{query_str}"
+    req = urllib.request.Request(url)
+    if headers:
+        for k, v in headers.items():
+            req.add_header(k, v)
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        raw_text = response.read().decode('utf-8')
+        return json.loads(raw_text)
+
 
 
 class PunchMachineConfigViewSet(viewsets.ModelViewSet):
@@ -1260,13 +1278,9 @@ class PunchMachineSyncView(APIView):
         headers = config.get_auth_header()
 
         try:
-            resp = requests.get(url, params=params, headers=headers, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-        except requests.exceptions.ConnectionError:
-            # Machine not reachable - return mock data for demo
-            return self._simulate_sync(config)
+            data = _fetch_machine_json(url, params=params, headers=headers, timeout=30)
         except Exception as e:
+            logger.warning(f"Incremental sync fetch error: {e}. Falling back to simulation.")
             return self._simulate_sync(config)
 
         if data.get('Error'):
@@ -1311,11 +1325,9 @@ class PunchMachineSyncView(APIView):
         headers = config.get_auth_header()
 
         try:
-            resp = requests.get(url, params=params, headers=headers, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-        except Exception:
-            # Machine not reachable - simulate
+            data = _fetch_machine_json(url, params=params, headers=headers, timeout=30)
+        except Exception as e:
+            logger.warning(f"Date range sync fetch error: {e}. Falling back to simulation.")
             return self._simulate_sync(config, from_date, to_date)
 
         if data.get('Error'):
