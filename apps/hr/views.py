@@ -1271,6 +1271,29 @@ class WFHRequestViewSet(viewsets.ModelViewSet):
         return Response(WFHRequestSerializer(wfh).data)
 
 
+def _is_hr_privileged(user):
+    """Super admin / admin / department manager / users with attendance-management flag."""
+    return bool(
+        is_super_admin(user) or is_admin(user) or is_department_manager(user)
+        or getattr(user, 'can_manage_attendance', False)
+    )
+
+
+def _force_own_identity(request, data):
+    """Non-privileged users can only create records for themselves."""
+    user = request.user
+    data = data.copy() if hasattr(data, 'copy') else dict(data)
+    if _is_hr_privileged(user):
+        return data
+    for k in ('employeeId', 'employee_id'):
+        data.pop(k, None)
+    data['employee_id'] = user.id
+    data['employee_name'] = (
+        getattr(user, 'name', '') or f"{user.first_name} {user.last_name}".strip() or user.username
+    )
+    return data
+
+
 class MissedPunchRequestViewSet(viewsets.ModelViewSet):
     queryset = MissedPunchRequest.objects.all().order_by('-id')
     serializer_class = MissedPunchRequestSerializer
@@ -1289,12 +1312,25 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
             return (MissedPunchRequest.objects.filter(employee_id__in=User.objects.filter(department_name__iexact=dept_name).values_list('id', flat=True)) if dept_name else MissedPunchRequest.objects.filter(employee_id=user.id)).order_by('-id')
         return MissedPunchRequest.objects.filter(employee_id=user.id).order_by('-id')
 
+    def create(self, request, *args, **kwargs):
+        data = _force_own_identity(request, request.data)
+        if not _is_hr_privileged(request.user):
+            data['status'] = 'Pending'
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_missed_punch(self, request, pk=None):
         mp = self.get_object()
         user = request.user
         if not (is_super_admin(user) or is_admin(user) or is_department_manager(user) or getattr(user, 'can_manage_attendance', False)):
             return Response({'error': 'You do not have permission to approve missed punch requests.'}, status=status.HTTP_403_FORBIDDEN)
+        if mp.employee_id == user.id and not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'You cannot approve your own missed punch request.'}, status=status.HTTP_403_FORBIDDEN)
+        if mp.status != 'Pending':
+            return Response({'error': f'Request is already {mp.status}.'}, status=status.HTTP_400_BAD_REQUEST)
 
         mp.status = 'Approved'
         mp.save()
@@ -1325,6 +1361,8 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
         att.status = 'Present'
+        att.is_manually_approved = True
+        att.is_missing_punch = False
         att.save()
 
         return Response(MissedPunchRequestSerializer(mp).data)
@@ -1409,9 +1447,45 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
     search_fields = ['overtime_no', 'employee_name']
     filterset_fields = ['status', 'employee_id']
 
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return OvertimeRecord.objects.none()
+        if is_super_admin(user) or is_admin(user):
+            return OvertimeRecord.objects.all().order_by('-id')
+        if is_department_manager(user):
+            dept_name = getattr(user, 'department_name', '')
+            qs = OvertimeRecord.objects.filter(department__iexact=dept_name) if dept_name else OvertimeRecord.objects.filter(employee_id=user.id)
+            return qs.order_by('-id')
+        return OvertimeRecord.objects.filter(employee_id=user.id).order_by('-id')
+
+    def create(self, request, *args, **kwargs):
+        data = _force_own_identity(request, request.data)
+        if not _is_hr_privileged(request.user):
+            data['status'] = 'Pending'
+            data['approved_by'] = ''
+            data.pop('approvedBy', None)
+            data['overtime_amount'] = 0
+            data.pop('overtimeAmount', None)
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def _deny_decision(self, request, ot):
+        user = request.user
+        if not _is_hr_privileged(user):
+            return Response({'error': 'You do not have permission to decide overtime requests.'}, status=status.HTTP_403_FORBIDDEN)
+        if ot.employee_id == user.id and not (is_super_admin(user) or is_admin(user)):
+            return Response({'error': 'You cannot approve or reject your own overtime.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_overtime(self, request, pk=None):
         ot = self.get_object()
+        denied = self._deny_decision(request, ot)
+        if denied:
+            return denied
         ot.status = 'Approved'
         ot.approved_by = request.data.get('approved_by') or request.data.get('approvedBy') or 'HR Manager'
         ot.save()
@@ -1420,6 +1494,9 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='reject')
     def reject_overtime(self, request, pk=None):
         ot = self.get_object()
+        denied = self._deny_decision(request, ot)
+        if denied:
+            return denied
         ot.status = 'Rejected'
         ot.save()
         return Response(OvertimeRecordSerializer(ot).data)
@@ -1470,8 +1547,37 @@ class PayrollRecordViewSet(viewsets.ModelViewSet):
     search_fields = ['payroll_number', 'employee_name', 'department', 'month_year']
     filterset_fields = ['status', 'month_year', 'financial_year', 'employee_id']
 
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return PayrollRecord.objects.none()
+        if is_super_admin(user) or is_admin(user):
+            return PayrollRecord.objects.all().order_by('-id')
+        # everyone else: only their own slips, and never drafts
+        return PayrollRecord.objects.filter(employee_id=user.id).exclude(status='Draft').order_by('-id')
+
+    def _admin_only(self, request):
+        if not (is_super_admin(request.user) or is_admin(request.user)):
+            return Response({'error': 'Only administrators can manage payroll.'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def create(self, request, *args, **kwargs):
+        return self._admin_only(request) or super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        return self._admin_only(request) or super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self._admin_only(request) or super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return self._admin_only(request) or super().destroy(request, *args, **kwargs)
+
     @action(detail=False, methods=['post'], url_path='generate-monthly-payroll')
     def generate_monthly_payroll(self, request):
+        denied = self._admin_only(request)
+        if denied:
+            return denied
         month_year = request.data.get('monthYear') or request.data.get('month_year', 'September 2026')
         financial_year = request.data.get('financialYear') or request.data.get('financial_year', '2026-2027')
         
@@ -1520,6 +1626,9 @@ class PayrollRecordViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_payroll(self, request, pk=None):
+        denied = self._admin_only(request)
+        if denied:
+            return denied
         rec = self.get_object()
         rec.status = 'Approved'
         rec.approved_by = request.data.get('approvedBy') or 'HR / Finance Head'
