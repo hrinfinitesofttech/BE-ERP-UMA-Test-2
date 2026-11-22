@@ -50,6 +50,11 @@ class UserSerializer(serializers.ModelSerializer):
             'last_login_str',
             'is_family_member',
             'profile_photo',
+            'bank_name',
+            'bank_account_no',
+            'bank_account_name',
+            'bank_ifsc',
+            'bank_branch',
             'password',
         ]
 
@@ -155,6 +160,11 @@ class UserSerializer(serializers.ModelSerializer):
             'explicitRestrictions': 'explicit_restrictions',
             'permissionsReviewRequired': 'permissions_review_required',
             'isActive': 'is_active',
+            'bankName': 'bank_name',
+            'bankAccountNo': 'bank_account_no',
+            'bankAccountName': 'bank_account_name',
+            'bankIfsc': 'bank_ifsc',
+            'bankBranch': 'bank_branch',
         }
         for camel, snake in camel_to_snake.items():
             if camel in data and snake not in data:
@@ -218,5 +228,10 @@ class UserSerializer(serializers.ModelSerializer):
         ret['previous_department_name'] = ret.get('previous_department_name') or ''
         ret['isActive'] = bool(instance.is_active)
         ret['is_active'] = bool(instance.is_active)
+        ret['bankName'] = ret.get('bank_name') or ''
+        ret['bankAccountNo'] = ret.get('bank_account_no') or ''
+        ret['bankAccountName'] = ret.get('bank_account_name') or ''
+        ret['bankIfsc'] = ret.get('bank_ifsc') or ''
+        ret['bankBranch'] = ret.get('bank_branch') or ''
 
         return ret

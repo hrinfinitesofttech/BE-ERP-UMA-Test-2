@@ -68,6 +68,11 @@ class User(AbstractUser):
     last_login_str = models.CharField(max_length=60, blank=True, default='')
     is_family_member = models.BooleanField(default=False)
     profile_photo = models.CharField(max_length=255, blank=True, default='')
+    bank_name = models.CharField(max_length=150, blank=True, default='')
+    bank_account_no = models.CharField(max_length=50, blank=True, default='')
+    bank_account_name = models.CharField(max_length=150, blank=True, default='')
+    bank_ifsc = models.CharField(max_length=30, blank=True, default='')
+    bank_branch = models.CharField(max_length=150, blank=True, default='')
     explicit_restrictions = models.JSONField(default=list, blank=True)
     permissions_review_required = models.BooleanField(default=False)
     previous_department_name = models.CharField(max_length=100, blank=True, default='')
@@ -83,13 +88,17 @@ class User(AbstractUser):
                 if old and old['department_id'] and self.department_id and old['department_id'] != self.department_id:
                     self.permissions_review_required = True
                     self.previous_department_name = old['department_name'] or ''
-                    # Reset department-specific permissions so permissions from old department are not retained silently
-                    if self.department and getattr(self.department, 'assigned_modules', None):
-                        self.assigned_modules = list(self.department.assigned_modules)
-                    if self.department and getattr(self.department, 'default_permissions', None):
-                        self.custom_permissions = dict(self.department.default_permissions)
-                    else:
-                        self.custom_permissions = {}
+                    # Page-level access (custom_permissions['pages']) is set explicitly by an admin
+                    # in the employee form, so a department change must not wipe it.
+                    page_level = isinstance(self.custom_permissions, dict) and isinstance(self.custom_permissions.get('pages'), dict)
+                    if not page_level:
+                        # Reset department-specific permissions so permissions from old department are not retained silently
+                        if self.department and getattr(self.department, 'assigned_modules', None):
+                            self.assigned_modules = list(self.department.assigned_modules)
+                        if self.department and getattr(self.department, 'default_permissions', None):
+                            self.custom_permissions = dict(self.department.default_permissions)
+                        else:
+                            self.custom_permissions = {}
             except Exception:
                 pass
 
