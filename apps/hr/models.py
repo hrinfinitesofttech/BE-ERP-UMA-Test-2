@@ -294,6 +294,14 @@ class SalaryStructure(models.Model):
     employer_esi = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     total_ctc = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     status = models.CharField(max_length=32, default='Active')
+    # statutory applicability & identifiers (used by the payroll engine and printed on the payslip)
+    pf_applicable = models.BooleanField(default=True)
+    esi_applicable = models.BooleanField(default=True)
+    pt_applicable = models.BooleanField(default=True)
+    overtime_eligible = models.BooleanField(default=True)
+    uan_number = models.CharField(max_length=32, blank=True, default='')
+    esi_number = models.CharField(max_length=32, blank=True, default='')
+    pan_number = models.CharField(max_length=16, blank=True, default='')
 
     def __str__(self):
         return f"{self.structure_name} - {self.employee_name}"
@@ -329,10 +337,39 @@ class PayrollRecord(models.Model):
     employer_pf = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     employer_esi = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
     total_ctc = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
-    status = models.CharField(max_length=64, default='Draft')
+    status = models.CharField(max_length=64, default='Draft')  # Draft / Approved / Paid
     processed_date = models.DateField()
     approved_by = models.CharField(max_length=128, blank=True)
     accounting_voucher_ref = models.CharField(max_length=64, blank=True)
+    # --- detailed calculation (added with the real payroll engine)
+    period_ym = models.CharField(max_length=7, blank=True, default='', db_index=True)  # 2026-11
+    calendar_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    paid_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    weekly_offs = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    holidays = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    half_days = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    late_days = models.IntegerField(default=0)
+    conveyance_allowance = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    medical_allowance = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    special_allowance = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    reimbursement_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    other_earnings = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    lop_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0.0)  # information only
+    loan_recovery_detail = models.JSONField(default=list, blank=True)
+    reimbursement_ids = models.JSONField(default=list, blank=True)
+    calc_notes = models.JSONField(default=list, blank=True)
+    remarks = models.TextField(blank=True, default='')
+    joining_date = models.CharField(max_length=30, blank=True, default='')
+    uan_number = models.CharField(max_length=32, blank=True, default='')
+    esi_number = models.CharField(max_length=32, blank=True, default='')
+    pan_number = models.CharField(max_length=16, blank=True, default='')
+    bank_name = models.CharField(max_length=150, blank=True, default='')
+    bank_account_no = models.CharField(max_length=50, blank=True, default='')
+    bank_ifsc = models.CharField(max_length=30, blank=True, default='')
+    payment_status = models.CharField(max_length=24, default='Unpaid')
+    paid_date = models.DateField(null=True, blank=True)
+    payment_mode = models.CharField(max_length=32, blank=True, default='')
+    payment_ref = models.CharField(max_length=128, blank=True, default='')
 
     class Meta:
         ordering = ['-processed_date']
@@ -610,3 +647,27 @@ class BiometricEmployeeMapping(models.Model):
                 self.employee_name = self.employee.name or self.employee.username
         super().save(*args, **kwargs)
 
+
+
+class PayrollSettings(models.Model):
+    """Singleton (pk=1): statutory rates and rules used by the payroll engine."""
+    days_basis = models.CharField(max_length=16, default='calendar')  # calendar | fixed26 | fixed30
+    pf_rate = models.DecimalField(max_digits=5, decimal_places=2, default=12)
+    pf_wage_ceiling = models.DecimalField(max_digits=10, decimal_places=2, default=15000)
+    esi_employee_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.75)
+    esi_employer_rate = models.DecimalField(max_digits=5, decimal_places=2, default=3.25)
+    esi_gross_ceiling = models.DecimalField(max_digits=10, decimal_places=2, default=21000)
+    # Gujarat professional tax slabs for men: [{"upto": 5999, "pt": 0}, ...] — last slab has "upto": null
+    pt_slabs = models.JSONField(default=list, blank=True)
+    ot_multiplier = models.DecimalField(max_digits=4, decimal_places=2, default=2)
+    shift_hours = models.DecimalField(max_digits=4, decimal_places=1, default=8)
+    unpaid_leave_keywords = models.CharField(max_length=255, default='unpaid,lwp,loss of pay,lop')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        if not obj.pt_slabs:
+            obj.pt_slabs = [{'upto': 5999, 'pt': 0}, {'upto': 8999, 'pt': 80}, {'upto': 11999, 'pt': 150}, {'upto': None, 'pt': 200}]
+            obj.save()
+        return obj
