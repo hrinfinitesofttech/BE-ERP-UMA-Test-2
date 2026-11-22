@@ -215,30 +215,41 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return User.objects.none()
 
         if is_super_admin(user):
-            return User.objects.all().order_by('-date_joined', '-id')
+            qs = User.objects.all()
+        else:
+            role_type = getattr(user, 'role_type', 'employee')
+            data_scope = getattr(user, 'data_scope', 'own')
 
-        role_type = getattr(user, 'role_type', 'employee')
-        data_scope = getattr(user, 'data_scope', 'own')
+            if role_type == 'admin':
+                if data_scope == 'all':
+                    qs = User.objects.all()
+                elif data_scope == 'department':
+                    qs = User.objects.filter(department_id=user.department_id)
+                else:
+                    qs = User.objects.filter(id=user.id)
+            elif role_type == 'department_manager':
+                if user.department_id:
+                    qs = User.objects.filter(department_id=user.department_id)
+                else:
+                    qs = User.objects.filter(id=user.id)
+            elif data_scope == 'department' and user.department_id:
+                qs = User.objects.filter(department_id=user.department_id)
+            else:
+                qs = User.objects.filter(id=user.id)
 
-        if role_type == 'admin':
-            if data_scope == 'all':
-                return User.objects.all().order_by('-date_joined', '-id')
-            if data_scope == 'department':
-                return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
-            return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
+        # Support is_active / status filtering
+        is_active_param = self.request.query_params.get('is_active')
+        if is_active_param is not None:
+            if is_active_param.lower() in ['true', '1']:
+                qs = qs.filter(is_active=True, status='active')
+            elif is_active_param.lower() in ['false', '0']:
+                qs = qs.filter(Q(is_active=False) | Q(status='inactive'))
 
-        if role_type == 'department_manager':
-            # Department managers view employees in their own department
-            if user.department_id:
-                return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
-            return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
+        status_param = self.request.query_params.get('status')
+        if status_param and status_param != 'all':
+            qs = qs.filter(status__iexact=status_param)
 
-        # Normal Employee
-        if data_scope == 'department' and user.department_id:
-            return User.objects.filter(department_id=user.department_id).order_by('-date_joined', '-id')
-
-        # Default own scope
-        return User.objects.filter(id=user.id).order_by('-date_joined', '-id')
+        return qs.order_by('-date_joined', '-id')
 
     def get_object(self):
         pk = self.kwargs.get('pk')
