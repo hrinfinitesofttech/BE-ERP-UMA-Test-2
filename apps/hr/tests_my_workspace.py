@@ -116,3 +116,20 @@ class MyWorkspaceSecurityTests(TestCase):
         self.assertEqual(self.as_user(self.alice).post('/api/overtime-records/OT-1/approve/').status_code, 403)
         # manager can
         self.assertEqual(self.as_user(self.mgr).post('/api/overtime-records/OT-1/approve/').status_code, 200)
+
+
+class AttendanceDateRangeFilterTests(TestCase):
+    def test_date_from_to_limit_the_list(self):
+        u = User.objects.create(id='EMP-R', username='r', first_name='R', last_name='T', role_type='admin')
+        for i, d in enumerate([date(2026, 9, 1), date(2026, 10, 15), date(2026, 11, 20)]):
+            AttendanceRecord.objects.create(id=f'AR{i}', employee_id='EMP-R', employee_name='R', department='Ops', date=d, status='Present')
+        c = APIClient()
+        c.force_authenticate(u)
+
+        def ids(qs):
+            data = c.get('/api/attendance-records/' + qs).json()
+            return {x['id'] for x in (data if isinstance(data, list) else data['results'])}
+
+        self.assertEqual(ids(''), {'AR0', 'AR1', 'AR2'})
+        self.assertEqual(ids('?date_from=2026-10-01'), {'AR1', 'AR2'})
+        self.assertEqual(ids('?date_from=2026-10-01&date_to=2026-10-31'), {'AR1'})

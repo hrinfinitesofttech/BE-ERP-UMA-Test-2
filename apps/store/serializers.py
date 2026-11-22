@@ -51,7 +51,37 @@ class ItemMasterSerializer(serializers.ModelSerializer):
     currentStock = serializers.SerializerMethodField()
     current_stock = serializers.SerializerMethodField()
 
+    def _stock_lookup(self):
+        """
+        When serialising a LIST of items, load every StockBalance once and look rows up in memory
+        (was 2-4 queries per item -> thousands of queries for the item master list).
+        Returns None for single-object serialisation so the original per-object queries are used.
+        """
+        from rest_framework.serializers import ListSerializer
+        if not isinstance(self.parent, ListSerializer):
+            return None
+        root = self.parent
+        cached = getattr(root, '_stock_lookup_cache', None)
+        if cached is None:
+            qs = StockBalance.objects.all()
+            if not qs.ordered:
+                qs = qs.order_by('pk')
+            by_code, by_name = {}, {}
+            for code, name, qty in qs.values_list('item_code', 'item_name', 'available_quantity'):
+                by_code.setdefault(code, qty)               # first row wins, same as .first()
+                by_name.setdefault((name or '').lower(), qty)
+            cached = (by_code, by_name)
+            root._stock_lookup_cache = cached
+        return cached
+
     def get_currentStock(self, obj):
+        lookup = self._stock_lookup()
+        if lookup is not None:
+            by_code, by_name = lookup
+            if obj.item_code in by_code:
+                return float(by_code[obj.item_code])
+            qty = by_name.get((obj.item_name or '').lower())
+            return float(qty) if qty is not None else 0.0
         sb = StockBalance.objects.filter(item_code=obj.item_code).first()
         if sb:
             return float(sb.available_quantity)

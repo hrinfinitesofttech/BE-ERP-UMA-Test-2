@@ -106,6 +106,16 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         date_param = self.request.query_params.get('date')
         if date_param:
             qs = qs.filter(date=date_param)
+        # Optional range so clients can load a recent window instead of the full history
+        date_from = self.request.query_params.get('date_from') or self.request.query_params.get('dateFrom')
+        date_to = self.request.query_params.get('date_to') or self.request.query_params.get('dateTo')
+        try:
+            if date_from:
+                qs = qs.filter(date__gte=date_from)
+            if date_to:
+                qs = qs.filter(date__lte=date_to)
+        except (ValueError, TypeError, Exception):
+            pass
         emp_param = self.request.query_params.get('employee_id') or self.request.query_params.get('employeeId')
         if emp_param:
             if is_super_admin(user) or is_admin(user):

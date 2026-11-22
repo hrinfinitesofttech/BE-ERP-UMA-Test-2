@@ -344,7 +344,7 @@ class Command(BaseCommand):
                 'severity': 'Warning',
                 'title': 'Job JOB-2026-001 Longitudinal SAW Seam at 65% Progress',
                 'description': 'Shopfloor Bay 2 operator completed root pass and 4 filler runs. NDT Level II inspection due.',
-                'target_url': '/production/jobs',
+                'target_url': '/production/planning',
                 'action_required': 'Assign QA inspector for visual & UT check',
                 'is_read': False
             },

@@ -1,5 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .ledger_views import (
+    AccountGroupViewSet, LedgerViewSet, VoucherViewSet, DepreciationAssetViewSet, StockItemViewSet,
+    PaymentRequestViewSet, ReportView, SetupView, DayBookView,
+)
 from .views import (
     FinancialYearViewSet, ChartOfAccountViewSet, TaxMasterViewSet,
     CostCenterViewSet, SalesInvoiceViewSet, PurchaseInvoiceViewSet,
@@ -31,7 +35,17 @@ router.register('fixed-assets', FixedAssetViewSet, basename='fixed-asset')
 router.register('eway-bills', EWayBillViewSet, basename='eway-bill')
 router.register('ewaybills', EWayBillViewSet, basename='ewaybill')
 
+router.register('account-groups', AccountGroupViewSet, basename='account-group')
+router.register('ledgers', LedgerViewSet, basename='ledger')
+router.register('vouchers', VoucherViewSet, basename='voucher')
+router.register('depreciation-assets', DepreciationAssetViewSet, basename='depreciation-asset')
+router.register('stock-items', StockItemViewSet, basename='stock-item')
+router.register('payment-requests', PaymentRequestViewSet, basename='payment-request')
+
 urlpatterns = [
+    path('reports/<str:kind>/', ReportView.as_view(), name='accounting-report'),
+    path('setup/<str:action_name>/', SetupView.as_view(), name='accounting-setup'),
+    path('day-book/', DayBookView.as_view(), name='accounting-day-book'),
     path('dashboard-metrics/', AccountingDashboardMetricsView.as_view(), name='accounting-dashboard-metrics'),
     path('', include(router.urls)),
 ]
