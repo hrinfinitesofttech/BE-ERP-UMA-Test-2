@@ -1,4 +1,6 @@
+import logging
 from datetime import datetime
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
@@ -325,11 +327,15 @@ class WarehouseLocationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 
+logger = logging.getLogger(__name__)
+
+
 class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
     queryset = GoodsReceiptNote.objects.all().order_by('-created_at', '-id')
     serializer_class = GoodsReceiptNoteSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         import threading
         if not hasattr(self.__class__, '_create_lock'):
@@ -542,10 +548,15 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
     serializer_class = MaterialIssueSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('issue_number') and not data.get('issueNumber'):
-            code = f"ISSUE-2026-{MaterialIssue.objects.count() + 1:04d}"
+            n = MaterialIssue.objects.count() + 1
+            code = f"ISSUE-2026-{n:04d}"
+            while MaterialIssue.objects.filter(Q(id=code) | Q(issue_number=code)).exists():
+                n += 1
+                code = f"ISSUE-2026-{n:04d}"
             data['id'] = code
             data['issue_number'] = code
         elif not data.get('id'):
@@ -581,6 +592,34 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
             data['notes'] = data.get('remarks') or data.get('notes') or ''
         if 'status' not in data:
             data['status'] = data.get('status') or 'Fully Issued'
+
+        # Guard: never issue more than is physically in stock (previously clamped silently to 0)
+        shortages = []
+        _pre_items = data.get('items') or []
+        if isinstance(_pre_items, str):
+            try:
+                import json as _json
+                _pre_items = _json.loads(_pre_items)
+            except Exception:
+                _pre_items = []
+        for _itm in (_pre_items if isinstance(_pre_items, list) else []):
+            if not isinstance(_itm, dict):
+                continue
+            _code = str(_itm.get('itemCode') or _itm.get('item_code') or _itm.get('itemId') or _itm.get('item_id') or '').strip()
+            if not _code:
+                continue
+            try:
+                _qty = float(_itm.get('issuedQty') or _itm.get('issued_qty') or _itm.get('issuedQuantity') or _itm.get('issued_quantity') or _itm.get('quantity') or 0)
+            except (TypeError, ValueError):
+                _qty = 0
+            _bal = StockBalance.objects.filter(item_code__iexact=_code).first()
+            if _bal and _qty > float(_bal.quantity or 0) + 1e-9:
+                shortages.append(f"{_bal.item_name or _code}: requested {_qty:g}, in stock {float(_bal.quantity or 0):g}")
+        if shortages:
+            return Response(
+                {'error': 'Insufficient stock for material issue.', 'shortages': shortages},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -669,7 +708,7 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
                         st.progress = 100
                         st.save()
             except Exception:
-                pass
+                logger.exception('Project sync after material issue %s failed', issue.issue_number)
 
         return Response(MaterialIssueSerializer(issue).data, status=status.HTTP_201_CREATED)
 

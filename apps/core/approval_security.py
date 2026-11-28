@@ -33,6 +33,16 @@ def get_current_user_info(request):
             'user_obj': user,
         }
     
+    # Header / body based identities are for local testing only. They must never be
+    # honoured in production, otherwise any client could claim an approver role.
+    from django.conf import settings as _dj_settings
+    if not (_dj_settings.DEBUG or getattr(_dj_settings, 'ALLOW_SIMULATED_USERS', False)):
+        return {
+            'is_authenticated': False, 'is_superuser': False, 'is_staff': False,
+            'username': 'Anonymous', 'name': 'Anonymous', 'department': '', 'role': '',
+            'user_obj': None,
+        }
+
     req_data = getattr(request, 'data', {}) or {}
     sim_user = request.headers.get('X-Simulate-User') if hasattr(request, 'headers') else None
     if not sim_user and isinstance(req_data, dict):

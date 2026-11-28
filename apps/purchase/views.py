@@ -190,7 +190,11 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='convert-to-rfq')
     def convert_to_rfq(self, request, pk=None):
         pr = self.get_object()
-        rfq_code = f"RFQ-2026-{RequestForQuotation.objects.count() + 1:04d}"
+        n = RequestForQuotation.objects.count() + 1
+        rfq_code = f"RFQ-2026-{n:04d}"
+        while RequestForQuotation.objects.filter(Q(id=rfq_code) | Q(rfq_number=rfq_code)).exists():
+            n += 1
+            rfq_code = f"RFQ-2026-{n:04d}"
         rfq = RequestForQuotation.objects.create(
             id=rfq_code,
             rfq_number=rfq_code,

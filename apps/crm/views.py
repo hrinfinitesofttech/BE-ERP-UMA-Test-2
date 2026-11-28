@@ -1,4 +1,5 @@
 from datetime import datetime
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from rest_framework import viewsets, permissions, status
@@ -1421,9 +1422,11 @@ class QuotationViewSet(viewsets.ModelViewSet):
         user_info = {}
         has_auth_context = (
             (getattr(request, 'user', None) and getattr(request.user, 'is_authenticated', False)) or
-            bool(request.headers.get('X-User-Role') if hasattr(request, 'headers') else None) or
-            bool(request.META.get('HTTP_X_USER_ROLE') if hasattr(request, 'META') else None) or
-            bool(request.data.get('_test_user') if isinstance(request.data, dict) else None)
+            (settings.DEBUG and (
+                bool(request.headers.get('X-User-Role') if hasattr(request, 'headers') else None) or
+                bool(request.META.get('HTTP_X_USER_ROLE') if hasattr(request, 'META') else None) or
+                bool(request.data.get('_test_user') if isinstance(request.data, dict) else None)
+            ))
         )
         if new_status.lower() in ['approved', 'rejected'] and has_auth_context:
             allowed, err_resp, user_info = validate_approval_permission(
