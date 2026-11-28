@@ -136,7 +136,7 @@ def compute_effective_permissions(user):
 
     # System modules catalog
     all_modules = [
-        'organization', 'employees', 'crm', 'projects', 'designer',
+        'organization', 'employees', 'crm', 'projects', 'designer', 'nesting',
         'purchase', 'store', 'production', 'maintenance', 'hr',
         'accounting', 'integration', 'reports', 'settings'
     ]

@@ -379,6 +379,7 @@ urlpatterns = [
     path('api/core/', include('apps.core.urls')),
     path('api/crm/', include('apps.crm.urls')),
     path('api/designer/', include('apps.designer.urls')),
+    path('api/nesting/', include('apps.nesting.urls')),
     path('api/purchase/', include('apps.purchase.urls')),
     path('api/store/', include('apps.store.urls')),
     path('api/production/', include('apps.production.urls')),

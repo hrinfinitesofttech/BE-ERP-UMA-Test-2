@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'apps.crm',
     'apps.projects',
     'apps.designer',
+    'apps.nesting',
     'apps.purchase',
     'apps.store',
     'apps.production',
