@@ -691,6 +691,17 @@ class LeadViewSet(viewsets.ModelViewSet):
             created_date=datetime.now().strftime('%Y-%m-%d'),
         )
 
+        # Extra contact numbers captured on the lead become contacts of the customer
+        try:
+            import uuid as _uuid
+            for _num in (lead.additional_contacts or []):
+                Contact.objects.create(
+                    id=f"CON-{_uuid.uuid4().hex[:8].upper()}", customer_ref=customer, customer_id=customer.id,
+                    customer_name=customer.company_name, name=lead.contact_person or customer.company_name,
+                    designation=lead.designation or '', mobile=str(_num), is_primary=False)
+        except Exception:
+            pass
+
         # 2. Also create Opportunity
         opp_num = NumberingSetting.objects.filter(doc_type='opportunity').first()
         if opp_num:
@@ -1283,6 +1294,23 @@ class QuotationViewSet(viewsets.ModelViewSet):
                     num_setting.save(update_fields=['current_number'])
             data['id'] = quo_num
             data['quotation_number'] = quo_num
+
+            # Price is mandatory: every item of every revision must have a unit rate above zero
+            unpriced = []
+            for rev in (data.get('revisions') or []):
+                for it in ((rev or {}).get('items') or []):
+                    rate = it.get('rate', it.get('unitRate', it.get('unit_rate', it.get('unitPrice'))))
+                    try:
+                        ok = float(rate) > 0
+                    except (TypeError, ValueError):
+                        ok = False
+                    if not ok:
+                        unpriced.append(it.get('productName') or it.get('product_name') or it.get('id') or 'item')
+            if unpriced:
+                return Response(
+                    {'error': 'Price (Unit Rate) is mandatory. A quotation cannot be created without a price.',
+                     'items': unpriced},
+                    status=status.HTTP_400_BAD_REQUEST)
 
             serializer = self.get_serializer(data=data)
             serializer.is_valid(raise_exception=True)

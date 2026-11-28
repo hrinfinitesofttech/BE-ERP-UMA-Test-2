@@ -43,6 +43,7 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             'designation',
             'mobile',
             'alt_mobile',
+            'additional_contacts',
             'email',
             'whatsapp',
             'product_name',
@@ -68,6 +69,25 @@ class LeadSerializer(UniversalModelSerializerMixin, serializers.ModelSerializer)
             'converted_opportunity_id',
             'attachments',
         ]
+
+    def validate_additional_contacts(self, value):
+        """Keep only distinct phone numbers (digits only), at most 10 extra numbers."""
+        if value in (None, ''):
+            return []
+        if not isinstance(value, (list, tuple)):
+            raise serializers.ValidationError('Additional contacts must be a list of numbers.')
+        cleaned = []
+        for item in value:
+            num = ''.join(ch for ch in str(item if not isinstance(item, dict) else item.get('number', '')) if ch.isdigit())
+            if not num:
+                continue
+            if len(num) < 7 or len(num) > 15:
+                raise serializers.ValidationError(f'"{item}" is not a valid contact number.')
+            if num not in cleaned:
+                cleaned.append(num)
+        if len(cleaned) > 10:
+            raise serializers.ValidationError('You can add at most 10 additional contact numbers.')
+        return cleaned
 
     def to_internal_value(self, data):
         data = data.copy() if hasattr(data, 'copy') else dict(data)

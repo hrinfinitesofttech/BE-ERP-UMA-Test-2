@@ -18,6 +18,8 @@ class Lead(models.Model):
     designation = models.CharField(max_length=100, blank=True, default='')
     mobile = models.CharField(max_length=30, blank=True, default='')
     alt_mobile = models.CharField(max_length=30, blank=True, default='')
+    # extra contact numbers added with the + button on the lead form: ["9825012345", ...]
+    additional_contacts = models.JSONField(default=list, blank=True)
     email = models.EmailField(blank=True, default='')
     whatsapp = models.CharField(max_length=30, blank=True, default='')
     product_name = models.CharField(max_length=200, blank=True, default='')
