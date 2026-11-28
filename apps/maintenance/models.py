@@ -1,7 +1,8 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 
 
-class InternalAsset(models.Model):
+class InternalAsset(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     asset_code = models.CharField(max_length=64, unique=True)
     asset_name = models.CharField(max_length=255)
@@ -32,7 +33,7 @@ class InternalAsset(models.Model):
         return f"{self.asset_code} - {self.asset_name}"
 
 
-class CustomerMachine(models.Model):
+class CustomerMachine(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     customer_machine_id = models.CharField(max_length=64, unique=True)
     customer_id = models.CharField(max_length=64, blank=True)
@@ -67,7 +68,7 @@ class CustomerMachine(models.Model):
         return f"{self.customer_machine_id} - {self.machine_name} ({self.customer_name})"
 
 
-class ServiceRequest(models.Model):
+class ServiceRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     request_number = models.CharField(max_length=64, unique=True)
     request_date = models.DateField()
@@ -112,7 +113,7 @@ class ServiceRequest(models.Model):
         return f"{self.request_number} - {self.customer_name} ({self.status})"
 
 
-class PreventiveMaintenancePlan(models.Model):
+class PreventiveMaintenancePlan(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     plan_number = models.CharField(max_length=64, unique=True)
     asset_id = models.CharField(max_length=64, blank=True)
@@ -135,7 +136,7 @@ class PreventiveMaintenancePlan(models.Model):
         return f"{self.plan_number} - {self.asset_name}"
 
 
-class BreakdownRecord(models.Model):
+class BreakdownRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     breakdown_number = models.CharField(max_length=64, unique=True)
     asset_type = models.CharField(max_length=64, default='Internal Asset')
@@ -166,7 +167,7 @@ class BreakdownRecord(models.Model):
         return f"{self.breakdown_number} - {self.asset_name} ({self.status})"
 
 
-class ServiceVisit(models.Model):
+class ServiceVisit(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     visit_number = models.CharField(max_length=64, unique=True)
     service_request_id = models.CharField(max_length=64, blank=True)
@@ -196,7 +197,7 @@ class ServiceVisit(models.Model):
         return f"{self.visit_number} - {self.customer_name}"
 
 
-class AMCContract(models.Model):
+class AMCContract(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     amc_number = models.CharField(max_length=64, unique=True)
     customer_id = models.CharField(max_length=64, blank=True)
@@ -224,7 +225,7 @@ class AMCContract(models.Model):
         return f"{self.amc_number} - {self.customer_name}"
 
 
-class ServiceWorkOrder(models.Model):
+class ServiceWorkOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     work_order_number = models.CharField(max_length=64, unique=True)
     service_request_id = models.CharField(max_length=64, blank=True)
@@ -250,7 +251,7 @@ class ServiceWorkOrder(models.Model):
         return f"{self.work_order_number} - {self.customer_name}"
 
 
-class ServicePartIssue(models.Model):
+class ServicePartIssue(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     issue_number = models.CharField(max_length=64, unique=True)
     work_order_number = models.CharField(max_length=64, blank=True)
@@ -268,7 +269,7 @@ class ServicePartIssue(models.Model):
         return f"{self.issue_number} - {self.customer_name} ({self.status})"
 
 
-class ServicePartReturn(models.Model):
+class ServicePartReturn(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     return_number = models.CharField(max_length=64, unique=True)
     work_order_number = models.CharField(max_length=64, blank=True)
@@ -284,7 +285,7 @@ class ServicePartReturn(models.Model):
         return f"{self.return_number} ({self.status})"
 
 
-class ServiceReport(models.Model):
+class ServiceReport(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     report_number = models.CharField(max_length=64, unique=True)
     service_request_id = models.CharField(max_length=64, blank=True)
@@ -319,7 +320,7 @@ class ServiceReport(models.Model):
         return f"{self.report_number} - {self.customer_name}"
 
 
-class WarrantyRecord(models.Model):
+class WarrantyRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     customer_machine_id = models.CharField(max_length=64, blank=True)
     serial_number = models.CharField(max_length=128, blank=True)
@@ -338,7 +339,7 @@ class WarrantyRecord(models.Model):
         return f"Warranty: {self.machine_name} ({self.customer_name})"
 
 
-class ServiceContract(models.Model):
+class ServiceContract(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     contract_number = models.CharField(max_length=64, unique=True)
     contract_type = models.CharField(max_length=64, default='AMC')
@@ -358,7 +359,7 @@ class ServiceContract(models.Model):
         return f"{self.contract_number} - {self.customer_name}"
 
 
-class DowntimeRecord(models.Model):
+class DowntimeRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     downtime_number = models.CharField(max_length=64, unique=True)
     asset_id = models.CharField(max_length=64, blank=True)

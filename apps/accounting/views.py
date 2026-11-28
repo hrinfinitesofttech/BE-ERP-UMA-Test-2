@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from datetime import datetime, date, timedelta
 from django.db.models import Q
 from rest_framework import viewsets, status, permissions
@@ -21,7 +22,7 @@ from .serializers import (
 )
 
 
-class FinancialYearViewSet(viewsets.ModelViewSet):
+class FinancialYearViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = FinancialYear.objects.all().order_by('-id')
     serializer_class = FinancialYearSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -29,7 +30,7 @@ class FinancialYearViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class ChartOfAccountViewSet(viewsets.ModelViewSet):
+class ChartOfAccountViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ChartOfAccount.objects.all().order_by('-id')
     serializer_class = ChartOfAccountSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -37,7 +38,7 @@ class ChartOfAccountViewSet(viewsets.ModelViewSet):
     filterset_fields = ['category', 'account_type', 'status']
 
 
-class TaxMasterViewSet(viewsets.ModelViewSet):
+class TaxMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = TaxMaster.objects.all().order_by('-id')
     serializer_class = TaxMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -45,7 +46,7 @@ class TaxMasterViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'tax_type']
 
 
-class CostCenterViewSet(viewsets.ModelViewSet):
+class CostCenterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CostCenter.objects.all().order_by('-id')
     serializer_class = CostCenterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -53,7 +54,7 @@ class CostCenterViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class SalesInvoiceViewSet(viewsets.ModelViewSet):
+class SalesInvoiceViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SalesInvoice.objects.all().order_by('-created_at', '-id')
     serializer_class = SalesInvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -68,7 +69,7 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
         with self.__class__._create_lock:
             data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
             if not data.get('id') and not data.get('invoice_number') and not data.get('invoiceNumber'):
-                count = SalesInvoice.objects.count() + 1
+                count = SalesInvoice.all_objects.count() + 1
                 code = f"INV-2026-{count:04d}"
                 while SalesInvoice.objects.filter(Q(id=code) | Q(invoice_number=code)).exists():
                     count += 1
@@ -123,7 +124,7 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
         inv.save()
 
         # Auto create CustomerReceipt
-        receipt_no = f"REC-{timezone.now().strftime('%Y%m%d')}-{CustomerReceipt.objects.count() + 1:03d}"
+        receipt_no = f"REC-{timezone.now().strftime('%Y%m%d')}-{CustomerReceipt.all_objects.count() + 1:03d}"
         receipt = CustomerReceipt.objects.create(
             id=receipt_no,
             receipt_number=receipt_no,
@@ -152,7 +153,7 @@ class SalesInvoiceViewSet(viewsets.ModelViewSet):
         return Response(SalesInvoiceSerializer(inv).data)
 
 
-class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
+class PurchaseInvoiceViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PurchaseInvoice.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseInvoiceSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -177,7 +178,7 @@ class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
         inv.save()
 
         # Auto create SupplierPayment
-        pay_no = f"PAY-SUP-{timezone.now().strftime('%Y%m%d')}-{SupplierPayment.objects.count() + 1:03d}"
+        pay_no = f"PAY-SUP-{timezone.now().strftime('%Y%m%d')}-{SupplierPayment.all_objects.count() + 1:03d}"
         payment = SupplierPayment.objects.create(
             id=pay_no,
             payment_number=pay_no,
@@ -199,7 +200,7 @@ class PurchaseInvoiceViewSet(viewsets.ModelViewSet):
         })
 
 
-class CustomerReceiptViewSet(viewsets.ModelViewSet):
+class CustomerReceiptViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CustomerReceipt.objects.all().order_by('-id')
     serializer_class = CustomerReceiptSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -224,7 +225,7 @@ class CustomerReceiptViewSet(viewsets.ModelViewSet):
                 inv.save()
 
 
-class SupplierPaymentViewSet(viewsets.ModelViewSet):
+class SupplierPaymentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SupplierPayment.objects.all().order_by('-id')
     serializer_class = SupplierPaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -249,7 +250,7 @@ class SupplierPaymentViewSet(viewsets.ModelViewSet):
                 inv.save()
 
 
-class JournalEntryViewSet(viewsets.ModelViewSet):
+class JournalEntryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = JournalEntry.objects.all().order_by('-id')
     serializer_class = JournalEntrySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -257,14 +258,14 @@ class JournalEntryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['voucher_type', 'status']
 
 
-class JobCostingSummaryViewSet(viewsets.ModelViewSet):
+class JobCostingSummaryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = JobCostingSummary.objects.all().order_by('-id')
     serializer_class = JobCostingSummarySerializer
     permission_classes = [permissions.IsAuthenticated]
     search_fields = ['job_number', 'product_name', 'customer_name']
 
 
-class CreditNoteViewSet(viewsets.ModelViewSet):
+class CreditNoteViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CreditNote.objects.all().order_by('-created_at', '-id')
     serializer_class = CreditNoteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -272,7 +273,7 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
     filterset_fields = ['customer_id', 'status']
 
 
-class DebitNoteViewSet(viewsets.ModelViewSet):
+class DebitNoteViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DebitNote.objects.all().order_by('-created_at', '-id')
     serializer_class = DebitNoteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -280,7 +281,7 @@ class DebitNoteViewSet(viewsets.ModelViewSet):
     filterset_fields = ['supplier_id', 'status']
 
 
-class BankAccountViewSet(viewsets.ModelViewSet):
+class BankAccountViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = BankAccount.objects.all().order_by('-created_at', '-id')
     serializer_class = BankAccountSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -290,7 +291,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         req_id = serializer.validated_data.get('id') or self.request.data.get('id')
         if not req_id:
-            count = BankAccount.objects.count() + 1
+            count = BankAccount.all_objects.count() + 1
             req_id = f"BANK-{count:02d}"
 
         opening = serializer.validated_data.get('opening_balance', 0)
@@ -305,7 +306,7 @@ class BankAccountViewSet(viewsets.ModelViewSet):
         )
 
 
-class ContraVoucherViewSet(viewsets.ModelViewSet):
+class ContraVoucherViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ContraVoucher.objects.all().order_by('-created_at', '-id')
     serializer_class = ContraVoucherSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -313,7 +314,7 @@ class ContraVoucherViewSet(viewsets.ModelViewSet):
     filterset_fields = ['contra_type', 'status']
 
 
-class ExpenseEntryViewSet(viewsets.ModelViewSet):
+class ExpenseEntryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ExpenseEntry.objects.all().order_by('-created_at', '-id')
     serializer_class = ExpenseEntrySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -329,7 +330,7 @@ class ExpenseEntryViewSet(viewsets.ModelViewSet):
         return Response(ExpenseEntrySerializer(expense).data)
 
 
-class FixedAssetViewSet(viewsets.ModelViewSet):
+class FixedAssetViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = FixedAsset.objects.all().order_by('-created_at', '-id')
     serializer_class = FixedAssetSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -480,7 +481,7 @@ class AccountingDashboardMetricsView(APIView):
         })
 
 
-class EWayBillViewSet(viewsets.ModelViewSet):
+class EWayBillViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EWayBill.objects.all().order_by('-created_at', '-id')
     serializer_class = EWayBillSerializer
     permission_classes = [permissions.IsAuthenticated]

@@ -1,9 +1,10 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 from django.utils import timezone
 
 
 
-class ManufacturingJob(models.Model):
+class ManufacturingJob(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     job_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64, blank=True, null=True)
@@ -38,7 +39,7 @@ class ManufacturingJob(models.Model):
         return f"{self.job_number} - {self.product_name}"
 
 
-class ProductionPlan(models.Model):
+class ProductionPlan(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     plan_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -61,7 +62,7 @@ class ProductionPlan(models.Model):
         return f"{self.plan_number} - {self.job_number}"
 
 
-class WorkCenter(models.Model):
+class WorkCenter(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     work_center_code = models.CharField(max_length=64, unique=True)
     work_center_name = models.CharField(max_length=255)
@@ -79,7 +80,7 @@ class WorkCenter(models.Model):
         return f"{self.work_center_code} - {self.work_center_name}"
 
 
-class RoutingOperation(models.Model):
+class RoutingOperation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     operation_number = models.IntegerField(default=10)
     operation_name = models.CharField(max_length=255)
@@ -100,7 +101,7 @@ class RoutingOperation(models.Model):
         return f"{self.operation_name} (Seq {self.sequence})"
 
 
-class WorkOrder(models.Model):
+class WorkOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     work_order_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -128,7 +129,7 @@ class WorkOrder(models.Model):
         return f"{self.work_order_number} ({self.status})"
 
 
-class ProductionOrder(models.Model):
+class ProductionOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     production_order_number = models.CharField(max_length=64, unique=True)
     work_order_id = models.CharField(max_length=64, blank=True)
@@ -151,7 +152,7 @@ class ProductionOrder(models.Model):
         return f"{self.production_order_number} - {self.job_number}"
 
 
-class ProductionScheduleItem(models.Model):
+class ProductionScheduleItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     schedule_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -173,7 +174,7 @@ class ProductionScheduleItem(models.Model):
         return f"{self.schedule_number} - {self.operation_name}"
 
 
-class ProductionEntry(models.Model):
+class ProductionEntry(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     production_entry_number = models.CharField(max_length=64, unique=True)
     entry_date = models.DateField()
@@ -211,7 +212,7 @@ class ProductionEntry(models.Model):
         return f"{self.production_entry_number} ({self.operation_name})"
 
 
-class WIPRecord(models.Model):
+class WIPRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     job_id = models.CharField(max_length=64, blank=True)
     job_number = models.CharField(max_length=64, blank=True)
@@ -237,7 +238,7 @@ class WIPRecord(models.Model):
         return f"WIP: {self.job_number} - {self.current_operation_name}"
 
 
-class ProductionHold(models.Model):
+class ProductionHold(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     hold_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -257,7 +258,7 @@ class ProductionHold(models.Model):
         return f"{self.hold_number} - {self.job_number}"
 
 
-class ReworkOrder(models.Model):
+class ReworkOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     rework_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -281,7 +282,7 @@ class ReworkOrder(models.Model):
         return f"{self.rework_number} - {self.item_name}"
 
 
-class ProductionScrap(models.Model):
+class ProductionScrap(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     scrap_number = models.CharField(max_length=64, unique=True)
     entry_date = models.DateField()
@@ -304,7 +305,7 @@ class ProductionScrap(models.Model):
         return f"{self.scrap_number} - {self.material_name}"
 
 
-class FinishedGoodsItem(models.Model):
+class FinishedGoodsItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     finished_goods_number = models.CharField(max_length=64, unique=True)
     job_id = models.CharField(max_length=64, blank=True)
@@ -329,7 +330,7 @@ class FinishedGoodsItem(models.Model):
         return f"{self.finished_goods_number} - {self.product_name}"
 
 
-class ProductionMaterialRequest(models.Model):
+class ProductionMaterialRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     request_number = models.CharField(max_length=64, unique=True, verbose_name="Request / Issue Slip #")
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -359,7 +360,7 @@ class ProductionMaterialRequest(models.Model):
         return f"{self.request_number} ({self.job_number or self.work_order_number})"
 
 
-class DispatchOrder(models.Model):
+class DispatchOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     dispatch_number = models.CharField(max_length=64, unique=True)
     challan_number = models.CharField(max_length=64, blank=True, default='')
@@ -413,7 +414,7 @@ class DispatchOrder(models.Model):
         return f"{self.dispatch_number} - {self.customer_name} ({self.status})"
 
 
-class PackingOrder(models.Model):
+class PackingOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     packing_number = models.CharField(max_length=64, unique=True)
     packing_date = models.DateField(default=timezone.now)
@@ -457,7 +458,7 @@ class PackingOrder(models.Model):
         return f"{self.packing_number} - {self.customer_name} ({self.status})"
 
 
-class ProductionCompletion(models.Model):
+class ProductionCompletion(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     completion_number = models.CharField(max_length=64, unique=True)
     completion_date = models.DateField()
@@ -495,7 +496,7 @@ class ProductionCompletion(models.Model):
         return f"{self.completion_number} - {self.product_name} ({self.qc_status})"
 
 
-class WorkerMaster(models.Model):
+class WorkerMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     sl_no = models.IntegerField(default=1)
     worker_name = models.CharField(max_length=128)

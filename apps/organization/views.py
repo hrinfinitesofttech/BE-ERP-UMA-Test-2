@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,7 +9,7 @@ from .serializers import DepartmentSerializer, RoleSerializer
 from apps.core.rbac_permissions import is_admin, is_super_admin, IsAdminOrSuperAdmin
 
 
-class DepartmentViewSet(viewsets.ModelViewSet):
+class DepartmentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Department.objects.all().order_by('-created_at', '-id')
     serializer_class = DepartmentSerializer
 
@@ -103,7 +104,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         })
 
 
-class RoleViewSet(viewsets.ModelViewSet):
+class RoleViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Role.objects.all().order_by('-created_at', '-id')
     serializer_class = RoleSerializer
 

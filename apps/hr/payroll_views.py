@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 import csv
 import io
 from datetime import date
@@ -47,7 +48,7 @@ def _period_or_400(request):
     return f'{y}-{m:02d}', None
 
 
-class SalaryStructureViewSet(viewsets.ModelViewSet):
+class SalaryStructureViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SalaryStructure.objects.all().order_by('employee_id', '-effective_from')
     serializer_class = SalaryStructureSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -98,7 +99,7 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
             if existing:
                 SalaryStructure.objects.filter(employee_id=d['employee_id'], status='Active').update(status='Inactive')
             inst = SalaryStructure(id=f"SAL-{d['employee_id']}-{d['effective_from']:%Y%m%d}", **d)
-            if SalaryStructure.objects.filter(pk=inst.id).exists():
+            if SalaryStructure.all_objects.filter(pk=inst.id).exists():
                 inst.id = f"{inst.id}-{timezone.now():%H%M%S}"
         if not inst.employee_name:
             u = User.objects.filter(id=inst.employee_id).first()
@@ -176,7 +177,7 @@ class SalaryStructureViewSet(viewsets.ModelViewSet):
         return Response(out)
 
 
-class PayrollRecordViewSet(viewsets.ModelViewSet):
+class PayrollRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PayrollRecord.objects.all().order_by('-period_ym', 'employee_name')
     serializer_class = PayrollRecordSerializer
     permission_classes = [permissions.IsAuthenticated]

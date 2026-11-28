@@ -26,6 +26,8 @@ def _make_post(fn):
     def handler(sender, instance, **kwargs):
         if kwargs.get('raw'):
             return
+        if getattr(instance, 'is_active', True) is False:
+            return  # a deleted document must never (re)post to the ledger
         try:
             with transaction.atomic():
                 fn(instance)
@@ -117,6 +119,28 @@ def connect():
             post_delete.connect(_make_unpost(model), sender=model, weak=False, dispatch_uid=uid + '_del')
         else:
             post_delete.connect(_make_unpost(model), sender=model, weak=False, dispatch_uid=uid + '_del')
+
+    # Soft delete / restore: reverse the ledger entries of a deleted document, post them again when it is restored
+    from apps.core.softdelete import post_restore, post_soft_delete
+
+    def on_soft_delete(sender, instance, **kw):
+        if sender in POSTERS:
+            try:
+                posting.unpost(sender.__name__, instance.pk)
+            except Exception:
+                log.exception('Ledger unposting failed for deleted %s %s', sender.__name__, instance.pk)
+
+    def on_restore(sender, instance, **kw):
+        poster = POSTERS.get(sender)
+        if poster:
+            try:
+                with transaction.atomic():
+                    poster(instance)
+            except Exception:
+                log.exception('Ledger re-posting failed for restored %s %s', sender.__name__, instance.pk)
+
+    post_soft_delete.connect(on_soft_delete, weak=False, dispatch_uid='acc_soft_delete_unpost')
+    post_restore.connect(on_restore, weak=False, dispatch_uid='acc_restore_repost')
 
     def on_invoice(sender, instance, **kw):
         if kw.get('raw'):

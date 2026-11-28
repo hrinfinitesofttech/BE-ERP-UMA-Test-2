@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,7 +18,7 @@ from .serializers import (
 )
 
 
-class InternalAssetViewSet(viewsets.ModelViewSet):
+class InternalAssetViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = InternalAsset.objects.all().order_by('-id')
     serializer_class = InternalAssetSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -25,7 +26,7 @@ class InternalAssetViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'asset_type', 'department', 'criticality']
 
 
-class CustomerMachineViewSet(viewsets.ModelViewSet):
+class CustomerMachineViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CustomerMachine.objects.all().order_by('-id')
     serializer_class = CustomerMachineSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -33,7 +34,7 @@ class CustomerMachineViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'customer_id', 'job_id']
 
 
-class ServiceRequestViewSet(viewsets.ModelViewSet):
+class ServiceRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServiceRequest.objects.all().order_by('-request_date', '-id')
     serializer_class = ServiceRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -72,7 +73,7 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
         return Response(ServiceRequestSerializer(sr).data)
 
 
-class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
+class PreventiveMaintenancePlanViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PreventiveMaintenancePlan.objects.all().order_by('-id')
     serializer_class = PreventiveMaintenancePlanSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -80,7 +81,7 @@ class PreventiveMaintenancePlanViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'frequency', 'asset_id']
 
 
-class BreakdownRecordViewSet(viewsets.ModelViewSet):
+class BreakdownRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = BreakdownRecord.objects.all().order_by('-breakdown_date', '-id')
     serializer_class = BreakdownRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -95,7 +96,7 @@ class BreakdownRecordViewSet(viewsets.ModelViewSet):
         return Response({'message': f'Breakdown {bd.breakdown_number} closed', 'status': bd.status})
 
 
-class ServiceVisitViewSet(viewsets.ModelViewSet):
+class ServiceVisitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServiceVisit.objects.all().order_by('-visit_date', '-id')
     serializer_class = ServiceVisitSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -103,7 +104,7 @@ class ServiceVisitViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'customer_id', 'service_request_id']
 
 
-class AMCContractViewSet(viewsets.ModelViewSet):
+class AMCContractViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = AMCContract.objects.all().order_by('-id')
     serializer_class = AMCContractSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -122,7 +123,7 @@ class AMCContractViewSet(viewsets.ModelViewSet):
         })
 
 
-class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
+class ServiceWorkOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServiceWorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceWorkOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -130,7 +131,7 @@ class ServiceWorkOrderViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'customer_id', 'service_request_id']
 
 
-class ServicePartIssueViewSet(viewsets.ModelViewSet):
+class ServicePartIssueViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServicePartIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartIssueSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -138,7 +139,7 @@ class ServicePartIssueViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'technician_id', 'work_order_number']
 
 
-class ServicePartReturnViewSet(viewsets.ModelViewSet):
+class ServicePartReturnViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServicePartReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = ServicePartReturnSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -146,7 +147,7 @@ class ServicePartReturnViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'work_order_number']
 
 
-class ServiceReportViewSet(viewsets.ModelViewSet):
+class ServiceReportViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServiceReport.objects.all().order_by('-created_at', '-id')
     serializer_class = ServiceReportSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -154,7 +155,7 @@ class ServiceReportViewSet(viewsets.ModelViewSet):
     filterset_fields = ['machine_status', 'customer_id', 'service_request_id']
 
 
-class WarrantyRecordViewSet(viewsets.ModelViewSet):
+class WarrantyRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WarrantyRecord.objects.all().order_by('-id')
     serializer_class = WarrantyRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -162,7 +163,7 @@ class WarrantyRecordViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'customer_id']
 
 
-class ServiceContractViewSet(viewsets.ModelViewSet):
+class ServiceContractViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ServiceContract.objects.all().order_by('-id')
     serializer_class = ServiceContractSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -170,7 +171,7 @@ class ServiceContractViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'contract_type']
 
 
-class DowntimeRecordViewSet(viewsets.ModelViewSet):
+class DowntimeRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DowntimeRecord.objects.all().order_by('-start_time', '-id')
     serializer_class = DowntimeRecordSerializer
     permission_classes = [permissions.IsAuthenticated]

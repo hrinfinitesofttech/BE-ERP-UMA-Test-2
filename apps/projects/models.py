@@ -1,8 +1,9 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 from django.utils import timezone
 
 
-class ProjectJobMaster(models.Model):
+class ProjectJobMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_number = models.CharField(max_length=64, unique=True)
     job_number = models.CharField(max_length=64)
@@ -35,7 +36,7 @@ class ProjectJobMaster(models.Model):
         return f"{self.project_number} / {self.job_number} - {self.customer_name}"
 
 
-class ProjectPlanningStage(models.Model):
+class ProjectPlanningStage(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     stage_number = models.IntegerField()
@@ -61,7 +62,7 @@ class ProjectPlanningStage(models.Model):
         return f"Stage {self.stage_number}: {self.name} ({self.status})"
 
 
-class ProjectMilestone(models.Model):
+class ProjectMilestone(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     project_number = models.CharField(max_length=64, blank=True, default='')
@@ -85,7 +86,7 @@ class ProjectMilestone(models.Model):
 
 
 
-class ProjectTask(models.Model):
+class ProjectTask(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
     task_number = models.CharField(max_length=64, blank=True, default='')
@@ -122,7 +123,7 @@ class ProjectTask(models.Model):
         super().save(*args, **kwargs)
 
 
-class DepartmentAssignment(models.Model):
+class DepartmentAssignment(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     department = models.CharField(max_length=50)
@@ -135,7 +136,7 @@ class DepartmentAssignment(models.Model):
         return f"{self.department} -> {self.lead_person_name}"
 
 
-class ProjectIssue(models.Model):
+class ProjectIssue(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     project_number = models.CharField(max_length=64, blank=True, default='')
@@ -160,7 +161,7 @@ class ProjectIssue(models.Model):
         return f"{self.issue_no or self.id}: {self.title or self.issue_type} ({self.status})"
 
 
-class ProjectDelay(models.Model):
+class ProjectDelay(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     project_number = models.CharField(max_length=64, blank=True, default='')
@@ -190,7 +191,7 @@ class ProjectDelay(models.Model):
 
 
 
-class CustomerChangeRequest(models.Model):
+class CustomerChangeRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     project_number = models.CharField(max_length=64, blank=True, default='')
@@ -220,7 +221,7 @@ class CustomerChangeRequest(models.Model):
         return f"{self.change_request_no or self.request_no or self.id} - {self.customer_name or self.title}"
 
 
-class ProjectCost(models.Model):
+class ProjectCost(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     category = models.CharField(max_length=50) # material, labor, machining, consumables, logistics, other
@@ -232,7 +233,7 @@ class ProjectCost(models.Model):
         return f"{self.category}: est {self.estimated_amount} / act {self.actual_amount}"
 
 
-class ProjectDocument(models.Model):
+class ProjectDocument(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64)
     job_number = models.CharField(max_length=64, blank=True, default='')
@@ -252,7 +253,7 @@ class ProjectDocument(models.Model):
         return f"{self.document_name} ({self.version})"
 
 
-class MasterTask(models.Model):
+class MasterTask(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     task_code = models.CharField(max_length=50, blank=True, default='')
     task_name = models.CharField(max_length=200)

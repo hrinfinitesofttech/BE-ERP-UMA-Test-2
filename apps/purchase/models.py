@@ -1,7 +1,8 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 
 
-class Supplier(models.Model):
+class Supplier(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     vendor_code = models.CharField(max_length=64, unique=True)
     supplier_code = models.CharField(max_length=64, blank=True, default='')
@@ -36,7 +37,7 @@ class Supplier(models.Model):
         return f"{self.vendor_code} - {self.name}"
 
 
-class SupplierContact(models.Model):
+class SupplierContact(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     supplier_id = models.CharField(max_length=64)
     name = models.CharField(max_length=150)
@@ -50,7 +51,7 @@ class SupplierContact(models.Model):
         return f"{self.name} ({self.supplier_id})"
 
 
-class PurchaseRequisition(models.Model):
+class PurchaseRequisition(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     pr_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -74,7 +75,7 @@ class PurchaseRequisition(models.Model):
         return f"{self.pr_number} ({self.status})"
 
 
-class RequestForQuotation(models.Model):
+class RequestForQuotation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     rfq_number = models.CharField(max_length=64, unique=True)
     pr_id = models.CharField(max_length=64, blank=True, default='')
@@ -100,7 +101,7 @@ class RequestForQuotation(models.Model):
         return f"{self.rfq_number} - {self.supplier_name or 'RFQ'}"
 
 
-class SupplierQuotation(models.Model):
+class SupplierQuotation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     quotation_number = models.CharField(max_length=64)
     rfq_id = models.CharField(max_length=64, blank=True, default='')
@@ -122,7 +123,7 @@ class SupplierQuotation(models.Model):
         return f"{self.quotation_number} - {self.supplier_name}"
 
 
-class QuotationComparison(models.Model):
+class QuotationComparison(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     rfq_id = models.CharField(max_length=64)
     comparison_date = models.CharField(max_length=50)
@@ -140,7 +141,7 @@ class QuotationComparison(models.Model):
         return f"CS for RFQ: {self.rfq_id}"
 
 
-class PurchaseOrder(models.Model):
+class PurchaseOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     po_number = models.CharField(max_length=64, unique=True)
     revision_number = models.CharField(max_length=30, default='Rev-00')
@@ -180,7 +181,7 @@ class PurchaseOrder(models.Model):
         return f"{self.po_number} - {self.supplier_name}"
 
 
-class PurchaseReturn(models.Model):
+class PurchaseReturn(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     return_number = models.CharField(max_length=64, unique=True)
     po_id = models.CharField(max_length=64, blank=True, default='')
@@ -201,7 +202,7 @@ class PurchaseReturn(models.Model):
         return f"{self.return_number} to {self.supplier_name}"
 
 
-class MaterialRequirement(models.Model):
+class MaterialRequirement(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
     job_id = models.CharField(max_length=64, blank=True, default='')

@@ -1,8 +1,9 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 from django.utils import timezone
 
 
-class ApprovalItem(models.Model):
+class ApprovalItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     category = models.CharField(max_length=64)
     title = models.CharField(max_length=255)
@@ -24,7 +25,7 @@ class ApprovalItem(models.Model):
         return f"{self.title} ({self.record_number}) - {self.status}"
 
 
-class ERPAlertItem(models.Model):
+class ERPAlertItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     module = models.CharField(max_length=64)
     severity = models.CharField(max_length=32, default='Info')

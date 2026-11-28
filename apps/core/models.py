@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 import uuid
 
@@ -102,7 +103,7 @@ class Notification(models.Model):
         super().save(*args, **kwargs)
 
 
-class BugTicket(models.Model):
+class BugTicket(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     bug_no = models.CharField(max_length=64, unique=True)
     title = models.CharField(max_length=200)
@@ -124,7 +125,7 @@ class BugTicket(models.Model):
         return f"{self.bug_no} - {self.title}"
 
 
-class BackupRecord(models.Model):
+class BackupRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     backup_name = models.CharField(max_length=200)
     backup_type = models.CharField(max_length=50, default='Full Database & Media')
@@ -141,7 +142,7 @@ class BackupRecord(models.Model):
         return f"{self.backup_name} ({self.status})"
 
 
-class DataImportLog(models.Model):
+class DataImportLog(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     entity_type = models.CharField(max_length=100) # Customers, Items, Suppliers, Leads, BOMs, Invoices, Employees
     file_name = models.CharField(max_length=200)
@@ -156,7 +157,7 @@ class DataImportLog(models.Model):
         return f"{self.entity_type} ({self.records_count} records) - {self.status}"
 
 
-class SecurityCheckRecord(models.Model):
+class SecurityCheckRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     check_name = models.CharField(max_length=200)
     category = models.CharField(max_length=100, default='Authentication & Access')
@@ -171,7 +172,7 @@ class SecurityCheckRecord(models.Model):
         return f"{self.check_name} [{self.status}]"
 
 
-class GoLiveChecklistItem(models.Model):
+class GoLiveChecklistItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     module_name = models.CharField(max_length=100)
     item_title = models.CharField(max_length=255)

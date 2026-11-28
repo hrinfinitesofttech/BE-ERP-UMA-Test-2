@@ -1,8 +1,9 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 import uuid
 
 
-class Department(models.Model):
+class Department(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=100)
@@ -27,7 +28,7 @@ class Department(models.Model):
         super().save(*args, **kwargs)
 
 
-class Role(models.Model):
+class Role(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, default='')

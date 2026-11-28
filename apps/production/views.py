@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 import uuid
 import re
 from datetime import datetime
@@ -25,7 +26,7 @@ from .serializers import (
 )
 
 
-class ManufacturingJobViewSet(viewsets.ModelViewSet):
+class ManufacturingJobViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ManufacturingJob.objects.all().order_by('-created_at', '-id')
     serializer_class = ManufacturingJobSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -77,7 +78,7 @@ class ManufacturingJobViewSet(viewsets.ModelViewSet):
         return Response(ManufacturingJobSerializer(job).data)
 
 
-class ProductionPlanViewSet(viewsets.ModelViewSet):
+class ProductionPlanViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionPlan.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionPlanSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -85,7 +86,7 @@ class ProductionPlanViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'job_id']
 
 
-class WorkCenterViewSet(viewsets.ModelViewSet):
+class WorkCenterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WorkCenter.objects.all().order_by('-id')
     serializer_class = WorkCenterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -93,7 +94,7 @@ class WorkCenterViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'department']
 
 
-class RoutingOperationViewSet(viewsets.ModelViewSet):
+class RoutingOperationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = RoutingOperation.objects.all().order_by('-id')
     serializer_class = RoutingOperationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -102,7 +103,7 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        count = RoutingOperation.objects.count() + 1
+        count = RoutingOperation.all_objects.count() + 1
         op_num = data.get('operation_number') or data.get('operationNumber') or count * 10
         op_id = data.get('id') or f"OP-{op_num}"
         
@@ -129,7 +130,7 @@ class RoutingOperationViewSet(viewsets.ModelViewSet):
 
 
 
-class WorkOrderViewSet(viewsets.ModelViewSet):
+class WorkOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WorkOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = WorkOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -202,7 +203,7 @@ class WorkOrderViewSet(viewsets.ModelViewSet):
         })
 
 
-class ProductionOrderViewSet(viewsets.ModelViewSet):
+class ProductionOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -213,7 +214,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         po_num = data.get('production_order_number') or data.get('productionOrderNumber')
         if not po_num:
-            count = ProductionOrder.objects.count() + 1
+            count = ProductionOrder.all_objects.count() + 1
             po_num = f"PO-PROD-{datetime.now().year}-{count:03d}"
         
         data['id'] = data.get('id') or po_num
@@ -238,7 +239,7 @@ class ProductionOrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
+class ProductionScheduleItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionScheduleItem.objects.all().order_by('-id')
     serializer_class = ProductionScheduleItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -247,7 +248,7 @@ class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        sch_num = data.get('schedule_number') or data.get('scheduleNumber') or f"SCH-{datetime.now().year}-{ProductionScheduleItem.objects.count() + 1:04d}"
+        sch_num = data.get('schedule_number') or data.get('scheduleNumber') or f"SCH-{datetime.now().year}-{ProductionScheduleItem.all_objects.count() + 1:04d}"
         
         data['id'] = data.get('id') or sch_num
         data['schedule_number'] = sch_num
@@ -279,7 +280,7 @@ class ProductionScheduleItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProductionEntryViewSet(viewsets.ModelViewSet):
+class ProductionEntryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionEntry.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionEntrySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -288,7 +289,7 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        entry_num = data.get('production_entry_number') or data.get('productionEntryNumber') or f"PENTRY-{datetime.now().year}-{ProductionEntry.objects.count() + 1:04d}"
+        entry_num = data.get('production_entry_number') or data.get('productionEntryNumber') or f"PENTRY-{datetime.now().year}-{ProductionEntry.all_objects.count() + 1:04d}"
         
         data['id'] = data.get('id') or entry_num
         data['production_entry_number'] = entry_num
@@ -358,7 +359,7 @@ class ProductionEntryViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class WIPRecordViewSet(viewsets.ModelViewSet):
+class WIPRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WIPRecord.objects.all().order_by('-start_date', '-id')
     serializer_class = WIPRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -367,7 +368,7 @@ class WIPRecordViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        data['id'] = data.get('id') or f"WIP-{datetime.now().year}-{WIPRecord.objects.count() + 1:04d}"
+        data['id'] = data.get('id') or f"WIP-{datetime.now().year}-{WIPRecord.all_objects.count() + 1:04d}"
         data['job_id'] = data.get('job_id') or data.get('jobId', '')
         data['job_number'] = data.get('job_number') or data.get('jobNumber', '')
         data['work_order_number'] = data.get('work_order_number') or data.get('workOrderNumber', '')
@@ -388,7 +389,7 @@ class WIPRecordViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProductionHoldViewSet(viewsets.ModelViewSet):
+class ProductionHoldViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionHold.objects.all().order_by('-start_date', '-id')
     serializer_class = ProductionHoldSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -397,7 +398,7 @@ class ProductionHoldViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        hold_num = data.get('hold_number') or data.get('holdNumber') or f"HLD-{datetime.now().year}-{ProductionHold.objects.count() + 1:03d}"
+        hold_num = data.get('hold_number') or data.get('holdNumber') or f"HLD-{datetime.now().year}-{ProductionHold.all_objects.count() + 1:03d}"
         data['id'] = data.get('id') or hold_num
         data['hold_number'] = hold_num
         data['job_id'] = data.get('job_id') or data.get('jobId', '')
@@ -436,7 +437,7 @@ class ProductionHoldViewSet(viewsets.ModelViewSet):
 
 
 
-class ReworkOrderViewSet(viewsets.ModelViewSet):
+class ReworkOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ReworkOrder.objects.all().order_by('-start_date', '-id')
     serializer_class = ReworkOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -445,7 +446,7 @@ class ReworkOrderViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        rwk_num = data.get('rework_number') or data.get('reworkNumber') or f"RWK-{datetime.now().year}-{ReworkOrder.objects.count() + 1:03d}"
+        rwk_num = data.get('rework_number') or data.get('reworkNumber') or f"RWK-{datetime.now().year}-{ReworkOrder.all_objects.count() + 1:03d}"
         
         data['id'] = data.get('id') or rwk_num
         data['rework_number'] = rwk_num
@@ -472,7 +473,7 @@ class ReworkOrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProductionScrapViewSet(viewsets.ModelViewSet):
+class ProductionScrapViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionScrap.objects.all().order_by('-entry_date', '-id')
     serializer_class = ProductionScrapSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -481,7 +482,7 @@ class ProductionScrapViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        scrap_num = data.get('scrap_number') or data.get('scrapNumber') or f"PSCRAP-{datetime.now().year}-{ProductionScrap.objects.count() + 1:03d}"
+        scrap_num = data.get('scrap_number') or data.get('scrapNumber') or f"PSCRAP-{datetime.now().year}-{ProductionScrap.all_objects.count() + 1:03d}"
         
         data['id'] = data.get('id') or scrap_num
         data['scrap_number'] = scrap_num
@@ -507,7 +508,7 @@ class ProductionScrapViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
+class FinishedGoodsItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = FinishedGoodsItem.objects.all().order_by('-created_at', '-id')
     serializer_class = FinishedGoodsItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -542,7 +543,7 @@ class FinishedGoodsItemViewSet(viewsets.ModelViewSet):
         return Response({'message': f'Finished Good {fg.finished_goods_number} passed QC', 'qcStatus': fg.qc_status, 'status': fg.status})
 
 
-class ProductionCompletionViewSet(viewsets.ModelViewSet):
+class ProductionCompletionViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionCompletion.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionCompletionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -585,7 +586,7 @@ class ProductionCompletionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
+class ProductionMaterialRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProductionMaterialRequest.objects.all().order_by('-created_at', '-id')
     serializer_class = ProductionMaterialRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -594,7 +595,7 @@ class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        req_num = data.get('request_number') or data.get('requestNumber') or data.get('issue_number') or data.get('issueNumber') or f"ISS-{datetime.now().year}-{ProductionMaterialRequest.objects.count() + 1:04d}"
+        req_num = data.get('request_number') or data.get('requestNumber') or data.get('issue_number') or data.get('issueNumber') or f"ISS-{datetime.now().year}-{ProductionMaterialRequest.all_objects.count() + 1:04d}"
         
         data['id'] = data.get('id') or req_num
         data['request_number'] = req_num
@@ -621,7 +622,7 @@ class ProductionMaterialRequestViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class DispatchOrderViewSet(viewsets.ModelViewSet):
+class DispatchOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DispatchOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = DispatchOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -635,7 +636,7 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
             or data.get('dispatchNumber')
             or data.get('challan_number')
             or data.get('challanNo')
-            or f"DISP-{datetime.now().year}-{DispatchOrder.objects.count() + 1:04d}"
+            or f"DISP-{datetime.now().year}-{DispatchOrder.all_objects.count() + 1:04d}"
         )
         data['id'] = data.get('id') or disp_num
         data['dispatch_number'] = disp_num
@@ -710,7 +711,7 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
         return Response(DispatchOrderSerializer(dispatch).data)
 
 
-class PackingOrderViewSet(viewsets.ModelViewSet):
+class PackingOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PackingOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = PackingOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -722,7 +723,7 @@ class PackingOrderViewSet(viewsets.ModelViewSet):
         pack_num = (
             data.get('packing_number')
             or data.get('packingNumber')
-            or f"PACK-{datetime.now().year}-{PackingOrder.objects.count() + 1:04d}"
+            or f"PACK-{datetime.now().year}-{PackingOrder.all_objects.count() + 1:04d}"
         )
         data['id'] = data.get('id') or pack_num
         data['packing_number'] = pack_num
@@ -864,7 +865,7 @@ class ProductionDashboardStatsView(APIView):
         })
 
 
-class WorkerMasterViewSet(viewsets.ModelViewSet):
+class WorkerMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WorkerMaster.objects.all().order_by('sl_no', 'worker_name')
     serializer_class = WorkerMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -875,7 +876,7 @@ class WorkerMasterViewSet(viewsets.ModelViewSet):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
             last_worker = WorkerMaster.objects.order_by('-sl_no').first()
-            next_sl = (last_worker.sl_no + 1) if last_worker and last_worker.sl_no else (WorkerMaster.objects.count() + 1)
+            next_sl = (last_worker.sl_no + 1) if last_worker and last_worker.sl_no else (WorkerMaster.all_objects.count() + 1)
             data['id'] = f"WRK-{str(next_sl).zfill(3)}"
             if not data.get('sl_no') and not data.get('slNo'):
                 data['sl_no'] = next_sl

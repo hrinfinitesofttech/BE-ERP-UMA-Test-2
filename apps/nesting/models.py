@@ -9,6 +9,7 @@ every sheet left over is recorded so the material estimate of a project can be c
     Design --share--> NestingJob --> NestingTask (parts to cut) --> NestingHandover --> Production
                                  \\-> SheetUsage (sheets used / leftover, weight and cost)
 """
+from apps.core.softdelete import SoftDeleteModel
 from decimal import Decimal
 
 from django.db import models
@@ -20,13 +21,13 @@ def next_code(model, prefix, field):
     """PREFIX-YYYY-0001 style code that never collides with an existing row."""
     from django.utils import timezone
     head = f'{prefix}-{timezone.now().year}-'
-    n = model.objects.filter(**{f'{field}__startswith': head}).count() + 1
-    while model.objects.filter(**{field: f'{head}{n:04d}'}).exists():
+    n = model.all_objects.filter(**{f'{field}__startswith': head}).count() + 1
+    while model.all_objects.filter(**{field: f'{head}{n:04d}'}).exists():
         n += 1
     return f'{head}{n:04d}'
 
 
-class NestingJob(models.Model):
+class NestingJob(SoftDeleteModel):
     STATUS_CHOICES = [
         ('received', 'Received from Design'),
         ('in_nesting', 'Nesting In Progress'),
@@ -102,7 +103,7 @@ class NestingJob(models.Model):
             self.save(update_fields=['status', 'updated_at'])
 
 
-class NestingTask(models.Model):
+class NestingTask(SoftDeleteModel):
     """One part / plate type to cut: how many are required and how many are already cut."""
     STATUS_CHOICES = [('pending', 'Pending'), ('in_progress', 'In Progress'), ('completed', 'Completed')]
 
@@ -144,7 +145,7 @@ class NestingTask(models.Model):
         super().save(*args, **kwargs)
 
 
-class NestingHandover(models.Model):
+class NestingHandover(SoftDeleteModel):
     """Cut parts handed to Production. Production accepts, rejects or asks for rework."""
     STATUS_CHOICES = [
         ('handed_over', 'Handed Over - awaiting Production'),
@@ -182,7 +183,7 @@ class NestingHandover(models.Model):
         super().save(*args, **kwargs)
 
 
-class SheetUsage(models.Model):
+class SheetUsage(SoftDeleteModel):
     """MS sheets consumed / left over for a nesting job (one row per sheet size and thickness)."""
     id = models.CharField(max_length=64, primary_key=True)
     job = models.ForeignKey(NestingJob, on_delete=models.CASCADE, related_name='sheet_usages')

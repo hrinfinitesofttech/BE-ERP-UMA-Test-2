@@ -1,7 +1,8 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 
 
-class Designation(models.Model):
+class Designation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     designation_code = models.CharField(max_length=64, unique=True)
     designation_name = models.CharField(max_length=128)
@@ -16,7 +17,7 @@ class Designation(models.Model):
         return f"{self.designation_name} ({self.department})"
 
 
-class EmployeeDocument(models.Model):
+class EmployeeDocument(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     employee_id = models.CharField(max_length=64)
     employee_name = models.CharField(max_length=128)
@@ -34,7 +35,7 @@ class EmployeeDocument(models.Model):
         return f"{self.employee_name} - {self.document_type}"
 
 
-class ShiftMaster(models.Model):
+class ShiftMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     shift_name = models.CharField(max_length=128)
     start_time = models.CharField(max_length=32)
@@ -87,7 +88,7 @@ class AttendanceRecord(models.Model):
         super().save(*args, **kwargs)
 
 
-class LeaveType(models.Model):
+class LeaveType(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     leave_code = models.CharField(max_length=32, unique=True)
     leave_name = models.CharField(max_length=128)
@@ -129,7 +130,7 @@ class LeaveBalance(models.Model):
         self.save()
 
 
-class LeaveRequest(models.Model):
+class LeaveRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     leave_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -169,7 +170,7 @@ class LeaveRequest(models.Model):
         super().save(*args, **kwargs)
 
 
-class WFHRequest(models.Model):
+class WFHRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     wfh_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -187,7 +188,7 @@ class WFHRequest(models.Model):
         return f"{self.wfh_number} - {self.employee_name}"
 
 
-class MissedPunchRequest(models.Model):
+class MissedPunchRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     request_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -203,7 +204,7 @@ class MissedPunchRequest(models.Model):
         return f"{self.request_number} - {self.employee_name}"
 
 
-class AttendanceRegularization(models.Model):
+class AttendanceRegularization(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     regularization_no = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -222,7 +223,7 @@ class AttendanceRegularization(models.Model):
         return f"{self.regularization_no} - {self.employee_name}"
 
 
-class OvertimeRecord(models.Model):
+class OvertimeRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     overtime_no = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -241,7 +242,7 @@ class OvertimeRecord(models.Model):
         return f"{self.overtime_no} - {self.employee_name} ({self.overtime_hours}h)"
 
 
-class EarlyCheckoutRequest(models.Model):
+class EarlyCheckoutRequest(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     request_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -257,7 +258,7 @@ class EarlyCheckoutRequest(models.Model):
         return f"{self.request_number} - {self.employee_name}"
 
 
-class SalaryComponent(models.Model):
+class SalaryComponent(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     component_code = models.CharField(max_length=64, unique=True)
     component_name = models.CharField(max_length=128)
@@ -272,7 +273,7 @@ class SalaryComponent(models.Model):
         return f"{self.component_name} ({self.component_type})"
 
 
-class SalaryStructure(models.Model):
+class SalaryStructure(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     structure_name = models.CharField(max_length=128)
     employee_id = models.CharField(max_length=64)
@@ -307,7 +308,7 @@ class SalaryStructure(models.Model):
         return f"{self.structure_name} - {self.employee_name}"
 
 
-class PayrollRecord(models.Model):
+class PayrollRecord(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     payroll_number = models.CharField(max_length=64, unique=True)
     month_year = models.CharField(max_length=64)
@@ -378,7 +379,7 @@ class PayrollRecord(models.Model):
         return f"{self.payroll_number} - {self.employee_name} ({self.month_year})"
 
 
-class EmployeeAdvanceLoan(models.Model):
+class EmployeeAdvanceLoan(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     loan_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -399,7 +400,7 @@ class EmployeeAdvanceLoan(models.Model):
         return f"{self.loan_number} - {self.employee_name}"
 
 
-class ReimbursementExpense(models.Model):
+class ReimbursementExpense(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     reimbursement_no = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)
@@ -419,7 +420,7 @@ class ReimbursementExpense(models.Model):
         return f"{self.reimbursement_no} - {self.employee_name} ({self.amount})"
 
 
-class EmployeeOnboarding(models.Model):
+class EmployeeOnboarding(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     candidate_id = models.CharField(max_length=64, blank=True)
     candidate_name = models.CharField(max_length=128)
@@ -440,7 +441,7 @@ class EmployeeOnboarding(models.Model):
         return f"{self.candidate_name} ({self.department} - {self.designation})"
 
 
-class EmployeeTransfer(models.Model):
+class EmployeeTransfer(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     employee_id = models.CharField(max_length=64)
     employee_name = models.CharField(max_length=128)
@@ -459,7 +460,7 @@ class EmployeeTransfer(models.Model):
         return f"{self.employee_name}: {self.from_department} -> {self.to_department}"
 
 
-class EmployeePromotion(models.Model):
+class EmployeePromotion(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     employee_id = models.CharField(max_length=64)
     employee_name = models.CharField(max_length=128)
@@ -478,7 +479,7 @@ class EmployeePromotion(models.Model):
         return f"{self.employee_name}: {self.old_designation} -> {self.new_designation}"
 
 
-class EmployeeExit(models.Model):
+class EmployeeExit(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     employee_id = models.CharField(max_length=64)
     employee_name = models.CharField(max_length=128)
@@ -499,7 +500,7 @@ class EmployeeExit(models.Model):
         return f"Exit: {self.employee_name} ({self.resignation_date})"
 
 
-class Holiday(models.Model):
+class Holiday(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     holiday_name = models.CharField(max_length=128)
     holiday_date = models.DateField()
@@ -517,7 +518,7 @@ class Holiday(models.Model):
         return f"{self.holiday_name} ({self.holiday_date})"
 
 
-class EmployeeAppraisal(models.Model):
+class EmployeeAppraisal(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     appraisal_number = models.CharField(max_length=64, unique=True)
     employee_id = models.CharField(max_length=64)

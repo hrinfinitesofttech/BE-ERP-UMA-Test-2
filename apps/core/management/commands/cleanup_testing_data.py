@@ -7,6 +7,7 @@ Provides verified inventory, dry-run reporting, dependency-aware transaction rem
 and master/system data protection for client handover.
 """
 
+from apps.core.softdelete import purge
 import sys
 from datetime import datetime
 from django.core.management.base import BaseCommand
@@ -489,7 +490,7 @@ class Command(BaseCommand):
                         model = model_dict[label]
                         cnt_before = before_counts.get(label, {}).get('count', 0)
                         if cnt_before > 0:
-                            num_deleted, _ = model.objects.all().delete()
+                            num_deleted, _ = purge(model)
                             deleted_summary[label] = num_deleted
                             self.stdout.write(f"  [OK] Cleaned {label}: {num_deleted} records deleted.")
                         else:
@@ -501,7 +502,7 @@ class Command(BaseCommand):
                     sb_model = model_dict['store.StockBalance']
                     sb_cnt = sb_model.objects.count()
                     if sb_cnt > 0:
-                        sb_model.objects.all().delete()
+                        purge(sb_model)
                         self.stdout.write(f"  [OK] Reset store.StockBalance: {sb_cnt} balance records cleared.")
 
                 # 3. Optional Entity Masters Deletion
@@ -512,7 +513,7 @@ class Command(BaseCommand):
                             model = model_dict[label]
                             cnt_before = before_counts.get(label, {}).get('count', 0)
                             if cnt_before > 0:
-                                num_deleted, _ = model.objects.all().delete()
+                                num_deleted, _ = purge(model)
                                 deleted_summary[label] = num_deleted
                                 self.stdout.write(f"  [OK] Cleaned {label}: {num_deleted} records deleted.")
 

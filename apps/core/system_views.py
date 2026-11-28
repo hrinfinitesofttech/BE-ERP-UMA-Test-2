@@ -327,7 +327,8 @@ class SystemClearDataView(View):
                 app_config = apps.get_app_config(app_label)
                 for model in app_config.get_models():
                     try:
-                        deleted_count, _ = model.objects.all().delete()
+                        from apps.core.softdelete import purge
+                        deleted_count, _ = purge(model)
                         results[f"{app_label}.{model.__name__}"] = deleted_count
                     except Exception as model_err:
                         errors[f"{app_label}.{model.__name__}"] = str(model_err)

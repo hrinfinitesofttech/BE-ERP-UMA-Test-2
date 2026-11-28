@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from datetime import datetime
 from django.db import models, connection
 from django.db.models import Q
@@ -64,7 +65,7 @@ except Exception:
     pass
 
 
-class AssemblyDrawingViewSet(viewsets.ModelViewSet):
+class AssemblyDrawingViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = AssemblyDrawing.objects.all().order_by('-created_at')
     serializer_class = AssemblyDrawingSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -117,9 +118,9 @@ class AssemblyDrawingViewSet(viewsets.ModelViewSet):
             self.perform_update(serializer)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if not data.get('id') or AssemblyDrawing.objects.filter(id=data.get('id')).exists():
+        if not data.get('id') or AssemblyDrawing.all_objects.filter(id=data.get('id')).exists():
             data['id'] = f"ASM-{uuid.uuid4().hex[:8].upper()}"
-            while AssemblyDrawing.objects.filter(id=data['id']).exists():
+            while AssemblyDrawing.all_objects.filter(id=data['id']).exists():
                 data['id'] = f"ASM-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
@@ -129,7 +130,7 @@ class AssemblyDrawingViewSet(viewsets.ModelViewSet):
 
 
 
-class DesignJobViewSet(viewsets.ModelViewSet):
+class DesignJobViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DesignJob.objects.all().order_by('-created_at')
     serializer_class = DesignJobSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -137,7 +138,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         job_id = data.get('id') or data.get('design_job_number') or data.get('designJobNumber')
-        if not job_id or DesignJob.objects.filter(id=job_id).exists() or DesignJob.objects.filter(design_job_number=job_id).exists():
+        if not job_id or DesignJob.all_objects.filter(id=job_id).exists() or DesignJob.all_objects.filter(design_job_number=job_id).exists():
             import re
             all_ids = list(DesignJob.objects.values_list('id', flat=True)) + list(DesignJob.objects.values_list('design_job_number', flat=True))
             max_num = 0
@@ -147,7 +148,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
                     max_num = max(max_num, int(match.group(1)))
             next_num = max_num + 1
             job_id = f"DES-2026-{next_num:04d}"
-            while DesignJob.objects.filter(id=job_id).exists() or DesignJob.objects.filter(design_job_number=job_id).exists():
+            while DesignJob.all_objects.filter(id=job_id).exists() or DesignJob.all_objects.filter(design_job_number=job_id).exists():
                 next_num += 1
                 job_id = f"DES-2026-{next_num:04d}"
 
@@ -191,7 +192,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         ).first()
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not job:
-            job_id = pk or data.get('designJobNumber') or data.get('design_job_number') or data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job_id = pk or data.get('designJobNumber') or data.get('design_job_number') or data.get('id') or f"DES-2026-{DesignJob.all_objects.count() + 1:04d}"
             job = DesignJob.objects.create(
                 id=job_id,
                 design_job_number=data.get('designJobNumber') or data.get('design_job_number') or job_id,
@@ -280,7 +281,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
 
         if not job:
-            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.all_objects.count() + 1:04d}"
             job = DesignJob.objects.create(
                 id=job_id,
                 design_job_number=request.data.get('designJobNumber') or job_id,
@@ -356,7 +357,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         date_str = datetime.now().strftime('%Y-%m-%d %H:%M')
 
         if not job:
-            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('id') or f"DES-2026-{DesignJob.all_objects.count() + 1:04d}"
             job = DesignJob.objects.create(
                 id=job_id,
                 design_job_number=request.data.get('designJobNumber') or job_id,
@@ -418,7 +419,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         remarks = request.data.get('remarks') or f"Released to shop floor by {releaser} on {date_str}"
 
         if not job:
-            job_id = pk or request.data.get('designJobNumber') or request.data.get('design_job_number') or request.data.get('id') or f"DES-2026-{DesignJob.objects.count() + 1:04d}"
+            job_id = pk or request.data.get('designJobNumber') or request.data.get('design_job_number') or request.data.get('id') or f"DES-2026-{DesignJob.all_objects.count() + 1:04d}"
             job = DesignJob.objects.create(
                 id=job_id,
                 design_job_number=request.data.get('designJobNumber') or request.data.get('design_job_number') or job_id,
@@ -531,7 +532,7 @@ class DesignJobViewSet(viewsets.ModelViewSet):
         })
 
 
-class CustomerRequirementViewSet(viewsets.ModelViewSet):
+class CustomerRequirementViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CustomerRequirement.objects.all().order_by('-created_at')
     serializer_class = CustomerRequirementSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -539,7 +540,7 @@ class CustomerRequirementViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"REQ-2026-{CustomerRequirement.objects.count() + 1:03d}"
+            data['id'] = f"REQ-2026-{CustomerRequirement.all_objects.count() + 1:03d}"
         if 'design_job_id' not in data:
             data['design_job_id'] = data.get('designJobId') or 'DES-2026-0001'
         if 'project_id' not in data:
@@ -581,7 +582,7 @@ class CustomerRequirementViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class Drawing2DViewSet(viewsets.ModelViewSet):
+class Drawing2DViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Drawing2D.objects.all().order_by('-created_at')
     serializer_class = Drawing2DSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -642,9 +643,9 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
             self.perform_update(serializer)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if not data.get('id') or Drawing2D.objects.filter(id=data.get('id')).exists():
+        if not data.get('id') or Drawing2D.all_objects.filter(id=data.get('id')).exists():
             data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
-            while Drawing2D.objects.filter(id=data['id']).exists():
+            while Drawing2D.all_objects.filter(id=data['id']).exists():
                 data['id'] = f"DWG-2D-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
@@ -653,7 +654,7 @@ class Drawing2DViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class Design3DModelViewSet(viewsets.ModelViewSet):
+class Design3DModelViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Design3DModel.objects.all().order_by('-created_at')
     serializer_class = Design3DModelSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -700,9 +701,9 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
             self.perform_update(serializer)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        if not data.get('id') or Design3DModel.objects.filter(id=data.get('id')).exists():
+        if not data.get('id') or Design3DModel.all_objects.filter(id=data.get('id')).exists():
             data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
-            while Design3DModel.objects.filter(id=data['id']).exists():
+            while Design3DModel.all_objects.filter(id=data['id']).exists():
                 data['id'] = f"MOD3D-{uuid.uuid4().hex[:8].upper()}"
 
         serializer = self.get_serializer(data=data)
@@ -711,7 +712,7 @@ class Design3DModelViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class BOMHeaderViewSet(viewsets.ModelViewSet):
+class BOMHeaderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = BOMHeader.objects.all().order_by('-created_at', '-id')
     serializer_class = BOMHeaderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -746,7 +747,7 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
         if 'bom_name' in data and not data.get('bom_number'):
             data['bom_number'] = data['bom_name']
         if not data.get('id'):
-            data['id'] = data.get('bom_number') or data.get('bomNumber') or f"BOM-2026-{BOMHeader.objects.count() + 1:04d}"
+            data['id'] = data.get('bom_number') or data.get('bomNumber') or f"BOM-2026-{BOMHeader.all_objects.count() + 1:04d}"
         if 'bom_number' not in data:
             data['bom_number'] = data.get('bomNumber') or data['id']
             
@@ -934,7 +935,7 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
             calc_total_cost = calc_total
 
         if not bom:
-            bom_id = pk or data.get('id') or data.get('bomNumber') or f"BOM-{BOMHeader.objects.count() + 1:04d}"
+            bom_id = pk or data.get('id') or data.get('bomNumber') or f"BOM-{BOMHeader.all_objects.count() + 1:04d}"
             bom = BOMHeader.objects.create(
                 id=bom_id,
                 bom_number=data.get('bomNumber') or data.get('bom_number') or bom_id,
@@ -1035,13 +1036,13 @@ class BOMHeaderViewSet(viewsets.ModelViewSet):
         return Response(BOMHeaderSerializer(bom).data)
 
 
-class DesignRevisionLogViewSet(viewsets.ModelViewSet):
+class DesignRevisionLogViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DesignRevisionLog.objects.all().order_by('-date')
     serializer_class = DesignRevisionLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
+class TechnicalDocumentItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = TechnicalDocumentItem.objects.all().order_by('-created_at')
     serializer_class = TechnicalDocumentItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1049,7 +1050,7 @@ class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"TDOC-{TechnicalDocumentItem.objects.count() + 1:04d}"
+            data['id'] = f"TDOC-{TechnicalDocumentItem.all_objects.count() + 1:04d}"
         if not data.get('doc_number') and not data.get('docNumber'):
             data['doc_number'] = data['id']
         if not data.get('upload_date') and not data.get('uploadDate'):
@@ -1067,7 +1068,7 @@ class TechnicalDocumentItemViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class DesignTaskViewSet(viewsets.ModelViewSet):
+class DesignTaskViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DesignTask.objects.all().order_by('-created_at')
     serializer_class = DesignTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1075,7 +1076,7 @@ class DesignTaskViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"DTASK-{DesignTask.objects.count() + 1:04d}"
+            data['id'] = f"DTASK-{DesignTask.all_objects.count() + 1:04d}"
         if 'design_job_id' not in data:
             data['design_job_id'] = data.get('designJobId') or ''
         if 'project_id' not in data:

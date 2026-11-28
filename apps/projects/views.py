@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 import uuid
 from datetime import datetime, date, timedelta
 from django.db import models
@@ -79,7 +80,7 @@ def auto_generate_16_stages(project_id):
     return created_stages
 
 
-class ProjectJobMasterViewSet(viewsets.ModelViewSet):
+class ProjectJobMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectJobMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectJobMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -137,12 +138,12 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
             num_setting = NumberingSetting.objects.filter(doc_type='project').first()
             if num_setting:
                 p_code = num_setting.generate_next_number(increment=True)
-                while ProjectJobMaster.objects.filter(id=p_code).exists():
+                while ProjectJobMaster.all_objects.filter(id=p_code).exists():
                     p_code = num_setting.generate_next_number(increment=True)
             else:
-                next_num = ProjectJobMaster.objects.count() + 1
+                next_num = ProjectJobMaster.all_objects.count() + 1
                 p_code = f"PRJ-2026-{next_num:04d}"
-                while ProjectJobMaster.objects.filter(id=p_code).exists():
+                while ProjectJobMaster.all_objects.filter(id=p_code).exists():
                     next_num += 1
                     p_code = f"PRJ-2026-{next_num:04d}"
 
@@ -201,7 +202,7 @@ class ProjectJobMasterViewSet(viewsets.ModelViewSet):
         })
 
 
-class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
+class ProjectPlanningStageViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectPlanningStage.objects.all().order_by('stage_number')
     serializer_class = ProjectPlanningStageSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -314,7 +315,7 @@ class ProjectPlanningStageViewSet(viewsets.ModelViewSet):
         return Response(ProjectPlanningStageSerializer(stage).data)
 
 
-class ProjectMilestoneViewSet(viewsets.ModelViewSet):
+class ProjectMilestoneViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectMilestone.objects.all().order_by('planned_date', 'target_date')
     serializer_class = ProjectMilestoneSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -348,7 +349,7 @@ class ProjectMilestoneViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProjectTaskViewSet(viewsets.ModelViewSet):
+class ProjectTaskViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectTask.objects.all().order_by('-id')
     serializer_class = ProjectTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -402,7 +403,7 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
         if 'project_id' not in data:
             data['project_id'] = data.get('projectId') or ''
         if 'task_number' not in data:
-            data['task_number'] = data.get('taskNumber') or f"TSK-2026-{ProjectTask.objects.count() + 1:03d}"
+            data['task_number'] = data.get('taskNumber') or f"TSK-2026-{ProjectTask.all_objects.count() + 1:03d}"
         if 'department' not in data:
             data['department'] = data.get('department') or getattr(user, 'department_name', '') or 'General'
         if 'assigned_by_name' not in data:
@@ -598,7 +599,7 @@ class ProjectTaskViewSet(viewsets.ModelViewSet):
         })
 
 
-class ProjectDocumentViewSet(viewsets.ModelViewSet):
+class ProjectDocumentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectDocument.objects.all().order_by('-created_at', '-id')
     serializer_class = ProjectDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -633,25 +634,25 @@ class ProjectDocumentViewSet(viewsets.ModelViewSet):
 
 
 
-class DepartmentAssignmentViewSet(viewsets.ModelViewSet):
+class DepartmentAssignmentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DepartmentAssignment.objects.all().order_by('-id')
     serializer_class = DepartmentAssignmentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class ProjectIssueViewSet(viewsets.ModelViewSet):
+class ProjectIssueViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectIssue.objects.all().order_by('-created_date', '-id')
     serializer_class = ProjectIssueSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class ProjectDelayViewSet(viewsets.ModelViewSet):
+class ProjectDelayViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectDelay.objects.all().order_by('-date', '-id')
     serializer_class = ProjectDelaySerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
+class CustomerChangeRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CustomerChangeRequest.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerChangeRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -703,7 +704,7 @@ class CustomerChangeRequestViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ProjectCostViewSet(viewsets.ModelViewSet):
+class ProjectCostViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ProjectCost.objects.all().order_by('-id')
     serializer_class = ProjectCostSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -829,7 +830,7 @@ class ProjectsDashboardSummaryView(APIView):
         })
 
 
-class MasterTaskViewSet(viewsets.ModelViewSet):
+class MasterTaskViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = MasterTask.objects.all()
     serializer_class = MasterTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -848,7 +849,7 @@ class MasterTaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         task_id = self.request.data.get('id')
         if not task_id:
-            count = MasterTask.objects.count() + 1
+            count = MasterTask.all_objects.count() + 1
             task_id = f"MT-{count:03d}"
         serializer.save(id=task_id)
 
@@ -863,7 +864,7 @@ class MasterTaskViewSet(viewsets.ModelViewSet):
         for item in items:
             task_id = item.get('id')
             if not task_id:
-                count = MasterTask.objects.count() + 1
+                count = MasterTask.all_objects.count() + 1
                 task_id = f"MT-{count:03d}-{uuid.uuid4().hex[:4].upper()}"
             item_data = dict(item)
             item_data['id'] = task_id

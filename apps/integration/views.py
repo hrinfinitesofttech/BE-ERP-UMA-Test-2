@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.decorators import action
@@ -44,7 +45,7 @@ from apps.maintenance.models import CustomerMachine, ServiceRequest, BreakdownRe
 from apps.accounting.models import SalesInvoice, CustomerReceipt, JobCostingSummary
 
 
-class ApprovalItemViewSet(viewsets.ModelViewSet):
+class ApprovalItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ApprovalItem.objects.all().order_by('-created_at', '-id')
     serializer_class = ApprovalItemSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -66,7 +67,7 @@ class ApprovalItemViewSet(viewsets.ModelViewSet):
         return Response(ApprovalItemSerializer(item).data)
 
 
-class ERPAlertItemViewSet(viewsets.ModelViewSet):
+class ERPAlertItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ERPAlertItem.objects.all().order_by('-timestamp', '-id')
     serializer_class = ERPAlertItemSerializer
     permission_classes = [permissions.IsAuthenticated]

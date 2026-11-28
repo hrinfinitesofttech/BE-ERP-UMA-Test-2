@@ -1,8 +1,9 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 from django.utils import timezone
 
 
-class DesignJob(models.Model):
+class DesignJob(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64)
@@ -50,7 +51,7 @@ class DesignJob(models.Model):
         return f"{self.design_job_number} - {self.product_name}"
 
 
-class CustomerRequirement(models.Model):
+class CustomerRequirement(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64)
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -83,7 +84,7 @@ class CustomerRequirement(models.Model):
         return f"Req: {self.machine_name} for {self.customer_name}"
 
 
-class Drawing2D(models.Model):
+class Drawing2D(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64, blank=True, default='')
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -119,7 +120,7 @@ class Drawing2D(models.Model):
         return f"{self.drawing_number} - {self.title}"
 
 
-class Design3DModel(models.Model):
+class Design3DModel(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64, blank=True, default='')
     model_number = models.CharField(max_length=100)
@@ -147,7 +148,7 @@ class Design3DModel(models.Model):
         return f"{self.model_number} - {self.model_name}"
 
 
-class BOMHeader(models.Model):
+class BOMHeader(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     bom_number = models.CharField(max_length=64, unique=True)
     design_job_id = models.CharField(max_length=64)
@@ -174,7 +175,7 @@ class BOMHeader(models.Model):
         return f"{self.bom_number} ({self.status})"
 
 
-class DesignRevisionLog(models.Model):
+class DesignRevisionLog(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64)
     revision_number = models.CharField(max_length=30)
@@ -188,7 +189,7 @@ class DesignRevisionLog(models.Model):
         return f"{self.revision_number}: {self.reason}"
 
 
-class TechnicalDocumentItem(models.Model):
+class TechnicalDocumentItem(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64, blank=True, default='')
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -212,7 +213,7 @@ class TechnicalDocumentItem(models.Model):
         return f"{self.id} - {self.document_name or self.title}"
 
 
-class DesignTask(models.Model):
+class DesignTask(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64, blank=True, default='')
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -237,7 +238,7 @@ class DesignTask(models.Model):
         return f"{self.id} - {self.task_name} ({self.designer})"
 
 
-class AssemblyDrawing(models.Model):
+class AssemblyDrawing(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     design_job_id = models.CharField(max_length=64, blank=True, default='')
     project_id = models.CharField(max_length=64, blank=True, default='')

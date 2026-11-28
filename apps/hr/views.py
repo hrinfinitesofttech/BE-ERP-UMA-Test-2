@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from rest_framework import viewsets, status, permissions
 from rest_framework.views import APIView
 from rest_framework.decorators import action
@@ -32,7 +33,7 @@ from .serializers import (
 )
 
 
-class DesignationViewSet(viewsets.ModelViewSet):
+class DesignationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Designation.objects.all().order_by('-id')
     serializer_class = DesignationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -40,7 +41,7 @@ class DesignationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'department']
 
 
-class EmployeeDocumentViewSet(viewsets.ModelViewSet):
+class EmployeeDocumentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeDocument.objects.all().order_by('-id')
     serializer_class = EmployeeDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -48,7 +49,7 @@ class EmployeeDocumentViewSet(viewsets.ModelViewSet):
     filterset_fields = ['verification_status', 'employee_id']
 
 
-class ShiftMasterViewSet(viewsets.ModelViewSet):
+class ShiftMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ShiftMaster.objects.all().order_by('-id')
     serializer_class = ShiftMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -56,7 +57,7 @@ class ShiftMasterViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class LeaveTypeViewSet(viewsets.ModelViewSet):
+class LeaveTypeViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = LeaveType.objects.all().order_by('-id')
     serializer_class = LeaveTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1036,7 +1037,7 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
         })
 
 
-class LeaveRequestViewSet(viewsets.ModelViewSet):
+class LeaveRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = LeaveRequest.objects.all().order_by('-id')
     serializer_class = LeaveRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1259,7 +1260,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         return Response(LeaveRequestSerializer(leave).data)
 
 
-class WFHRequestViewSet(viewsets.ModelViewSet):
+class WFHRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WFHRequest.objects.all().order_by('-id')
     serializer_class = WFHRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1304,7 +1305,7 @@ def _force_own_identity(request, data):
     return data
 
 
-class MissedPunchRequestViewSet(viewsets.ModelViewSet):
+class MissedPunchRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = MissedPunchRequest.objects.all().order_by('-id')
     serializer_class = MissedPunchRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1388,7 +1389,7 @@ class MissedPunchRequestViewSet(viewsets.ModelViewSet):
         return Response(MissedPunchRequestSerializer(mp).data)
 
 
-class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
+class AttendanceRegularizationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = AttendanceRegularization.objects.all().order_by('-id')
     serializer_class = AttendanceRegularizationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1450,7 +1451,7 @@ class AttendanceRegularizationViewSet(viewsets.ModelViewSet):
         return Response(AttendanceRegularizationSerializer(reg).data)
 
 
-class OvertimeRecordViewSet(viewsets.ModelViewSet):
+class OvertimeRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = OvertimeRecord.objects.all().order_by('-id')
     serializer_class = OvertimeRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1512,7 +1513,7 @@ class OvertimeRecordViewSet(viewsets.ModelViewSet):
         return Response(OvertimeRecordSerializer(ot).data)
 
 
-class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
+class EarlyCheckoutRequestViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EarlyCheckoutRequest.objects.all().order_by('-id')
     serializer_class = EarlyCheckoutRequestSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1534,7 +1535,7 @@ class EarlyCheckoutRequestViewSet(viewsets.ModelViewSet):
         return Response(EarlyCheckoutRequestSerializer(eco).data)
 
 
-class SalaryComponentViewSet(viewsets.ModelViewSet):
+class SalaryComponentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SalaryComponent.objects.all().order_by('-id')
     serializer_class = SalaryComponentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1546,7 +1547,7 @@ class SalaryComponentViewSet(viewsets.ModelViewSet):
 from .payroll_views import SalaryStructureViewSet, PayrollRecordViewSet  # noqa: E402,F401
 
 
-class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
+class EmployeeAdvanceLoanViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeAdvanceLoan.objects.all().order_by('-id')
     serializer_class = EmployeeAdvanceLoanSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1554,7 +1555,7 @@ class EmployeeAdvanceLoanViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'employee_id']
 
 
-class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
+class ReimbursementExpenseViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ReimbursementExpense.objects.all().order_by('-id')
     serializer_class = ReimbursementExpenseSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1562,7 +1563,7 @@ class ReimbursementExpenseViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status', 'employee_id']
 
 
-class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
+class EmployeeOnboardingViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeOnboarding.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeOnboardingSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1577,7 +1578,7 @@ class EmployeeOnboardingViewSet(viewsets.ModelViewSet):
         return Response(EmployeeOnboardingSerializer(onb).data)
 
 
-class EmployeeTransferViewSet(viewsets.ModelViewSet):
+class EmployeeTransferViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeTransfer.objects.all().order_by('-id')
     serializer_class = EmployeeTransferSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1585,7 +1586,7 @@ class EmployeeTransferViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class EmployeePromotionViewSet(viewsets.ModelViewSet):
+class EmployeePromotionViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeePromotion.objects.all().order_by('-id')
     serializer_class = EmployeePromotionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1593,7 +1594,7 @@ class EmployeePromotionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class EmployeeExitViewSet(viewsets.ModelViewSet):
+class EmployeeExitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeExit.objects.all().order_by('-id')
     serializer_class = EmployeeExitSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1601,7 +1602,7 @@ class EmployeeExitViewSet(viewsets.ModelViewSet):
     filterset_fields = ['status']
 
 
-class HolidayViewSet(viewsets.ModelViewSet):
+class HolidayViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Holiday.objects.all().order_by('-created_at', '-id')
     serializer_class = HolidaySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1611,12 +1612,12 @@ class HolidayViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         req_id = serializer.validated_data.get('id') or self.request.data.get('id')
         if not req_id:
-            count = Holiday.objects.count() + 1
+            count = Holiday.all_objects.count() + 1
             req_id = f"HOL-2026-{count:02d}"
         serializer.save(id=req_id)
 
 
-class EmployeeAppraisalViewSet(viewsets.ModelViewSet):
+class EmployeeAppraisalViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = EmployeeAppraisal.objects.all().order_by('-created_at', '-id')
     serializer_class = EmployeeAppraisalSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1627,7 +1628,7 @@ class EmployeeAppraisalViewSet(viewsets.ModelViewSet):
         req_id = serializer.validated_data.get('id') or self.request.data.get('id')
         appraisal_no = serializer.validated_data.get('appraisal_number') or self.request.data.get('appraisalNumber')
         if not req_id or not appraisal_no:
-            count = EmployeeAppraisal.objects.count() + 1
+            count = EmployeeAppraisal.all_objects.count() + 1
             if not req_id:
                 req_id = f"APR-2026-{count:03d}"
             if not appraisal_no:

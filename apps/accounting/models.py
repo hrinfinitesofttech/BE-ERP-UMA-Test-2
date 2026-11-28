@@ -1,8 +1,9 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 from django.utils import timezone
 
 
-class FinancialYear(models.Model):
+class FinancialYear(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=64)
     fy_code = models.CharField(max_length=32, unique=True)
@@ -16,7 +17,7 @@ class FinancialYear(models.Model):
         return f"{self.name} ({self.fy_code})"
 
 
-class ChartOfAccount(models.Model):
+class ChartOfAccount(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     account_code = models.CharField(max_length=64, unique=True)
     account_name = models.CharField(max_length=255)
@@ -32,7 +33,7 @@ class ChartOfAccount(models.Model):
         return f"{self.account_code} - {self.account_name}"
 
 
-class TaxMaster(models.Model):
+class TaxMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     tax_code = models.CharField(max_length=64, unique=True)
     tax_name = models.CharField(max_length=128)
@@ -48,7 +49,7 @@ class TaxMaster(models.Model):
         return f"{self.tax_name} ({self.rate_percent}%)"
 
 
-class CostCenter(models.Model):
+class CostCenter(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     cost_center_code = models.CharField(max_length=64, unique=True)
     cost_center_name = models.CharField(max_length=128)
@@ -60,7 +61,7 @@ class CostCenter(models.Model):
         return f"{self.cost_center_code} - {self.cost_center_name}"
 
 
-class SalesInvoice(models.Model):
+class SalesInvoice(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     invoice_number = models.CharField(max_length=64, unique=True)
     invoice_date = models.DateField()
@@ -108,7 +109,7 @@ class SalesInvoice(models.Model):
         return f"{self.invoice_number} - {self.customer_name} (₹{self.grand_total})"
 
 
-class PurchaseInvoice(models.Model):
+class PurchaseInvoice(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     invoice_number = models.CharField(max_length=64, unique=True)
     vendor_invoice_number = models.CharField(max_length=128, blank=True)
@@ -142,7 +143,7 @@ class PurchaseInvoice(models.Model):
         return f"{self.invoice_number} - {self.supplier_name}"
 
 
-class CustomerReceipt(models.Model):
+class CustomerReceipt(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     receipt_number = models.CharField(max_length=64, unique=True)
     receipt_date = models.DateField()
@@ -168,7 +169,7 @@ class CustomerReceipt(models.Model):
         return f"{self.receipt_number} - {self.customer_name} (₹{self.amount})"
 
 
-class SupplierPayment(models.Model):
+class SupplierPayment(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     payment_number = models.CharField(max_length=64, unique=True)
     payment_date = models.DateField()
@@ -187,7 +188,7 @@ class SupplierPayment(models.Model):
         return f"{self.payment_number} - {self.supplier_name} (₹{self.amount})"
 
 
-class JournalEntry(models.Model):
+class JournalEntry(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     journal_number = models.CharField(max_length=64, unique=True)
     journal_date = models.DateField()
@@ -207,7 +208,7 @@ class JournalEntry(models.Model):
         return f"{self.journal_number} ({self.voucher_type})"
 
 
-class JobCostingSummary(models.Model):
+class JobCostingSummary(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     job_number = models.CharField(max_length=64, unique=True)
     product_name = models.CharField(max_length=255, blank=True)
@@ -232,7 +233,7 @@ class JobCostingSummary(models.Model):
         return f"Costing: {self.job_number} - Margin: {self.margin_percent}%"
 
 
-class CreditNote(models.Model):
+class CreditNote(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     credit_note_number = models.CharField(max_length=64, unique=True)
     credit_note_date = models.DateField()
@@ -254,7 +255,7 @@ class CreditNote(models.Model):
         return f"{self.credit_note_number} - {self.customer_name} (₹{self.total_amount})"
 
 
-class DebitNote(models.Model):
+class DebitNote(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     debit_note_number = models.CharField(max_length=64, unique=True)
     debit_note_date = models.DateField()
@@ -276,7 +277,7 @@ class DebitNote(models.Model):
         return f"{self.debit_note_number} - {self.supplier_name} (₹{self.total_amount})"
 
 
-class BankAccount(models.Model):
+class BankAccount(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     account_name = models.CharField(max_length=255, blank=True)
     account_type = models.CharField(max_length=64, default='Current')
@@ -296,7 +297,7 @@ class BankAccount(models.Model):
         return f"{self.bank_name} - {self.account_number}"
 
 
-class ContraVoucher(models.Model):
+class ContraVoucher(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     contra_number = models.CharField(max_length=64, unique=True)
     contra_date = models.DateField()
@@ -321,7 +322,7 @@ class ContraVoucher(models.Model):
         return f"{self.contra_number} ({self.from_account_name} -> {self.to_account_name}: ₹{self.amount})"
 
 
-class ExpenseEntry(models.Model):
+class ExpenseEntry(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     expense_number = models.CharField(max_length=64, unique=True)
     expense_date = models.DateField()
@@ -352,7 +353,7 @@ class ExpenseEntry(models.Model):
         return f"{self.expense_number} - {self.category} (₹{self.grand_total})"
 
 
-class FixedAsset(models.Model):
+class FixedAsset(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     asset_code = models.CharField(max_length=64, unique=True)
     asset_name = models.CharField(max_length=255)
@@ -379,7 +380,7 @@ class FixedAsset(models.Model):
         return f"{self.asset_code} - {self.asset_name} (₹{self.current_book_value})"
 
 
-class EWayBill(models.Model):
+class EWayBill(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     eway_bill_no = models.CharField(max_length=32, unique=True)
     invoice_number = models.CharField(max_length=64, blank=True, default='')

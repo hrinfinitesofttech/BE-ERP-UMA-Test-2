@@ -76,6 +76,9 @@ class User(AbstractUser):
     explicit_restrictions = models.JSONField(default=list, blank=True)
     permissions_review_required = models.BooleanField(default=False)
     previous_department_name = models.CharField(max_length=100, blank=True, default='')
+    # employee 'delete' is soft: is_active=False plus who/when (a deactivated employee has no deleted_at)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.CharField(max_length=150, blank=True, default='')
 
     def save(self, *args, **kwargs):
         if not self.id:

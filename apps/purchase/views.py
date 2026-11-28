@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
@@ -34,7 +35,7 @@ from .serializers import (
 )
 
 
-class MaterialRequirementViewSet(viewsets.ModelViewSet):
+class MaterialRequirementViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = MaterialRequirement.objects.all().order_by('-created_at')
     serializer_class = MaterialRequirementSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -42,20 +43,20 @@ class MaterialRequirementViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"MRP-REQ-{MaterialRequirement.objects.count() + 1:05d}"
+            data['id'] = f"MRP-REQ-{MaterialRequirement.all_objects.count() + 1:05d}"
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
+class SupplierViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Supplier.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class SupplierContactViewSet(viewsets.ModelViewSet):
+class SupplierContactViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SupplierContact.objects.all().order_by('-id')
     serializer_class = SupplierContactSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -65,7 +66,7 @@ from django.db.models import Q
 from django.http import Http404
 
 
-class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
+class PurchaseRequisitionViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PurchaseRequisition.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseRequisitionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -79,7 +80,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-        pr_num = data.get('prNumber') or data.get('pr_number') or data.get('id') or f"PR-2026-{PurchaseRequisition.objects.count() + 1:04d}"
+        pr_num = data.get('prNumber') or data.get('pr_number') or data.get('id') or f"PR-2026-{PurchaseRequisition.all_objects.count() + 1:04d}"
         pr_id = data.get('id') or pr_num
 
         pr_obj, _ = PurchaseRequisition.objects.update_or_create(
@@ -190,7 +191,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='convert-to-rfq')
     def convert_to_rfq(self, request, pk=None):
         pr = self.get_object()
-        n = RequestForQuotation.objects.count() + 1
+        n = RequestForQuotation.all_objects.count() + 1
         rfq_code = f"RFQ-2026-{n:04d}"
         while RequestForQuotation.objects.filter(Q(id=rfq_code) | Q(rfq_number=rfq_code)).exists():
             n += 1
@@ -211,7 +212,7 @@ class PurchaseRequisitionViewSet(viewsets.ModelViewSet):
         return Response(RequestForQuotationSerializer(rfq).data, status=status.HTTP_201_CREATED)
 
 
-class RequestForQuotationViewSet(viewsets.ModelViewSet):
+class RequestForQuotationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = RequestForQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = RequestForQuotationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -219,7 +220,7 @@ class RequestForQuotationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            rfq_num = data.get('rfqNumber') or data.get('rfq_number') or f"RFQ-2026-{RequestForQuotation.objects.count() + 1:04d}"
+            rfq_num = data.get('rfqNumber') or data.get('rfq_number') or f"RFQ-2026-{RequestForQuotation.all_objects.count() + 1:04d}"
             data['id'] = rfq_num
             data['rfq_number'] = rfq_num
         serializer = self.get_serializer(data=data)
@@ -583,7 +584,7 @@ Web: www.umatechnofab.com | Email: info@umatechnofab.com
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class SupplierQuotationViewSet(viewsets.ModelViewSet):
+class SupplierQuotationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SupplierQuotation.objects.all().order_by('-created_at', '-id')
     serializer_class = SupplierQuotationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -591,7 +592,7 @@ class SupplierQuotationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            sq_num = data.get('quotationNumber') or data.get('quotation_number') or f"SQ-2026-{SupplierQuotation.objects.count() + 1:04d}"
+            sq_num = data.get('quotationNumber') or data.get('quotation_number') or f"SQ-2026-{SupplierQuotation.all_objects.count() + 1:04d}"
             data['id'] = sq_num
             data['quotation_number'] = sq_num
         serializer = self.get_serializer(data=data)
@@ -600,13 +601,13 @@ class SupplierQuotationViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class QuotationComparisonViewSet(viewsets.ModelViewSet):
+class QuotationComparisonViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = QuotationComparison.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationComparisonSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class PurchaseOrderViewSet(viewsets.ModelViewSet):
+class PurchaseOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PurchaseOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -627,7 +628,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
             po_num = data.get('poNumber') or data.get('po_number') or data.get('id')
             if not po_num:
-                count = PurchaseOrder.objects.count() + 1
+                count = PurchaseOrder.all_objects.count() + 1
                 po_num = f"PO-2026-{count:04d}"
                 while PurchaseOrder.objects.filter(Q(id=po_num) | Q(po_number=po_num)).exists():
                     count += 1
@@ -750,7 +751,7 @@ class PurchaseOrderViewSet(viewsets.ModelViewSet):
             raw_po_num = po_payload.get('poNumber') or po_payload.get('po_number') or str(pk or 'PO-2026')
             po_num = str(raw_po_num).strip()
             if po_num == '-' or not po_num:
-                po_num = f"PO-{datetime.now().year}-{PurchaseOrder.objects.count() + 1:04d}"
+                po_num = f"PO-{datetime.now().year}-{PurchaseOrder.all_objects.count() + 1:04d}"
 
             s_name = po_payload.get('supplierName') or po_payload.get('supplier_name') or 'Supplier'
             s_email = po_payload.get('supplierEmail') or po_payload.get('supplier_email') or request.data.get('recipientEmail') or ''
@@ -1120,7 +1121,7 @@ Web: www.umatechnofab.com | Email: info@umatechnofab.com
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class PurchaseReturnViewSet(viewsets.ModelViewSet):
+class PurchaseReturnViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = PurchaseReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = PurchaseReturnSerializer
     permission_classes = [permissions.IsAuthenticated]

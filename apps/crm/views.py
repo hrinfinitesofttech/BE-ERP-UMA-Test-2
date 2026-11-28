@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 
 from apps.core.models import NumberingSetting, AuditLog
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from apps.core.approval_security import (
     validate_approval_permission,
     validate_approval_transition,
@@ -402,7 +403,7 @@ except Exception:
 
 
 
-class LeadViewSet(viewsets.ModelViewSet):
+class LeadViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Lead.objects.all().order_by('-created_at', '-id')
     serializer_class = LeadSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -605,7 +606,7 @@ class LeadViewSet(viewsets.ModelViewSet):
                 num_setting = NumberingSetting.objects.filter(doc_type='lead').first()
                 if num_setting:
                     code = num_setting.generate_next_number(increment=True)
-                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                    while Lead.all_objects.filter(id=code).exists() or Lead.all_objects.filter(lead_no=code).exists():
                         code = num_setting.generate_next_number(increment=True)
                 else:
                     import re
@@ -615,9 +616,9 @@ class LeadViewSet(viewsets.ModelViewSet):
                         m = re.search(r'(\d+)$', str(lid))
                         if m:
                             max_num = max(max_num, int(m.group(1)))
-                    num = max(max_num + 1, Lead.objects.count() + 1)
+                    num = max(max_num + 1, Lead.all_objects.count() + 1)
                     code = f"LEAD-2026-{num:04d}"
-                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                    while Lead.all_objects.filter(id=code).exists() or Lead.all_objects.filter(lead_no=code).exists():
                         num += 1
                         code = f"LEAD-2026-{num:04d}"
                 data['id'] = code
@@ -635,9 +636,9 @@ class LeadViewSet(viewsets.ModelViewSet):
                         m = re.search(r'(\d+)$', str(lid))
                         if m:
                             max_num = max(max_num, int(m.group(1)))
-                    num = max(max_num + 1, Lead.objects.count() + 1)
+                    num = max(max_num + 1, Lead.all_objects.count() + 1)
                     code = f"LEAD-2026-{num:04d}"
-                    while Lead.objects.filter(id=code).exists() or Lead.objects.filter(lead_no=code).exists():
+                    while Lead.all_objects.filter(id=code).exists() or Lead.all_objects.filter(lead_no=code).exists():
                         num += 1
                         code = f"LEAD-2026-{num:04d}"
                     data['id'] = code
@@ -662,8 +663,8 @@ class LeadViewSet(viewsets.ModelViewSet):
         lead = self.get_object()
 
         # 1. Create or retrieve Customer
-        num_c = Customer.objects.count() + 1
-        while Customer.objects.filter(id=f"CUST-2026-{num_c:04d}").exists() or Customer.objects.filter(customer_code=f"CUST-{num_c:03d}").exists():
+        num_c = Customer.all_objects.count() + 1
+        while Customer.all_objects.filter(id=f"CUST-2026-{num_c:04d}").exists() or Customer.all_objects.filter(customer_code=f"CUST-{num_c:03d}").exists():
             num_c += 1
         cust_code = f"CUST-{num_c:03d}"
         cust_id = f"CUST-2026-{num_c:04d}"
@@ -706,11 +707,11 @@ class LeadViewSet(viewsets.ModelViewSet):
         opp_num = NumberingSetting.objects.filter(doc_type='opportunity').first()
         if opp_num:
             opp_code = opp_num.generate_next_number(increment=True)
-            while Opportunity.objects.filter(id=opp_code).exists() or Opportunity.objects.filter(opportunity_no=opp_code).exists():
+            while Opportunity.all_objects.filter(id=opp_code).exists() or Opportunity.all_objects.filter(opportunity_no=opp_code).exists():
                 opp_code = opp_num.generate_next_number(increment=True)
         else:
-            num_o = Opportunity.objects.count() + 1
-            while Opportunity.objects.filter(id=f"OPP-2026-{num_o:04d}").exists() or Opportunity.objects.filter(opportunity_no=f"OPP-2026-{num_o:04d}").exists():
+            num_o = Opportunity.all_objects.count() + 1
+            while Opportunity.all_objects.filter(id=f"OPP-2026-{num_o:04d}").exists() or Opportunity.all_objects.filter(opportunity_no=f"OPP-2026-{num_o:04d}").exists():
                 num_o += 1
             opp_code = f"OPP-2026-{num_o:04d}"
 
@@ -737,12 +738,12 @@ class LeadViewSet(viewsets.ModelViewSet):
             num_setting = NumberingSetting.objects.filter(doc_type='enquiry').first()
             if num_setting:
                 enq_code = num_setting.generate_next_number(increment=True)
-                while Enquiry.objects.filter(id=enq_code).exists() or Enquiry.objects.filter(enquiry_no=enq_code).exists():
+                while Enquiry.all_objects.filter(id=enq_code).exists() or Enquiry.all_objects.filter(enquiry_no=enq_code).exists():
                     enq_code = num_setting.generate_next_number(increment=True)
             else:
-                num_e = Enquiry.objects.count() + 1
+                num_e = Enquiry.all_objects.count() + 1
                 enq_code = f"ENQ-2026-{num_e:04d}"
-                while Enquiry.objects.filter(id=enq_code).exists() or Enquiry.objects.filter(enquiry_no=enq_code).exists():
+                while Enquiry.all_objects.filter(id=enq_code).exists() or Enquiry.all_objects.filter(enquiry_no=enq_code).exists():
                     num_e += 1
                     enq_code = f"ENQ-2026-{num_e:04d}"
 
@@ -801,12 +802,12 @@ class LeadViewSet(viewsets.ModelViewSet):
         num_setting = NumberingSetting.objects.filter(doc_type='enquiry').first()
         if num_setting:
             code = num_setting.generate_next_number(increment=True)
-            while Enquiry.objects.filter(id=code).exists() or Enquiry.objects.filter(enquiry_no=code).exists():
+            while Enquiry.all_objects.filter(id=code).exists() or Enquiry.all_objects.filter(enquiry_no=code).exists():
                 code = num_setting.generate_next_number(increment=True)
         else:
-            num_e = Enquiry.objects.count() + 1
+            num_e = Enquiry.all_objects.count() + 1
             code = f"ENQ-2026-{num_e:04d}"
-            while Enquiry.objects.filter(id=code).exists() or Enquiry.objects.filter(enquiry_no=code).exists():
+            while Enquiry.all_objects.filter(id=code).exists() or Enquiry.all_objects.filter(enquiry_no=code).exists():
                 num_e += 1
                 code = f"ENQ-2026-{num_e:04d}"
 
@@ -866,7 +867,7 @@ class LeadViewSet(viewsets.ModelViewSet):
 
 
 
-class CustomerViewSet(viewsets.ModelViewSet):
+class CustomerViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Customer.objects.all().order_by('-created_at')
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -886,9 +887,9 @@ class CustomerViewSet(viewsets.ModelViewSet):
                     m = re.search(r'(\d+)$', str(cc))
                     if m:
                         max_num = max(max_num, int(m.group(1)))
-                cnt = max(max_num + 1, Customer.objects.count() + 1)
+                cnt = max(max_num + 1, Customer.all_objects.count() + 1)
                 cust_code = f"CUST-2026-{cnt:04d}"
-                while Customer.objects.filter(id=cust_code).exists() or Customer.objects.filter(customer_code=cust_code).exists():
+                while Customer.all_objects.filter(id=cust_code).exists() or Customer.all_objects.filter(customer_code=cust_code).exists():
                     cnt += 1
                     cust_code = f"CUST-2026-{cnt:04d}"
             data['id'] = data.get('id') or cust_code
@@ -902,13 +903,13 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
 
 
-class ContactViewSet(viewsets.ModelViewSet):
+class ContactViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Contact.objects.all().order_by('-id')
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class EnquiryViewSet(viewsets.ModelViewSet):
+class EnquiryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Enquiry.objects.all().order_by('-created_at', '-id')
     serializer_class = EnquirySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -918,11 +919,11 @@ class EnquiryViewSet(viewsets.ModelViewSet):
         
         # 1. Generate unique Enquiry number / ID if not provided
         enq_num = data.get('enquiry_no') or data.get('enquiryNo') or data.get('id')
-        if not enq_num or Enquiry.objects.filter(id=enq_num).exists():
+        if not enq_num or Enquiry.all_objects.filter(id=enq_num).exists():
             num_setting = NumberingSetting.objects.filter(doc_type='enquiry').first()
             if num_setting:
                 code = num_setting.generate_next_number(increment=True)
-                while Enquiry.objects.filter(id=code).exists() or Enquiry.objects.filter(enquiry_no=code).exists():
+                while Enquiry.all_objects.filter(id=code).exists() or Enquiry.all_objects.filter(enquiry_no=code).exists():
                     code = num_setting.generate_next_number(increment=True)
             else:
                 import re
@@ -934,7 +935,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
                         max_num = max(max_num, int(match.group(1)))
                 next_num = max_num + 1
                 code = f"ENQ-2026-{next_num:04d}"
-                while Enquiry.objects.filter(id=code).exists():
+                while Enquiry.all_objects.filter(id=code).exists():
                     next_num += 1
                     code = f"ENQ-2026-{next_num:04d}"
             data['id'] = code
@@ -1085,7 +1086,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
         return Response({'status': 'ok', 'updated_count': updated_count})
 
 
-class OpportunityViewSet(viewsets.ModelViewSet):
+class OpportunityViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Opportunity.objects.all().order_by('-created_at', '-id')
     serializer_class = OpportunitySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1094,7 +1095,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
         if not data.get('id') or not data.get('opportunity_no') and not data.get('opportunityNo'):
             num_setting = NumberingSetting.objects.filter(doc_type='opportunity').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"OPP-2026-{Opportunity.objects.count() + 1:04d}"
+            code = num_setting.generate_next_number(increment=True) if num_setting else f"OPP-2026-{Opportunity.all_objects.count() + 1:04d}"
             data['id'] = code
             data['opportunity_no'] = code
         serializer = self.get_serializer(data=data)
@@ -1103,7 +1104,7 @@ class OpportunityViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class FollowUpViewSet(viewsets.ModelViewSet):
+class FollowUpViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = FollowUp.objects.all().order_by('-created_at', '-id')
     serializer_class = FollowUpSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1111,7 +1112,7 @@ class FollowUpViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         if not data.get('id') or not data.get('follow_up_no') and not data.get('followUpNo'):
-            code = f"FLW-2026-{FollowUp.objects.count() + 1:04d}"
+            code = f"FLW-2026-{FollowUp.all_objects.count() + 1:04d}"
             data['id'] = code
             data['follow_up_no'] = code
         if 'followUpNo' in data and not data.get('follow_up_no'):
@@ -1154,7 +1155,7 @@ class FollowUpViewSet(viewsets.ModelViewSet):
         return Response(FollowUpSerializer(flw).data)
 
 
-class SiteVisitViewSet(viewsets.ModelViewSet):
+class SiteVisitViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SiteVisit.objects.all().order_by('-created_at', '-id')
     serializer_class = SiteVisitSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1207,7 +1208,7 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
             data['id'] = data.get('visit_no') or data.get('visitNo')
         if not data.get('id') or not data.get('visit_no'):
             num_setting = NumberingSetting.objects.filter(doc_type='visit').first()
-            code = num_setting.generate_next_number(increment=True) if num_setting else f"VST-2026-{SiteVisit.objects.count() + 1:04d}"
+            code = num_setting.generate_next_number(increment=True) if num_setting else f"VST-2026-{SiteVisit.all_objects.count() + 1:04d}"
             data['id'] = code
             data['visit_no'] = code
         serializer = self.get_serializer(data=data)
@@ -1216,7 +1217,7 @@ class SiteVisitViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ExhibitionViewSet(viewsets.ModelViewSet):
+class ExhibitionViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Exhibition.objects.all().order_by('-created_at', '-id')
     serializer_class = ExhibitionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1251,7 +1252,7 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
             data['actual_expenses'] = data['actualExpenses']
 
         if not data.get('id'):
-            code = f"EXPO-2026-{Exhibition.objects.count() + 1:02d}"
+            code = f"EXPO-2026-{Exhibition.all_objects.count() + 1:02d}"
             data['id'] = code
 
         serializer = self.get_serializer(data=data)
@@ -1260,7 +1261,7 @@ class ExhibitionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class QuotationViewSet(viewsets.ModelViewSet):
+class QuotationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Quotation.objects.all().order_by('-created_at', '-id')
     serializer_class = QuotationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -1273,7 +1274,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
             data = request.data.copy()
             quo_num = data.get('quotation_number') or data.get('quotationNumber') or data.get('id')
 
-            if not quo_num or Quotation.objects.filter(id=quo_num).exists():
+            if not quo_num or Quotation.all_objects.filter(id=quo_num).exists():
                 import re
                 all_ids = list(Quotation.objects.values_list('id', flat=True))
                 max_num = 0
@@ -1286,7 +1287,7 @@ class QuotationViewSet(viewsets.ModelViewSet):
                 digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
                 next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
                 quo_num = f"{prefix}{next_num:0{digit_count}d}"
-                while Quotation.objects.filter(id=quo_num).exists():
+                while Quotation.all_objects.filter(id=quo_num).exists():
                     next_num += 1
                     quo_num = f"{prefix}{next_num:0{digit_count}d}"
                 if num_setting:
@@ -1346,6 +1347,100 @@ class QuotationViewSet(viewsets.ModelViewSet):
         if revision_data.get('revisionNumber') or revision_data.get('revision_number'):
             quotation.current_revision = revision_data.get('revisionNumber') or revision_data.get('revision_number')
         quotation.save(update_fields=['revisions', 'current_revision'])
+        return Response(QuotationSerializer(quotation).data)
+
+    @action(detail=True, methods=['post'], url_path='update-revision')
+    def update_revision(self, request, pk=None):
+        """Edit quantity / unit rate / discount / GST of a revision that is still being prepared.
+
+        Only draft or internal-review revisions can be edited; an approved / sent / accepted revision is
+        locked (create the next revision instead). Amounts and totals are always recalculated here.
+        """
+        quotation = self.get_object()
+        data = request.data
+        rev_no = data.get('revision_number') or data.get('revisionNumber')
+        incoming = data.get('items')
+        if not rev_no or not isinstance(incoming, list) or not incoming:
+            return Response({'error': 'revisionNumber and items are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        revisions = list(quotation.revisions or [])
+        rev = next((r for r in revisions if isinstance(r, dict) and
+                    (r.get('revision_number') or r.get('revisionNumber')) == rev_no), None)
+        if rev is None:
+            return Response({'error': f'Revision {rev_no} not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if str(rev.get('status') or 'draft').lower() not in ('draft', 'internal_review'):
+            return Response(
+                {'error': f"{rev_no} is {rev.get('status')} and locked. Create the next revision to change quantities or prices.",
+                 'code': 'REVISION_LOCKED'}, status=status.HTTP_400_BAD_REQUEST)
+
+        def num(d, *keys, default=0.0):
+            for k in keys:
+                if d.get(k) not in (None, ''):
+                    try:
+                        return float(d[k])
+                    except (TypeError, ValueError):
+                        break
+            return default
+
+        stored = list(rev.get('items') or [])
+        if len(incoming) != len(stored):
+            return Response({'error': 'Items can be edited but not added or removed here.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        by_id = {str(it.get('id')): i for i, it in enumerate(stored) if isinstance(it, dict) and it.get('id') not in (None, '')}
+        sub = tax_total = 0.0
+        problems = []
+        for pos, inc in enumerate(incoming):
+            idx = by_id.get(str(inc.get('id')), pos)
+            item = stored[idx]
+            qty = num(inc, 'quantity', 'qty')
+            rate = num(inc, 'rate', 'unit_rate', 'unitRate')
+            disc = num(inc, 'discount_percent', 'discountPercent')
+            gst = num(inc, 'tax_percent', 'taxPercent', default=18.0)
+            name = item.get('product_name') or item.get('productName') or f'item {pos + 1}'
+            if qty <= 0:
+                problems.append(f'{name}: quantity must be greater than zero')
+            if rate <= 0:
+                problems.append(f'{name}: price (unit rate) is mandatory')
+            if not (0 <= disc <= 100) or gst < 0:
+                problems.append(f'{name}: discount must be 0-100 and GST cannot be negative')
+            base = qty * rate * (1 - disc / 100)
+            tax = base * gst / 100
+            sub += base
+            tax_total += tax
+            item.update({'quantity': qty, 'rate': rate, 'discount_percent': disc, 'tax_percent': gst,
+                         'amount': round(base + tax)})
+            # keep whichever key style the stored item already uses (parser stores snake_case, older rows camelCase)
+            for camel, snake in (('discountPercent', 'discount_percent'), ('taxPercent', 'tax_percent')):
+                if camel in item and snake in item:
+                    item.pop(camel)
+        if problems:
+            return Response({'error': 'Quotation not saved: ' + '; '.join(problems), 'problems': problems},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        grand = round(sub + tax_total)
+        snake_style = 'revision_number' in rev
+        totals = {'sub_total': round(sub), 'tax_amount': round(tax_total), 'grand_total': grand} if snake_style else                  {'subTotal': round(sub), 'taxAmount': round(tax_total), 'grandTotal': grand}
+        rev['items'] = stored
+        rev.update(totals)
+        quotation.revisions = revisions
+
+        update_fields = ['revisions', 'updated_at']
+        if (quotation.current_revision or '') == rev_no:
+            quotation.subtotal = round(sub)
+            quotation.tax_amount = round(tax_total)
+            quotation.total_amount = grand
+            quotation.grand_total = grand
+            update_fields += ['subtotal', 'tax_amount', 'total_amount', 'grand_total']
+            try:
+                import json as _json
+                summary = _json.loads(quotation.latest_summary) if quotation.latest_summary else {}
+                if isinstance(summary, dict):
+                    summary['grand_total' if 'grand_total' in summary else 'grandTotal'] = grand
+                    quotation.latest_summary = _json.dumps(summary)
+                    update_fields.append('latest_summary')
+            except Exception:
+                pass
+        quotation.save(update_fields=update_fields)
         return Response(QuotationSerializer(quotation).data)
 
     def update(self, request, *args, **kwargs):
@@ -2158,7 +2253,7 @@ Web: www.umatechnofab.com
 
 
 
-class CustomerPOViewSet(viewsets.ModelViewSet):
+class CustomerPOViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = CustomerPO.objects.all().order_by('-created_at', '-id')
     serializer_class = CustomerPOSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -2169,7 +2264,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
         cpo_id = data.get('id') or data.get('internal_cpo_no') or data.get('internalCpoNo')
         
         # Ensure a truly unique fresh ID so existing records are NEVER overwritten on create
-        if not cpo_id or CustomerPO.objects.filter(id=cpo_id).exists():
+        if not cpo_id or CustomerPO.all_objects.filter(id=cpo_id).exists():
             import re
             all_ids = list(CustomerPO.objects.values_list('id', flat=True))
             max_num = 0
@@ -2182,7 +2277,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
             digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
             next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
             cpo_id = f"{prefix}{next_num:0{digit_count}d}"
-            while CustomerPO.objects.filter(id=cpo_id).exists():
+            while CustomerPO.all_objects.filter(id=cpo_id).exists():
                 next_num += 1
                 cpo_id = f"{prefix}{next_num:0{digit_count}d}"
             if num_setting:
@@ -2207,9 +2302,9 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
     def convert_to_so(self, request, pk=None):
         po = self.get_object()
         so_num = NumberingSetting.objects.filter(doc_type='sales_order').first()
-        so_code = so_num.generate_next_number(increment=True) if so_num else f"SO-2026-{SalesOrder.objects.count() + 1:04d}"
-        while SalesOrder.objects.filter(id=so_code).exists():
-            so_code = f"SO-2026-{SalesOrder.objects.count() + 1:04d}-{datetime.now().strftime('%M%S')}"
+        so_code = so_num.generate_next_number(increment=True) if so_num else f"SO-2026-{SalesOrder.all_objects.count() + 1:04d}"
+        while SalesOrder.all_objects.filter(id=so_code).exists():
+            so_code = f"SO-2026-{SalesOrder.all_objects.count() + 1:04d}-{datetime.now().strftime('%M%S')}"
 
         # Fetch quotation details if linked
         quotation = Quotation.objects.filter(id=po.quotation_id).first() if po.quotation_id else None
@@ -2261,7 +2356,7 @@ class CustomerPOViewSet(viewsets.ModelViewSet):
         return Response(SalesOrderSerializer(so).data, status=status.HTTP_201_CREATED)
 
 
-class SalesOrderViewSet(viewsets.ModelViewSet):
+class SalesOrderViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SalesOrder.objects.all().order_by('-created_at', '-id')
     serializer_class = SalesOrderSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -2318,7 +2413,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
         so_num = data.get('sales_order_number') or data.get('salesOrderNumber') or data.get('id')
-        if not so_num or SalesOrder.objects.filter(id=so_num).exists():
+        if not so_num or SalesOrder.all_objects.filter(id=so_num).exists():
             import re
             all_ids = list(SalesOrder.objects.values_list('id', flat=True))
             max_num = 0
@@ -2331,7 +2426,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
             digit_count = getattr(num_setting, 'digit_count', getattr(num_setting, 'digitCount', 4)) if num_setting else 4
             next_num = max(max_num + 1, (num_setting.current_number + 1 if num_setting else 1))
             so_num = f"{prefix}{next_num:0{digit_count}d}"
-            while SalesOrder.objects.filter(id=so_num).exists():
+            while SalesOrder.all_objects.filter(id=so_num).exists():
                 next_num += 1
                 so_num = f"{prefix}{next_num:0{digit_count}d}"
             if num_setting:
@@ -2354,7 +2449,7 @@ class SalesOrderViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ActivityViewSet(viewsets.ModelViewSet):
+class ActivityViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Activity.objects.all().order_by('-created_at')
     serializer_class = ActivitySerializer
     permission_classes = [permissions.IsAuthenticated]

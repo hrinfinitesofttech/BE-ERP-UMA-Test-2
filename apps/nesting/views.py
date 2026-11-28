@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 import logging
 from collections import defaultdict
 
@@ -93,7 +94,7 @@ def split_off(h, qty, **overrides):
 
 
 # ----------------------------------------------------------------------------- jobs
-class NestingJobViewSet(viewsets.ModelViewSet):
+class NestingJobViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = NestingJob.objects.all().prefetch_related('tasks', 'handovers', 'sheet_usages')
     serializer_class = NestingJobSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -307,7 +308,7 @@ class NestingJobViewSet(viewsets.ModelViewSet):
 
 
 # ----------------------------------------------------------------------------- tasks
-class NestingTaskViewSet(viewsets.ModelViewSet):
+class NestingTaskViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = NestingTask.objects.all().select_related('job').prefetch_related('handovers')
     serializer_class = NestingTaskSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -464,7 +465,7 @@ class NestingHandoverViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 # ----------------------------------------------------------------------------- sheets
-class SheetUsageViewSet(viewsets.ModelViewSet):
+class SheetUsageViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SheetUsage.objects.all().select_related('job')
     serializer_class = SheetUsageSerializer
     permission_classes = [permissions.IsAuthenticated]

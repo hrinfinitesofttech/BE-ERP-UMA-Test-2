@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 from datetime import datetime
 from rest_framework import viewsets, permissions, status
 from rest_framework.views import APIView
@@ -207,7 +208,7 @@ class NotificationViewSet(viewsets.ModelViewSet):
         return Response({'success': True, 'message': 'All notifications marked as read'})
 
 
-class BugTicketViewSet(viewsets.ModelViewSet):
+class BugTicketViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = BugTicket.objects.all().order_by('-created_at')
     serializer_class = BugTicketSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -215,9 +216,9 @@ class BugTicketViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"BUG-{BugTicket.objects.count() + 1:03d}"
+            data['id'] = f"BUG-{BugTicket.all_objects.count() + 1:03d}"
         if not data.get('bug_no'):
-            data['bug_no'] = data.get('bugNo') or f"BUG-2026-{BugTicket.objects.count() + 1:03d}"
+            data['bug_no'] = data.get('bugNo') or f"BUG-2026-{BugTicket.all_objects.count() + 1:03d}"
         if 'module_page' not in data:
             data['module_page'] = data.get('modulePage') or data.get('module') or 'General'
         if 'steps_to_reproduce' not in data:
@@ -237,7 +238,7 @@ class BugTicketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class BackupRecordViewSet(viewsets.ModelViewSet):
+class BackupRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = BackupRecord.objects.all().order_by('-created_at')
     serializer_class = BackupRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -245,7 +246,7 @@ class BackupRecordViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"BKP-{BackupRecord.objects.count() + 1:03d}"
+            data['id'] = f"BKP-{BackupRecord.all_objects.count() + 1:03d}"
         if 'backup_name' not in data:
             data['backup_name'] = data.get('backupName') or f"Manual ERP Backup {datetime.now().strftime('%Y-%m-%d %H:%M')}"
         if 'backup_type' not in data:
@@ -263,7 +264,7 @@ class BackupRecordViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class DataImportLogViewSet(viewsets.ModelViewSet):
+class DataImportLogViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = DataImportLog.objects.all().order_by('-created_at')
     serializer_class = DataImportLogSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -271,7 +272,7 @@ class DataImportLogViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = f"IMP-{DataImportLog.objects.count() + 1:03d}"
+            data['id'] = f"IMP-{DataImportLog.all_objects.count() + 1:03d}"
         if 'entity_type' not in data:
             data['entity_type'] = data.get('entityType') or 'Customers'
         if 'file_name' not in data:
@@ -289,13 +290,13 @@ class DataImportLogViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class SecurityCheckRecordViewSet(viewsets.ModelViewSet):
+class SecurityCheckRecordViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = SecurityCheckRecord.objects.all().order_by('-created_at')
     serializer_class = SecurityCheckRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class GoLiveChecklistItemViewSet(viewsets.ModelViewSet):
+class GoLiveChecklistItemViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = GoLiveChecklistItem.objects.all().order_by('module_name')
     serializer_class = GoLiveChecklistItemSerializer
     permission_classes = [permissions.IsAuthenticated]

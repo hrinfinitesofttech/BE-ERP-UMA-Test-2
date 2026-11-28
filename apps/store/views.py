@@ -1,3 +1,4 @@
+from apps.core.softdelete import SoftDeleteViewSetMixin
 import logging
 from datetime import datetime
 from django.db import transaction
@@ -42,7 +43,7 @@ from .serializers import (
 )
 
 
-class ItemCategoryViewSet(viewsets.ModelViewSet):
+class ItemCategoryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ItemCategory.objects.all().order_by('-id')
     serializer_class = ItemCategorySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -50,7 +51,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = data.get('code') or data.get('categoryCode') or f"CAT-{ItemCategory.objects.count() + 1:03d}"
+            data['id'] = data.get('code') or data.get('categoryCode') or f"CAT-{ItemCategory.all_objects.count() + 1:03d}"
         if 'code' not in data:
             data['code'] = data.get('categoryCode') or data.get('id')
         if 'name' not in data:
@@ -63,7 +64,7 @@ class ItemCategoryViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class UOMMasterViewSet(viewsets.ModelViewSet):
+class UOMMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = UOMMaster.objects.all().order_by('-id')
     serializer_class = UOMMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -71,7 +72,7 @@ class UOMMasterViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = data.get('code') or data.get('uomCode') or f"UOM-{UOMMaster.objects.count() + 1:03d}"
+            data['id'] = data.get('code') or data.get('uomCode') or f"UOM-{UOMMaster.all_objects.count() + 1:03d}"
         if 'code' not in data:
             data['code'] = data.get('uomCode') or data.get('id')
         if 'name' not in data:
@@ -84,7 +85,7 @@ class UOMMasterViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ItemMasterViewSet(viewsets.ModelViewSet):
+class ItemMasterViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ItemMaster.objects.all().order_by('-created_at', '-id')
     serializer_class = ItemMasterSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -92,7 +93,7 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id'):
-            data['id'] = data.get('item_code') or data.get('itemCode') or f"ITM-{ItemMaster.objects.count() + 1:04d}"
+            data['id'] = data.get('item_code') or data.get('itemCode') or f"ITM-{ItemMaster.all_objects.count() + 1:04d}"
         if 'item_code' not in data:
             data['item_code'] = data.get('itemCode') or data.get('id')
         if 'item_name' not in data:
@@ -315,13 +316,13 @@ class ItemMasterViewSet(viewsets.ModelViewSet):
         return response
 
 
-class WarehouseViewSet(viewsets.ModelViewSet):
+class WarehouseViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = Warehouse.objects.all().order_by('-id')
     serializer_class = WarehouseSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class WarehouseLocationViewSet(viewsets.ModelViewSet):
+class WarehouseLocationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = WarehouseLocation.objects.all().order_by('-id')
     serializer_class = WarehouseLocationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -330,7 +331,7 @@ class WarehouseLocationViewSet(viewsets.ModelViewSet):
 logger = logging.getLogger(__name__)
 
 
-class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
+class GoodsReceiptNoteViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = GoodsReceiptNote.objects.all().order_by('-created_at', '-id')
     serializer_class = GoodsReceiptNoteSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -344,7 +345,7 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
         with self.__class__._create_lock:
             data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
             if not data.get('id') and not data.get('grn_number') and not data.get('grnNumber'):
-                count = GoodsReceiptNote.objects.count() + 1
+                count = GoodsReceiptNote.all_objects.count() + 1
                 code = f"GRN-2026-{count:04d}"
                 while GoodsReceiptNote.objects.filter(Q(id=code) | Q(grn_number=code)).exists():
                     count += 1
@@ -451,7 +452,7 @@ class GoodsReceiptNoteViewSet(viewsets.ModelViewSet):
             return Response(GoodsReceiptNoteSerializer(grn).data, status=status.HTTP_201_CREATED)
 
 
-class QCInspectionViewSet(viewsets.ModelViewSet):
+class QCInspectionViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = QCInspection.objects.all().order_by('-created_at', '-id')
     serializer_class = QCInspectionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -459,7 +460,7 @@ class QCInspectionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('inspection_number') and not data.get('inspectionNumber'):
-            code = f"QC-2026-{QCInspection.objects.count() + 1:04d}"
+            code = f"QC-2026-{QCInspection.all_objects.count() + 1:04d}"
             data['id'] = code
             data['inspection_number'] = code
         elif not data.get('id'):
@@ -509,13 +510,13 @@ class QCInspectionViewSet(viewsets.ModelViewSet):
         return Response(QCInspectionSerializer(qc).data, status=status.HTTP_201_CREATED)
 
 
-class StockBalanceViewSet(viewsets.ModelViewSet):
+class StockBalanceViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = StockBalance.objects.all().order_by('item_code')
     serializer_class = StockBalanceSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class StockReservationViewSet(viewsets.ModelViewSet):
+class StockReservationViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = StockReservation.objects.all().order_by('-reserved_date')
     serializer_class = StockReservationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -523,7 +524,7 @@ class StockReservationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('reservation_number') and not data.get('reservationNumber'):
-            code = f"RES-2026-{StockReservation.objects.count() + 1:04d}"
+            code = f"RES-2026-{StockReservation.all_objects.count() + 1:04d}"
             data['id'] = code
             data['reservation_number'] = code
         elif not data.get('id'):
@@ -543,7 +544,7 @@ class StockReservationViewSet(viewsets.ModelViewSet):
         return Response(StockReservationSerializer(res).data, status=status.HTTP_201_CREATED)
 
 
-class MaterialIssueViewSet(viewsets.ModelViewSet):
+class MaterialIssueViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = MaterialIssue.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialIssueSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -552,7 +553,7 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('issue_number') and not data.get('issueNumber'):
-            n = MaterialIssue.objects.count() + 1
+            n = MaterialIssue.all_objects.count() + 1
             code = f"ISSUE-2026-{n:04d}"
             while MaterialIssue.objects.filter(Q(id=code) | Q(issue_number=code)).exists():
                 n += 1
@@ -713,7 +714,7 @@ class MaterialIssueViewSet(viewsets.ModelViewSet):
         return Response(MaterialIssueSerializer(issue).data, status=status.HTTP_201_CREATED)
 
 
-class MaterialReturnViewSet(viewsets.ModelViewSet):
+class MaterialReturnViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = MaterialReturn.objects.all().order_by('-created_at', '-id')
     serializer_class = MaterialReturnSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -721,7 +722,7 @@ class MaterialReturnViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('return_number') and not data.get('returnNumber'):
-            code = f"RET-2026-{MaterialReturn.objects.count() + 1:04d}"
+            code = f"RET-2026-{MaterialReturn.all_objects.count() + 1:04d}"
             data['id'] = code
             data['return_number'] = code
         elif not data.get('id'):
@@ -821,13 +822,13 @@ class StockLedgerEntryViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
 
-class ScrapEntryViewSet(viewsets.ModelViewSet):
+class ScrapEntryViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = ScrapEntry.objects.all().order_by('-date', '-id')
     serializer_class = ScrapEntrySerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-class StockTransferViewSet(viewsets.ModelViewSet):
+class StockTransferViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = StockTransfer.objects.all().order_by('-created_at')
     serializer_class = StockTransferSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -835,7 +836,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('transfer_number') and not data.get('transferNumber'):
-            code = f"TRN-2026-{StockTransfer.objects.count() + 1:04d}"
+            code = f"TRN-2026-{StockTransfer.all_objects.count() + 1:04d}"
             data['id'] = code
             data['transfer_number'] = code
         elif not data.get('id'):
@@ -925,7 +926,7 @@ class StockTransferViewSet(viewsets.ModelViewSet):
         return Response(StockTransferSerializer(trn).data, status=status.HTTP_201_CREATED)
 
 
-class StockAdjustmentViewSet(viewsets.ModelViewSet):
+class StockAdjustmentViewSet(SoftDeleteViewSetMixin, viewsets.ModelViewSet):
     queryset = StockAdjustment.objects.all().order_by('-created_at')
     serializer_class = StockAdjustmentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -933,7 +934,7 @@ class StockAdjustmentViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         if not data.get('id') and not data.get('adjustment_number') and not data.get('adjustmentNumber'):
-            code = f"ADJ-2026-{StockAdjustment.objects.count() + 1:04d}"
+            code = f"ADJ-2026-{StockAdjustment.all_objects.count() + 1:04d}"
             data['id'] = code
             data['adjustment_number'] = code
         elif not data.get('id'):

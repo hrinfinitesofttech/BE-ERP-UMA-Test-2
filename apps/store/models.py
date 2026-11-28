@@ -1,7 +1,8 @@
+from apps.core.softdelete import SoftDeleteModel
 from django.db import models
 
 
-class ItemCategory(models.Model):
+class ItemCategory(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=50, unique=True)
@@ -15,7 +16,7 @@ class ItemCategory(models.Model):
         return f"{self.code} - {self.name}"
 
 
-class UOMMaster(models.Model):
+class UOMMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, unique=True)
@@ -25,7 +26,7 @@ class UOMMaster(models.Model):
         return self.code
 
 
-class ItemMaster(models.Model):
+class ItemMaster(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     item_code = models.CharField(max_length=64, unique=True)
     item_name = models.CharField(max_length=200)
@@ -51,7 +52,7 @@ class ItemMaster(models.Model):
         return f"{self.item_code} - {self.item_name}"
 
 
-class Warehouse(models.Model):
+class Warehouse(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     warehouse_code = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=200)
@@ -64,7 +65,7 @@ class Warehouse(models.Model):
         return f"{self.warehouse_code} - {self.name}"
 
 
-class WarehouseLocation(models.Model):
+class WarehouseLocation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     warehouse_id = models.CharField(max_length=64)
     rack = models.CharField(max_length=50)
@@ -76,7 +77,7 @@ class WarehouseLocation(models.Model):
         return self.code
 
 
-class GoodsReceiptNote(models.Model):
+class GoodsReceiptNote(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     grn_number = models.CharField(max_length=64, unique=True)
     date = models.CharField(max_length=50)
@@ -127,7 +128,7 @@ class GoodsReceiptNote(models.Model):
         return f"{self.grn_number} from {self.supplier_name}"
 
 
-class QCInspection(models.Model):
+class QCInspection(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     grn_id = models.CharField(max_length=64)
     grn_number = models.CharField(max_length=64)
@@ -149,7 +150,7 @@ class QCInspection(models.Model):
         return f"QC for {self.grn_number}: {self.overall_result}"
 
 
-class StockBalance(models.Model):
+class StockBalance(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     item_id = models.CharField(max_length=64)
     item_code = models.CharField(max_length=64)
@@ -171,7 +172,7 @@ class StockBalance(models.Model):
         return f"{self.item_code} in {self.warehouse_id}: {self.quantity} {self.uom}"
 
 
-class StockReservation(models.Model):
+class StockReservation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     reservation_number = models.CharField(max_length=64)
     project_id = models.CharField(max_length=64)
@@ -188,7 +189,7 @@ class StockReservation(models.Model):
         return f"Reserved {self.reserved_quantity} of {self.item_code} for {self.job_number}"
 
 
-class MaterialIssue(models.Model):
+class MaterialIssue(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     issue_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -217,7 +218,7 @@ class MaterialIssue(models.Model):
         return f"{self.issue_number} to {self.issued_to}"
 
 
-class MaterialReturn(models.Model):
+class MaterialReturn(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     return_number = models.CharField(max_length=64, unique=True)
     project_id = models.CharField(max_length=64, blank=True, default='')
@@ -265,7 +266,7 @@ class StockLedgerEntry(models.Model):
         return f"{self.date} [{self.transaction_type}] {self.item_code} bal: {self.closing_quantity}"
 
 
-class ScrapEntry(models.Model):
+class ScrapEntry(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     scrap_number = models.CharField(max_length=64, unique=True)
     date = models.CharField(max_length=50)
@@ -287,7 +288,7 @@ class ScrapEntry(models.Model):
         return f"{self.scrap_number} - {self.item_code} ({self.quantity} {self.uom})"
 
 
-class StockTransfer(models.Model):
+class StockTransfer(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     transfer_number = models.CharField(max_length=64, unique=True)
     transfer_date = models.CharField(max_length=50)
@@ -308,7 +309,7 @@ class StockTransfer(models.Model):
         return f"{self.transfer_number}: {self.from_warehouse_name} -> {self.to_warehouse_name}"
 
 
-class StockAdjustment(models.Model):
+class StockAdjustment(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     adjustment_number = models.CharField(max_length=64, unique=True)
     adjustment_date = models.CharField(max_length=50)

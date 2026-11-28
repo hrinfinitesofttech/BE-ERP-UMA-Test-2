@@ -378,8 +378,19 @@ def calculate_month(period, employee_ids=None, dry_run=False):
                 rec.save()
                 updated += 1
             else:
-                rec = PayrollRecord.objects.create(id=number, payroll_number=number, employee_id=user.id, status='Draft',
-                                                   processed_date=timezone.localdate(), **fields)
+                # a Draft that was deleted earlier keeps its number: bring that row back instead of clashing with it
+                ghost = PayrollRecord.all_objects.filter(pk=number, is_active=False).first()
+                if ghost:
+                    for k, v in fields.items():
+                        setattr(ghost, k, v)
+                    ghost.is_active, ghost.deleted_at, ghost.deleted_by = True, None, ''
+                    ghost.status = 'Draft'
+                    ghost.processed_date = timezone.localdate()
+                    ghost.save()
+                    rec = ghost
+                else:
+                    rec = PayrollRecord.objects.create(id=number, payroll_number=number, employee_id=user.id, status='Draft',
+                                                       processed_date=timezone.localdate(), **fields)
                 created += 1
         results.append(rec)
     warnings = []

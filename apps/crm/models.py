@@ -1,8 +1,9 @@
 from django.db import models
 import uuid
+from apps.core.softdelete import SoftDeleteModel
 
 
-class Lead(models.Model):
+class Lead(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     lead_no = models.CharField(max_length=64, unique=True)
     company_name = models.CharField(max_length=200)
@@ -51,7 +52,7 @@ class Lead(models.Model):
         return f"{self.lead_no} - {self.company_name}"
 
 
-class Customer(models.Model):
+class Customer(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     customer_code = models.CharField(max_length=50, unique=True)
     customer_type = models.CharField(max_length=30, default='company')
@@ -98,7 +99,7 @@ class Customer(models.Model):
         return f"{self.customer_code} - {self.company_name}"
 
 
-class Contact(models.Model):
+class Contact(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     customer_ref = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='contacts', null=True, blank=True)
     customer_id = models.CharField(max_length=64)
@@ -115,7 +116,7 @@ class Contact(models.Model):
         return f"{self.name} ({self.customer_name})"
 
 
-class Enquiry(models.Model):
+class Enquiry(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     enquiry_no = models.CharField(max_length=64, unique=True)
     lead_id = models.CharField(max_length=64, blank=True, null=True)
@@ -155,7 +156,7 @@ class Enquiry(models.Model):
         return f"{self.enquiry_no} - {self.customer_name}"
 
 
-class Opportunity(models.Model):
+class Opportunity(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     opportunity_no = models.CharField(max_length=64, unique=True)
     lead_id = models.CharField(max_length=64, blank=True, null=True)
@@ -181,7 +182,7 @@ class Opportunity(models.Model):
         return f"{self.opportunity_no} - {self.customer_name}"
 
 
-class FollowUp(models.Model):
+class FollowUp(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     follow_up_no = models.CharField(max_length=64, unique=True)
     lead_or_customer_id = models.CharField(max_length=64)
@@ -209,7 +210,7 @@ class FollowUp(models.Model):
         return f"{self.follow_up_no} - {self.lead_or_customer_name}"
 
 
-class SiteVisit(models.Model):
+class SiteVisit(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     visit_no = models.CharField(max_length=64, unique=True)
     customer_id = models.CharField(max_length=64)
@@ -241,7 +242,7 @@ class SiteVisit(models.Model):
         return f"{self.visit_no} - {self.customer_name}"
 
 
-class Exhibition(models.Model):
+class Exhibition(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     expo_name = models.CharField(max_length=200)
     organizer = models.CharField(max_length=200, blank=True, default='')
@@ -270,7 +271,7 @@ class Exhibition(models.Model):
         return self.expo_name
 
 
-class Quotation(models.Model):
+class Quotation(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     quotation_number = models.CharField(max_length=64, unique=True)
     current_revision = models.CharField(max_length=30, default='Rev-00')
@@ -325,7 +326,7 @@ class Quotation(models.Model):
         super().save(*args, **kwargs)
 
 
-class CustomerPO(models.Model):
+class CustomerPO(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     po_number = models.CharField(max_length=100)
     internal_cpo_no = models.CharField(max_length=64, blank=True, default='')
@@ -358,7 +359,7 @@ class CustomerPO(models.Model):
         return f"{self.po_number} ({self.customer_name})"
 
 
-class SalesOrder(models.Model):
+class SalesOrder(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     sales_order_number = models.CharField(max_length=64, unique=True)
     customer_po_id = models.CharField(max_length=64, blank=True, null=True)
@@ -391,7 +392,7 @@ class SalesOrder(models.Model):
         return f"{self.sales_order_number} - {self.customer_name}"
 
 
-class Activity(models.Model):
+class Activity(SoftDeleteModel):
     id = models.CharField(max_length=64, primary_key=True)
     entity_type = models.CharField(max_length=30) # lead, customer, opportunity, quotation, sales_order
     entity_id = models.CharField(max_length=64)

@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .deleted_views import DeletedRecordsView
 from .views import (
     CompanySettingView,
     NumberingSettingViewSet,
@@ -34,5 +35,6 @@ urlpatterns = [
     path('company/', CompanySettingView.as_view(), name='company-settings'),
     path('health/', SystemHealthView.as_view(), name='system-health'),
     path('deploy/', SystemDeployView.as_view(), name='system-deploy'),
+    path('deleted-records/', DeletedRecordsView.as_view(), name='deleted-records'),
     path('', include(router.urls)),
 ]

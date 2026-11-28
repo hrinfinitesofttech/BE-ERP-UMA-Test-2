@@ -359,7 +359,7 @@ class PaymentRequestViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Invalid amount.'}, status=400)
         if amt <= 0 or amt > (r.amount - r.paid_amount):
             return Response({'error': 'Amount must be > 0 and not exceed the outstanding balance.'}, status=400)
-        n = SupplierPayment.objects.count() + 1
+        n = SupplierPayment.all_objects.count() + 1
         no = f"PAY-SUP-{timezone.now().strftime('%Y%m%d')}-{n:03d}"
         while SupplierPayment.objects.filter(Q(id=no) | Q(payment_number=no)).exists():
             n += 1

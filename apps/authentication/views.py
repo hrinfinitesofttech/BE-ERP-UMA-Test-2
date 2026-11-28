@@ -249,6 +249,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         if status_param and status_param != 'all':
             qs = qs.filter(status__iexact=status_param)
 
+        if not (is_super_admin(user) and self.request.query_params.get('includeDeleted') in ('1', 'true')):
+            qs = qs.filter(deleted_at__isnull=True)
+
         return qs.order_by('-date_joined', '-id')
 
     def get_object(self):
@@ -404,9 +407,34 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
+        """Soft delete: the employee can no longer log in and disappears from lists, but the row (and every
+        record that points to it) stays. Restore with POST employees/<id>/restore/."""
         if not is_super_admin(request.user):
-            raise PermissionDenied("Permanent employee deletion is restricted to Super Admins. Use deactivate instead.")
-        return super().destroy(request, *args, **kwargs)
+            raise PermissionDenied("Employee deletion is restricted to Super Admins. Use deactivate instead.")
+        target = self.get_object()
+        if str(target.id) == str(request.user.id):
+            return Response({'error': 'You cannot delete your own account.'}, status=status.HTTP_400_BAD_REQUEST)
+        from django.utils import timezone
+        target.is_active = False
+        target.status = 'inactive'
+        target.deleted_at = timezone.now()
+        target.deleted_by = (getattr(request.user, 'name', '') or request.user.username)
+        target.save(update_fields=['is_active', 'status', 'deleted_at', 'deleted_by'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='restore')
+    def restore(self, request, pk=None):
+        if not is_super_admin(request.user):
+            raise PermissionDenied("Only a Super Admin can restore a deleted employee.")
+        target = self.get_object()
+        if not target.deleted_at:
+            return Response({'error': 'This employee is not deleted.'}, status=status.HTTP_400_BAD_REQUEST)
+        target.is_active = True
+        target.status = 'active'
+        target.deleted_at = None
+        target.deleted_by = ''
+        target.save(update_fields=['is_active', 'status', 'deleted_at', 'deleted_by'])
+        return Response({'success': True, 'id': target.id, 'message': 'Employee restored.'})
 
     @action(detail=True, methods=['post'], url_path='reset-password')
     def reset_password(self, request, pk=None):
